@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react'
+import { lazy } from 'react'
 import { Route, Routes } from 'react-router'
 import { AppShell } from '@/components/layout/app-shell'
 import { NotFound } from '@/components/not-found'
@@ -10,24 +10,18 @@ const page = <K extends string>(load: () => Promise<Record<K, React.ComponentTyp
   lazy(() => load().then((module) => ({ default: module[name] })))
 
 const PartsPage = page(() => import('@/features/parts/parts-page'), 'PartsPage')
+const PartDetailPage = page(() => import('@/features/parts/part-detail-page'), 'PartDetailPage')
+const DesignPage = page(() => import('@/features/designs/design-page'), 'DesignPage')
 const SettingsPage = page(() => import('@/features/settings/settings-page'), 'SettingsPage')
-// Build step 2 canvas spike: full screen, not in the nav. Removed with the real canvas.
-const SpikePage = page(() => import('@/features/spike/spike-page'), 'SpikePage')
 
 export default function App() {
   return (
     <Routes>
-      <Route
-        path="spike"
-        element={
-          <Suspense>
-            <SpikePage />
-          </Suspense>
-        }
-      />
       <Route element={<AppShell />}>
         <Route index element={<DesignsPage />} />
+        <Route path="designs/:id" element={<DesignPage />} />
         <Route path="parts" element={<PartsPage />} />
+        <Route path="parts/:id" element={<PartDetailPage />} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="*" element={<NotFound />} />
       </Route>

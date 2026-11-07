@@ -14,9 +14,8 @@
 |---|---|---|
 | `/` | Designs | List of designs, most recently changed first: name, part count, check summary (error/warning counts), Shelf-help project link marker. New design button. Filter by tag |
 | `/designs/:id` | Design | The canvas (below), with the name editable in the header |
-| `/parts` | Parts | The library: search, filter by kind and tag, an "Unverified" filter. Rows show name, kind, logic voltage, pin count and the unverified badge |
+| `/parts` | Parts | The library: search, filter by kind and tag, an "Unverified" filter. Rows show name, kind, logic voltage, pin count and the unverified badge. **New part** opens a dialog (name, kind, logic voltage) and goes to the new part's page, as Shelf-help's New item does |
 | `/parts/:id` | Part | Fields (kind, voltages, I2C addresses, datasheet, Shelf-help item id, Wokwi type), the pin editor, notes (markdown), attachments (datasheets, pinout images), "Used in" designs, and "Mark verified" |
-| `/parts/new` | New part | The same form, empty. Can start as a copy of an existing part |
 | `/settings` | Settings | Claude (MCP): token and setup, same as Shelf-help. Tag management |
 
 ## Design page
@@ -52,6 +51,21 @@ The design page has four areas around the canvas:
 - **History:** in the header's ⋯ menu. Revisions with author (you or Claude), time and summary, and Restore on each.
 - **Changes from Claude while the page is open:** the page refetches the design every few seconds while visible and shows "Claude changed this design" with a link to History.
 
+**As built in step 4** (the checks bar comes in step 5, History and undo in step 6, refetching for Claude's changes in step 7):
+- **Saving:** every change is sent straight away and the server answers with the whole design (placements, wires as `ref.PIN`, the parts used, computed nets); the canvas redraws from that answer. React Flow keeps only what is in flight: positions while dragging and the selection. A refused change shows a toast and the canvas stays as the server has it.
+- **Library:** on a desktop, a column on the left; drag a part onto the canvas to place it where it's dropped. On a tablet, a **Parts** button opens it over the canvas, and **+** on a part adds it near the middle of the view, beside (not on top of) the parts already there.
+- **Inspector:** on a desktop, a column on the right. Below desktop width it is a sheet over the bottom of the canvas that opens when a part or wire is selected or a pin is tapped (and from the ⓘ button for the design itself). A part shows its ref (editable), part, Rotate and Remove, a note and its pins with the net each is on. A wire shows its two ends, colour swatches, a label and Remove wire. Nothing selected: description, tags, Shelf-help project id, the nets, files and Delete design.
+- **The app sidebar** is hidden on the design page below desktop width, to give the canvas the room; the header's back arrow goes to Designs.
+- **Highlighting:** hovering a pin or wire highlights its net on the canvas; tapping a pin pins the highlight and shows the net in the Inspector. The Inspector shows only pinned nets, never hovered ones: content appearing on hover moved the Remove button out from under the pointer mid-click.
+- **Editing keys:** Delete or Backspace removes the selection (through the server); R turns the selected parts a quarter turn about their centre.
+- **Unverified parts** are drawn with a dashed edge.
+
+**Wire routing** (`features/designs/canvas/routing.ts`)
+- Each wire leaves its pin straight out for 20 px, then an A* search on the 10 px grid finds the cheapest square path to the other pin: a step costs 1, a turn 4, running on another wire's track 8 and on the track next to it 3, crossing one 1. Cards plus a 20 px margin are walls, and so is every other pin's stub end, so no wire seems to touch a pin it passes.
+- Wires are routed shortest first, from the saved positions, on every change. Two cards and four wires took about 4 ms in the browser. A card being dragged isn't saved yet, so its wires fall back to plain square paths until it's dropped.
+- Routes aren't stored: they follow from positions, so adding a wire can re-route others. Bend points chosen by hand (Wokwi stores them) remain a phase 2 idea.
+- Fit-to-view counts cards, not the wires looping round them, so it pads by 20%.
+
 ## Canvas spike findings
 
 Build step 2 (2026-11-07): a throwaway page at `/spike` (`frontend/src/features/spike/`, not in the nav, no backend) with `@xyflow/react` 12, a hard-coded ESP32 DevKit V1 (30 pins) and a BME280. It is removed when the real canvas lands in step 4; its pure logic (`layout.ts`: card layout, rotation, nets, wire colours) and its CSS tokens are meant to be lifted.
@@ -70,8 +84,14 @@ Build step 2 (2026-11-07): a throwaway page at `/spike` (`frontend/src/features/
 - **Theme:** React Flow's `colorMode="system"` plus its `--xy-*` variables mapped to our tokens; cards draw their own selected border (copper accent).
 
 **Touch**
-- **Tablet (editing):** pan with one finger on the empty canvas, pinch to zoom, drag a card to move it, and wire either by dragging from a pin or by tapping one pin then another (React Flow's `connectOnClick`). Tap-tap is the more reliable pattern on touch and is the one to teach. On a coarse pointer each handle gets a 20 px hit area (one pitch, so neighbours don't overlap) and `connectionRadius` is 14 px. Rotate and delete need buttons (the Inspector), since a tablet often has no keyboard. *Not yet tried on a real tablet*; the browser tools only emulate touch at phone widths.
+- **Tablet (editing):** pan with one finger on the empty canvas, pinch to zoom, drag a card to move it, and wire either by dragging from a pin or by tapping one pin then another (React Flow's `connectOnClick`). Tap-tap is the more reliable pattern on touch and is the one to teach. On a coarse pointer each handle gets a 20 px hit area (one pitch, so neighbours don't overlap) and `connectionRadius` is 14 px. Rotate and delete need buttons (the Inspector), since a tablet often has no keyboard.
+- **Tried on a real tablet (2026-11-07), both orientations:** loading, dragging cards, wiring, tap to highlight a net, changing wire colour, rotation, fit, pan and pinch zoom all work and feel responsive. Three problems are listed under Open issues.
 - **Phone (read-only):** `(max-width: 639px), (pointer: coarse) and (max-height: 480px)` selects read-only: no dragging, no wiring, no Delete key, and **`connectOnClick` off as well**, or a tap on a pin still starts a wire. Tapping a pin highlights its net and selects the card; the Inspector moves to the bottom and the legend is hidden. A fitted 30-pin board is about 0.6× on a 375 px screen, too small to read without pinching; the real view should fit to at least ~0.75× and let the user pan.
+- **Tried on a real phone (2026-11-07):** opens read-only, tapping highlights nets and wires, and nothing can be changed.
+
+**Tablet issues, resolved in step 4**
+- **Wires ran through cards, and overlapping wires hid each other.** Wires are now routed (see Wire routing below): around cards, never through them, and on separate tracks where they run side by side.
+- **A wire couldn't be removed on a tablet.** The wire Inspector has Remove wire. Dragging a wire's end to another pin (React Flow's reconnectable edges) isn't done; removing and redrawing covers it.
 
 **Performance** (Chromium, desktop, dev build)
 - Two parts: nothing measurable.
@@ -87,11 +107,12 @@ Build step 2 (2026-11-07): a throwaway page at `/spike` (`frontend/src/features/
 
 | Component | Used for |
 |---|---|
-| `PartNode` | A placed part on the canvas, with its pin handles |
+| `PartNode` | A placed part on the canvas: a `PartCard` with React Flow handles as its pins |
 | `PinHandle` | One pin: colour by kind, name, flag marks, net highlight |
-| `WireEdge` | A wire, coloured, with an optional label |
-| `PinEditor` | Table of pins on the part page: name, kind, functions, voltage, flags, side and position, with drag to reorder |
-| `PartPreview` | The card as it will look on the canvas, live while editing pins |
+| `WireEdge` | A wire, coloured, with an optional label, drawn along its route (Wire routing, above) |
+| `PartCard` | The card itself (header, pins on their sides, flag marks), drawn from `layoutCard`. The canvas passes React Flow handles in through `renderPin`; elsewhere pins are plain dots |
+| `PinEditor` | The part page's pins, one list per side in header order: name, kind, voltage, a popover for alternate roles, flags and the Wokwi name, side, and drag to reorder (a short hold on touch). Edited as a working copy and saved together, with Paste pin names for a whole header at once (kinds guessed from the names). Invalid or repeated names are marked and block saving |
+| `PartPreview` | A `PartCard` of the working copy, live while editing pins, with a rotate button to check the turned card |
 | `ChecksPanel` | Check results, used on the design page and the design list summary |
 | `UnverifiedBadge` | Parts that need checking |
 | `KindBadge` | Part kinds and pin kinds |

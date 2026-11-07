@@ -1,0 +1,87 @@
+/* The design canvas: React Flow themed with the app's tokens. */
+
+.ohm-canvas.react-flow {
+  --xy-background-color: var(--background);
+  --xy-background-pattern-color: var(--border);
+  --xy-controls-button-background-color: var(--card);
+  --xy-controls-button-background-color-hover: var(--muted);
+  --xy-controls-button-color: var(--foreground);
+  --xy-controls-button-color-hover: var(--foreground);
+  --xy-controls-button-border-color: var(--border);
+  --xy-connectionline-stroke: var(--primary);
+  --xy-connectionline-stroke-width: 3;
+  --xy-selection-background-color: color-mix(in oklch, var(--primary) 10%, transparent);
+  --xy-selection-border: 1px dashed var(--primary);
+  font-family: var(--font-sans);
+}
+
+/* Every pin is placed by its inline left/top and centred on that point, whatever its side. */
+.ohm-canvas .react-flow__handle.pin-handle {
+  width: 10px;
+  height: 10px;
+  min-width: 0;
+  min-height: 0;
+  border: 2px solid var(--card);
+  transform: translate(-50%, -50%);
+  transition: box-shadow 80ms;
+}
+.ohm-canvas .pin-handle.pin-power {
+  background: var(--pin-power);
+}
+.ohm-canvas .pin-handle.pin-ground {
+  background: var(--pin-ground);
+}
+.ohm-canvas .pin-handle.pin-i2c {
+  background: var(--pin-i2c);
+}
+.ohm-canvas .pin-handle.pin-spi {
+  background: var(--pin-spi);
+}
+.ohm-canvas .pin-handle.pin-uart {
+  background: var(--pin-uart);
+}
+.ohm-canvas .pin-handle.pin-analog {
+  background: var(--pin-analog);
+}
+.ohm-canvas .pin-handle.pin-gpio {
+  background: var(--pin-gpio);
+}
+
+.ohm-canvas .pin-handle:hover,
+.ohm-canvas .pin-handle.pin-lit,
+.ohm-canvas .pin-handle.clickconnecting,
+.ohm-canvas .pin-handle.connectingto {
+  box-shadow: 0 0 0 3px var(--primary);
+}
+.ohm-canvas .pin-handle.connectingto:not(.valid) {
+  box-shadow: 0 0 0 3px var(--destructive);
+}
+
+/* Fingers need a bigger target than the 10px dot: 20px, one pin pitch, so neighbours don't overlap. */
+@media (pointer: coarse) {
+  .ohm-canvas .pin-handle::after {
+    content: '';
+    position: absolute;
+    inset: -5px;
+    border-radius: 50%;
+  }
+}
+
+/* Read-only: pins are tap targets for highlighting, not wire starts. */
+.ohm-canvas.read-only .pin-handle {
+  cursor: pointer;
+}
+
+.ohm-canvas .wire-outline {
+  stroke: var(--wire-outline);
+}
+.ohm-canvas .wire-halo {
+  stroke: color-mix(in oklch, var(--primary) 50%, transparent);
+}
+
+/* Cards draw their own selected state. */
+.ohm-canvas .react-flow__node-part.selected,
+.ohm-canvas .react-flow__node-part:focus-visible {
+  outline: none;
+  box-shadow: none;
+}

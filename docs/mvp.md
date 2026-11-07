@@ -79,3 +79,7 @@ Decided after the canvas spike (2026-11-07, details in `pages.md`, Canvas spike 
 - **Cards are laid out from pin data,** on a 10 px grid with a 20 px pin pitch. `Part.width/height` is dropped; the size is computed.
 - **Rotation is logical:** pins move to other sides and labels stay upright, rather than turning the card with CSS. Stored as degrees.
 - **Phones get the read-only canvas** by media query, with tap to highlight a net; tablets wire by tap-pin-tap-pin or dragging.
+
+Decided in step 4 (2026-11-07):
+- **Wires are routed automatically** around cards and apart from each other, from the saved positions; routes aren't stored. Hand-placed bend points wait for phase 2.
+- **The API speaks `ref.PIN`** for wire ends, and every change to a design answers with the whole design, nets included.

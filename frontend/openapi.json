@@ -25,10 +25,1631 @@
           }
         }
       }
+    },
+    "/api/parts": {
+      "get": {
+        "tags": [
+          "parts"
+        ],
+        "summary": "List Parts",
+        "description": "q searches names and descriptions. Several kind or tag_id values match any of them.",
+        "operationId": "list_parts",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PartKind"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Kind"
+            }
+          },
+          {
+            "name": "tag_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "integer"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tag Id"
+            }
+          },
+          {
+            "name": "verified",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Verified"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PartSummary"
+                  },
+                  "title": "Response List Parts"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "parts"
+        ],
+        "summary": "Create Part",
+        "operationId": "create_part",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PartCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/parts/{part_id}": {
+      "get": {
+        "tags": [
+          "parts"
+        ],
+        "summary": "Get Part",
+        "operationId": "get_part",
+        "parameters": [
+          {
+            "name": "part_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Part Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "parts"
+        ],
+        "summary": "Update Part",
+        "operationId": "update_part",
+        "parameters": [
+          {
+            "name": "part_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Part Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PartUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "parts"
+        ],
+        "summary": "Delete Part",
+        "operationId": "delete_part",
+        "parameters": [
+          {
+            "name": "part_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Part Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/parts/{part_id}/pins": {
+      "put": {
+        "tags": [
+          "parts"
+        ],
+        "summary": "Replace Pins",
+        "operationId": "replace_pins",
+        "parameters": [
+          {
+            "name": "part_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Part Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PinsReplace"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/parts/{part_id}/copy": {
+      "post": {
+        "tags": [
+          "parts"
+        ],
+        "summary": "Copy Part",
+        "operationId": "copy_part",
+        "parameters": [
+          {
+            "name": "part_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Part Id"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/designs": {
+      "get": {
+        "tags": [
+          "designs"
+        ],
+        "summary": "List Designs",
+        "description": "Most recently changed first. Several tag_id values match any of them.",
+        "operationId": "list_designs",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "name": "tag_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "integer"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tag Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DesignSummary"
+                  },
+                  "title": "Response List Designs"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "designs"
+        ],
+        "summary": "Create Design",
+        "operationId": "create_design",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DesignCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DesignDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/designs/{design_id}": {
+      "get": {
+        "tags": [
+          "designs"
+        ],
+        "summary": "Get Design",
+        "operationId": "get_design",
+        "parameters": [
+          {
+            "name": "design_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Design Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DesignDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "designs"
+        ],
+        "summary": "Update Design",
+        "operationId": "update_design",
+        "parameters": [
+          {
+            "name": "design_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Design Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DesignUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DesignDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "designs"
+        ],
+        "summary": "Delete Design",
+        "operationId": "delete_design",
+        "parameters": [
+          {
+            "name": "design_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Design Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/designs/{design_id}/placements": {
+      "post": {
+        "tags": [
+          "designs"
+        ],
+        "summary": "Add Placements",
+        "operationId": "add_placements",
+        "parameters": [
+          {
+            "name": "design_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Design Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlacementsAdd"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DesignDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/designs/{design_id}/placements/{placement_id}": {
+      "patch": {
+        "tags": [
+          "designs"
+        ],
+        "summary": "Update Placement",
+        "operationId": "update_placement",
+        "parameters": [
+          {
+            "name": "design_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Design Id"
+            }
+          },
+          {
+            "name": "placement_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Placement Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlacementUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DesignDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "designs"
+        ],
+        "summary": "Remove Placement",
+        "description": "Removes the part and its wires.",
+        "operationId": "remove_placement",
+        "parameters": [
+          {
+            "name": "design_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Design Id"
+            }
+          },
+          {
+            "name": "placement_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Placement Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DesignDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/designs/{design_id}/wires": {
+      "post": {
+        "tags": [
+          "designs"
+        ],
+        "summary": "Add Wires",
+        "description": "Ends are `ref.PIN`, e.g. `esp.GPIO21`. All or none are added.",
+        "operationId": "add_wires",
+        "parameters": [
+          {
+            "name": "design_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Design Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WiresAdd"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DesignDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/designs/{design_id}/wires/{wire_id}": {
+      "patch": {
+        "tags": [
+          "designs"
+        ],
+        "summary": "Update Wire",
+        "operationId": "update_wire",
+        "parameters": [
+          {
+            "name": "design_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Design Id"
+            }
+          },
+          {
+            "name": "wire_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Wire Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WireUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DesignDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "designs"
+        ],
+        "summary": "Remove Wire",
+        "operationId": "remove_wire",
+        "parameters": [
+          {
+            "name": "design_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Design Id"
+            }
+          },
+          {
+            "name": "wire_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Wire Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DesignDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tags": {
+      "get": {
+        "tags": [
+          "tags"
+        ],
+        "summary": "List Tags",
+        "operationId": "list_tags",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TagOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Tags"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "tags"
+        ],
+        "summary": "Create Tag",
+        "operationId": "create_tag",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TagCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TagOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tags/{tag_id}": {
+      "patch": {
+        "tags": [
+          "tags"
+        ],
+        "summary": "Update Tag",
+        "operationId": "update_tag",
+        "parameters": [
+          {
+            "name": "tag_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Tag Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TagUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TagOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "tags"
+        ],
+        "summary": "Delete Tag",
+        "operationId": "delete_tag",
+        "parameters": [
+          {
+            "name": "tag_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Tag Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/attachments": {
+      "get": {
+        "tags": [
+          "attachments"
+        ],
+        "summary": "List Attachments",
+        "description": "The files of one part, oldest first.",
+        "operationId": "list_attachments",
+        "parameters": [
+          {
+            "name": "owner_type",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/OwnerType"
+            }
+          },
+          {
+            "name": "owner_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Owner Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AttachmentOut"
+                  },
+                  "title": "Response List Attachments"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "attachments"
+        ],
+        "summary": "Upload Attachment",
+        "operationId": "upload_attachment",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_attachment"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttachmentOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/attachments/{attachment_id}/file": {
+      "get": {
+        "tags": [
+          "attachments"
+        ],
+        "summary": "Get Attachment File",
+        "description": "Viewable types (PDFs, plain images) open in the browser; everything else downloads.",
+        "operationId": "get_attachment_file",
+        "parameters": [
+          {
+            "name": "attachment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Attachment Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/attachments/{attachment_id}": {
+      "delete": {
+        "tags": [
+          "attachments"
+        ],
+        "summary": "Delete Attachment",
+        "operationId": "delete_attachment",
+        "parameters": [
+          {
+            "name": "attachment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Attachment Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "AttachmentOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "original_filename": {
+            "type": "string",
+            "title": "Original Filename"
+          },
+          "mime_type": {
+            "type": "string",
+            "title": "Mime Type"
+          },
+          "size": {
+            "type": "integer",
+            "title": "Size"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "viewable": {
+            "type": "boolean",
+            "title": "Viewable",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "original_filename",
+          "mime_type",
+          "size",
+          "created_at",
+          "viewable"
+        ],
+        "title": "AttachmentOut"
+      },
+      "Author": {
+        "type": "string",
+        "enum": [
+          "user",
+          "claude"
+        ],
+        "title": "Author"
+      },
+      "Body_upload_attachment": {
+        "properties": {
+          "owner_type": {
+            "$ref": "#/components/schemas/OwnerType"
+          },
+          "owner_id": {
+            "type": "integer",
+            "title": "Owner Id"
+          },
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "owner_type",
+          "owner_id",
+          "file"
+        ],
+        "title": "Body_upload_attachment"
+      },
+      "CanvasPart": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/PartKind"
+          },
+          "logic_voltage": {
+            "$ref": "#/components/schemas/LogicVoltage"
+          },
+          "verified": {
+            "type": "boolean",
+            "title": "Verified"
+          },
+          "pins": {
+            "items": {
+              "$ref": "#/components/schemas/PinOut"
+            },
+            "type": "array",
+            "title": "Pins"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "logic_voltage",
+          "verified",
+          "pins"
+        ],
+        "title": "CanvasPart",
+        "description": "What the canvas needs to draw a placed part."
+      },
+      "DesignCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "description_md": {
+            "type": "string",
+            "title": "Description Md",
+            "default": ""
+          },
+          "shelf_project_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shelf Project Id"
+          },
+          "tag_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Tag Ids",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "DesignCreate"
+      },
+      "DesignDetail": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "shelf_project_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shelf Project Id"
+          },
+          "tags": {
+            "items": {
+              "$ref": "#/components/schemas/TagRef"
+            },
+            "type": "array",
+            "title": "Tags"
+          },
+          "part_count": {
+            "type": "integer",
+            "title": "Part Count"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          },
+          "description_md": {
+            "type": "string",
+            "title": "Description Md"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "placements": {
+            "items": {
+              "$ref": "#/components/schemas/PlacementOut"
+            },
+            "type": "array",
+            "title": "Placements"
+          },
+          "wires": {
+            "items": {
+              "$ref": "#/components/schemas/WireOut"
+            },
+            "type": "array",
+            "title": "Wires"
+          },
+          "parts": {
+            "items": {
+              "$ref": "#/components/schemas/CanvasPart"
+            },
+            "type": "array",
+            "title": "Parts"
+          },
+          "nets": {
+            "items": {
+              "$ref": "#/components/schemas/NetOut"
+            },
+            "type": "array",
+            "title": "Nets"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "shelf_project_id",
+          "tags",
+          "part_count",
+          "updated_at",
+          "description_md",
+          "created_at",
+          "placements",
+          "wires",
+          "parts",
+          "nets"
+        ],
+        "title": "DesignDetail"
+      },
+      "DesignRef": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "DesignRef"
+      },
+      "DesignSummary": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "shelf_project_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shelf Project Id"
+          },
+          "tags": {
+            "items": {
+              "$ref": "#/components/schemas/TagRef"
+            },
+            "type": "array",
+            "title": "Tags"
+          },
+          "part_count": {
+            "type": "integer",
+            "title": "Part Count"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "shelf_project_id",
+          "tags",
+          "part_count",
+          "updated_at"
+        ],
+        "title": "DesignSummary"
+      },
+      "DesignUpdate": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "description_md": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description Md"
+          },
+          "shelf_project_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shelf Project Id"
+          },
+          "tag_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tag Ids"
+          }
+        },
+        "type": "object",
+        "title": "DesignUpdate",
+        "description": "Only the fields sent are changed. shelf_project_id is cleared with null."
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
       "Health": {
         "properties": {
           "status": {
@@ -52,6 +1673,1227 @@
           "time"
         ],
         "title": "Health"
+      },
+      "LogicVoltage": {
+        "type": "string",
+        "enum": [
+          "3v3",
+          "5v",
+          "both",
+          "none"
+        ],
+        "title": "LogicVoltage"
+      },
+      "NetOut": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "pins": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Pins"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "pins"
+        ],
+        "title": "NetOut",
+        "description": "Pins joined by wires. Computed on every read, never stored."
+      },
+      "OwnerType": {
+        "type": "string",
+        "enum": [
+          "part",
+          "design"
+        ],
+        "title": "OwnerType"
+      },
+      "PartCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/PartKind"
+          },
+          "logic_voltage": {
+            "$ref": "#/components/schemas/LogicVoltage",
+            "default": "3v3"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "default": ""
+          },
+          "supply_min_v": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 60.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supply Min V"
+          },
+          "supply_max_v": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 60.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supply Max V"
+          },
+          "i2c_addresses": {
+            "items": {
+              "type": "integer",
+              "maximum": 127.0,
+              "minimum": 0.0
+            },
+            "type": "array",
+            "title": "I2C Addresses",
+            "default": []
+          },
+          "datasheet_url": {
+            "type": "string",
+            "title": "Datasheet Url",
+            "default": ""
+          },
+          "notes_md": {
+            "type": "string",
+            "title": "Notes Md",
+            "default": ""
+          },
+          "shelf_item_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shelf Item Id"
+          },
+          "wokwi_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wokwi Type"
+          },
+          "tag_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Tag Ids",
+            "default": []
+          },
+          "pins": {
+            "items": {
+              "$ref": "#/components/schemas/PinIn"
+            },
+            "type": "array",
+            "title": "Pins",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "kind"
+        ],
+        "title": "PartCreate"
+      },
+      "PartDetail": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/PartKind"
+          },
+          "logic_voltage": {
+            "$ref": "#/components/schemas/LogicVoltage"
+          },
+          "verified": {
+            "type": "boolean",
+            "title": "Verified"
+          },
+          "shelf_item_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shelf Item Id"
+          },
+          "tags": {
+            "items": {
+              "$ref": "#/components/schemas/TagRef"
+            },
+            "type": "array",
+            "title": "Tags"
+          },
+          "pin_count": {
+            "type": "integer",
+            "title": "Pin Count"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "supply_min_v": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supply Min V"
+          },
+          "supply_max_v": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supply Max V"
+          },
+          "i2c_addresses": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "I2C Addresses"
+          },
+          "datasheet_url": {
+            "type": "string",
+            "title": "Datasheet Url"
+          },
+          "notes_md": {
+            "type": "string",
+            "title": "Notes Md"
+          },
+          "created_by": {
+            "$ref": "#/components/schemas/Author"
+          },
+          "wokwi_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wokwi Type"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "pins": {
+            "items": {
+              "$ref": "#/components/schemas/PinOut"
+            },
+            "type": "array",
+            "title": "Pins"
+          },
+          "used_in": {
+            "items": {
+              "$ref": "#/components/schemas/DesignRef"
+            },
+            "type": "array",
+            "title": "Used In",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "logic_voltage",
+          "verified",
+          "shelf_item_id",
+          "tags",
+          "pin_count",
+          "updated_at",
+          "description",
+          "supply_min_v",
+          "supply_max_v",
+          "i2c_addresses",
+          "datasheet_url",
+          "notes_md",
+          "created_by",
+          "wokwi_type",
+          "created_at",
+          "pins"
+        ],
+        "title": "PartDetail"
+      },
+      "PartKind": {
+        "type": "string",
+        "enum": [
+          "board",
+          "sensor",
+          "display",
+          "actuator",
+          "module",
+          "power",
+          "passive",
+          "other"
+        ],
+        "title": "PartKind"
+      },
+      "PartSummary": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/PartKind"
+          },
+          "logic_voltage": {
+            "$ref": "#/components/schemas/LogicVoltage"
+          },
+          "verified": {
+            "type": "boolean",
+            "title": "Verified"
+          },
+          "shelf_item_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shelf Item Id"
+          },
+          "tags": {
+            "items": {
+              "$ref": "#/components/schemas/TagRef"
+            },
+            "type": "array",
+            "title": "Tags"
+          },
+          "pin_count": {
+            "type": "integer",
+            "title": "Pin Count"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "logic_voltage",
+          "verified",
+          "shelf_item_id",
+          "tags",
+          "pin_count",
+          "updated_at"
+        ],
+        "title": "PartSummary"
+      },
+      "PartUpdate": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PartKind"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "logic_voltage": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LogicVoltage"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "supply_min_v": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 60.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supply Min V"
+          },
+          "supply_max_v": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 60.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supply Max V"
+          },
+          "i2c_addresses": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer",
+                  "maximum": 127.0,
+                  "minimum": 0.0
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "I2C Addresses"
+          },
+          "datasheet_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Datasheet Url"
+          },
+          "notes_md": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes Md"
+          },
+          "verified": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verified"
+          },
+          "shelf_item_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shelf Item Id"
+          },
+          "wokwi_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wokwi Type"
+          },
+          "tag_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tag Ids"
+          }
+        },
+        "type": "object",
+        "title": "PartUpdate",
+        "description": "Only the fields sent are changed. Nullable fields are cleared with null."
+      },
+      "PinFlag": {
+        "type": "string",
+        "enum": [
+          "input_only",
+          "strapping",
+          "flash",
+          "adc2",
+          "five_v_tolerant",
+          "open_drain",
+          "boot_high",
+          "boot_low"
+        ],
+        "title": "PinFlag"
+      },
+      "PinIn": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^[^\\s.]+$",
+            "title": "Name"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/PinKind"
+          },
+          "functions": {
+            "items": {
+              "$ref": "#/components/schemas/PinKind"
+            },
+            "type": "array",
+            "title": "Functions",
+            "default": []
+          },
+          "voltage": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 60.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voltage"
+          },
+          "flags": {
+            "items": {
+              "$ref": "#/components/schemas/PinFlag"
+            },
+            "type": "array",
+            "title": "Flags",
+            "default": []
+          },
+          "side": {
+            "$ref": "#/components/schemas/PinSide"
+          },
+          "wokwi_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wokwi Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "kind",
+          "side"
+        ],
+        "title": "PinIn",
+        "description": "A pin as sent by the pin editor. Its position comes from its place in the list."
+      },
+      "PinKind": {
+        "type": "string",
+        "enum": [
+          "power_out",
+          "power_in",
+          "ground",
+          "gpio",
+          "analog",
+          "i2c_sda",
+          "i2c_scl",
+          "spi_mosi",
+          "spi_miso",
+          "spi_sck",
+          "spi_cs",
+          "uart_tx",
+          "uart_rx",
+          "enable",
+          "reset",
+          "nc",
+          "other"
+        ],
+        "title": "PinKind"
+      },
+      "PinOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/PinKind"
+          },
+          "functions": {
+            "items": {
+              "$ref": "#/components/schemas/PinKind"
+            },
+            "type": "array",
+            "title": "Functions"
+          },
+          "voltage": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voltage"
+          },
+          "flags": {
+            "items": {
+              "$ref": "#/components/schemas/PinFlag"
+            },
+            "type": "array",
+            "title": "Flags"
+          },
+          "side": {
+            "$ref": "#/components/schemas/PinSide"
+          },
+          "position": {
+            "type": "integer",
+            "title": "Position"
+          },
+          "wokwi_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wokwi Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "functions",
+          "voltage",
+          "flags",
+          "side",
+          "position",
+          "wokwi_name"
+        ],
+        "title": "PinOut"
+      },
+      "PinSide": {
+        "type": "string",
+        "enum": [
+          "left",
+          "right",
+          "top",
+          "bottom"
+        ],
+        "title": "PinSide"
+      },
+      "PinsReplace": {
+        "properties": {
+          "pins": {
+            "items": {
+              "$ref": "#/components/schemas/PinIn"
+            },
+            "type": "array",
+            "title": "Pins"
+          }
+        },
+        "type": "object",
+        "required": [
+          "pins"
+        ],
+        "title": "PinsReplace",
+        "description": "The part's whole pin list, in order: each side's pins top to bottom or left to right."
+      },
+      "PlacementIn": {
+        "properties": {
+          "part_id": {
+            "type": "integer",
+            "title": "Part Id"
+          },
+          "ref": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Za-z][A-Za-z0-9_]{0,19}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ref"
+          },
+          "x": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100000.0,
+                "minimum": -100000.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "X"
+          },
+          "y": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100000.0,
+                "minimum": -100000.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Y"
+          },
+          "rotation": {
+            "type": "integer",
+            "enum": [
+              0,
+              90,
+              180,
+              270
+            ],
+            "title": "Rotation",
+            "default": 0
+          },
+          "note": {
+            "type": "string",
+            "title": "Note",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "part_id"
+        ],
+        "title": "PlacementIn"
+      },
+      "PlacementOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "ref": {
+            "type": "string",
+            "title": "Ref"
+          },
+          "part_id": {
+            "type": "integer",
+            "title": "Part Id"
+          },
+          "x": {
+            "type": "integer",
+            "title": "X"
+          },
+          "y": {
+            "type": "integer",
+            "title": "Y"
+          },
+          "rotation": {
+            "type": "integer",
+            "enum": [
+              0,
+              90,
+              180,
+              270
+            ],
+            "title": "Rotation"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "ref",
+          "part_id",
+          "x",
+          "y",
+          "rotation",
+          "note"
+        ],
+        "title": "PlacementOut"
+      },
+      "PlacementUpdate": {
+        "properties": {
+          "ref": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Za-z][A-Za-z0-9_]{0,19}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ref"
+          },
+          "x": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100000.0,
+                "minimum": -100000.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "X"
+          },
+          "y": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100000.0,
+                "minimum": -100000.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Y"
+          },
+          "rotation": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "enum": [
+                  0,
+                  90,
+                  180,
+                  270
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rotation"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "type": "object",
+        "title": "PlacementUpdate"
+      },
+      "PlacementsAdd": {
+        "properties": {
+          "parts": {
+            "items": {
+              "$ref": "#/components/schemas/PlacementIn"
+            },
+            "type": "array",
+            "maxItems": 50,
+            "minItems": 1,
+            "title": "Parts"
+          }
+        },
+        "type": "object",
+        "required": [
+          "parts"
+        ],
+        "title": "PlacementsAdd"
+      },
+      "TagCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "TagCreate"
+      },
+      "TagOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "part_count": {
+            "type": "integer",
+            "title": "Part Count"
+          },
+          "design_count": {
+            "type": "integer",
+            "title": "Design Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "part_count",
+          "design_count"
+        ],
+        "title": "TagOut"
+      },
+      "TagRef": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "TagRef"
+      },
+      "TagUpdate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "TagUpdate"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "WireColor": {
+        "type": "string",
+        "enum": [
+          "red",
+          "black",
+          "orange",
+          "yellow",
+          "green",
+          "blue",
+          "purple",
+          "gray",
+          "white",
+          "brown"
+        ],
+        "title": "WireColor"
+      },
+      "WireIn": {
+        "properties": {
+          "a": {
+            "type": "string",
+            "pattern": "^[^.\\s]+\\.[^.\\s]+$",
+            "title": "A"
+          },
+          "b": {
+            "type": "string",
+            "pattern": "^[^.\\s]+\\.[^.\\s]+$",
+            "title": "B"
+          },
+          "color": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WireColor"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 100,
+            "title": "Label",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "a",
+          "b"
+        ],
+        "title": "WireIn"
+      },
+      "WireOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "a": {
+            "type": "string",
+            "title": "A"
+          },
+          "b": {
+            "type": "string",
+            "title": "B"
+          },
+          "a_placement_id": {
+            "type": "integer",
+            "title": "A Placement Id"
+          },
+          "a_pin_id": {
+            "type": "integer",
+            "title": "A Pin Id"
+          },
+          "b_placement_id": {
+            "type": "integer",
+            "title": "B Placement Id"
+          },
+          "b_pin_id": {
+            "type": "integer",
+            "title": "B Pin Id"
+          },
+          "color": {
+            "$ref": "#/components/schemas/WireColor"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "a",
+          "b",
+          "a_placement_id",
+          "a_pin_id",
+          "b_placement_id",
+          "b_pin_id",
+          "color",
+          "label"
+        ],
+        "title": "WireOut"
+      },
+      "WireUpdate": {
+        "properties": {
+          "color": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WireColor"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          }
+        },
+        "type": "object",
+        "title": "WireUpdate"
+      },
+      "WiresAdd": {
+        "properties": {
+          "wires": {
+            "items": {
+              "$ref": "#/components/schemas/WireIn"
+            },
+            "type": "array",
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Wires"
+          }
+        },
+        "type": "object",
+        "required": [
+          "wires"
+        ],
+        "title": "WiresAdd"
       }
     }
   }

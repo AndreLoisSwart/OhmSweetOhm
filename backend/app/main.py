@@ -7,8 +7,12 @@ from app.core.access import AccessMiddleware
 from app.core.config import settings
 from app.core.errors import register_error_handlers
 from app.core.frontend import mount_frontend
+from app.modules.attachments import router as attachments
+from app.modules.designs import router as designs
 from app.modules.mcp import token
 from app.modules.mcp.server import build_server
+from app.modules.parts import router as parts
+from app.modules.tags import router as tags
 
 
 def operation_id(route: APIRoute) -> str:
@@ -38,7 +42,8 @@ def create_app() -> FastAPI:
     )
 
     api = APIRouter(prefix="/api")
-    api.include_router(health.router)
+    for module in (health, parts, designs, tags, attachments):
+        api.include_router(module.router)
 
     app.include_router(api)
     app.router.routes.extend(mcp_app.routes)

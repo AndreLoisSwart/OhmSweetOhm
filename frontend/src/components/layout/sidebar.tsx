@@ -25,9 +25,15 @@ function SidebarLink({ item }: { item: NavItem }) {
   )
 }
 
-export function Sidebar() {
+/** `compact`: only on wide screens, for pages that need the room (the design canvas). */
+export function Sidebar({ compact = false }: { compact?: boolean }) {
   return (
-    <aside className="sticky top-0 hidden h-svh w-56 shrink-0 flex-col gap-6 border-r bg-sidebar p-3 md:flex">
+    <aside
+      className={cn(
+        'sticky top-0 hidden h-svh w-56 shrink-0 flex-col gap-6 border-r bg-sidebar p-3',
+        compact ? 'lg:flex' : 'md:flex',
+      )}
+    >
       <div className="flex items-center gap-2 px-3 pt-2 font-semibold">
         <Brand />
       </div>

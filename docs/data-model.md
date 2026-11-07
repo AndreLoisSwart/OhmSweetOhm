@@ -61,8 +61,10 @@ Attachment   id, original_filename, mime_type, size, stored_path, created_at,
   - A part Claude creates starts with `verified = false`; a part the user creates starts verified.
   - The user marks a part verified from its page, and any later change Claude makes to its pins sets it back to unverified.
   - Unverified parts show a badge everywhere and add a warning to every design check they appear in.
-- **Deleting a pin** is blocked while it is wired in any design. Renaming one is fine.
-- **Deleting a part** is blocked while it is placed in any design.
+- **Pins are saved as a whole list** (`PUT /api/parts/{id}/pins`), each side in header order; positions come from the order. Pins sent with their id are updated in place, so wires to them survive a rename; pins left out are removed, the rest added.
+- **Deleting a pin** is blocked while it is wired in any design (checked from build step 4). Renaming one is fine.
+- **Deleting a part** is blocked while it is placed in any design (from build step 4). Its pins, tag links and attachments go with it.
+- **Copying a part** makes a new, verified part named "… (copy)" with the same fields, pins and tags, but no attachments and no Shelf-help item id.
 - **Shelf-help ids** (`shelf_item_id`, `shelf_project_id`) are plain integers with no foreign key, since they point into another database. The app never checks them; Claude does, through both MCP servers.
 
 **Designs**
@@ -72,10 +74,12 @@ Attachment   id, original_filename, mime_type, size, stored_path, created_at,
   - A wire joins two pins of placements in the same design.
   - A wire from a pin to itself is refused, and so is a second wire between the same two pins (in either direction).
   - A pin can have many wires.
-- **Wire colour:** when none is given, it defaults by pin kind: red for power, black for ground, otherwise the next colour in a fixed rotation.
-- **Nets** are computed from wires (union-find) whenever they are read, and never stored. A net is named after its power or ground pin when it has one (`3V3`, `GND`), otherwise after its lowest `ref.PIN`.
+- **Wire colour:** when none is given, it defaults by pin kind: red for power, black for ground, otherwise the next colour in a fixed rotation (blue, green, yellow, orange, purple, white, brown), counting only the design's signal wires.
+- **Nets** are computed from wires (union-find) whenever they are read, and never stored. A net is named after its power or ground pin when it has one (`3V3`, `GND`; a `power_out` pin first, then ground, then `power_in`), otherwise after its lowest `ref.PIN`. Two separate nets that would share a name are numbered (`GND`, `GND_2`).
 - **Removing a placement** removes its wires. This is allowed for Claude too (see Revisions).
-- **Positions when Claude adds a part:** a placement added without a position goes to the right of the existing parts, on the grid.
+- **Positions when Claude adds a part:** a placement added without a position goes to the right of the existing parts, on the grid. Positions are snapped to the grid on save.
+- **Automatic refs:** a placement added without a ref gets the first letters of its part's name (`bme` from "BME280 breakout", `esp` from "ESP32 DevKit"), then `bme2`, `bme3`. Refs are stored in lower case.
+- **Wire ends in the API** are `ref.PIN`; pin names match ignoring case.
 
 **Revisions**
 - **Changes from Claude:** before each MCP tool call that changes a design, the server saves a revision (`author = claude`) with a one-line summary, e.g. "Removed led1 and its 2 wires".

@@ -2,13 +2,16 @@ import importlib
 import pkgutil
 from collections.abc import Iterator
 from datetime import UTC, datetime
+from enum import StrEnum
 from functools import cache
 from typing import Annotated
 
 from fastapi import Depends
 from sqlalchemy import (
+    CheckConstraint,
     DateTime,
     Engine,
+    Enum,
     MetaData,
     TypeDecorator,
     create_engine,
@@ -48,6 +51,25 @@ class UTCDateTime(TypeDecorator[datetime]):
 
 def utcnow() -> datetime:
     return datetime.now(UTC)
+
+
+def str_enum(enum: type[StrEnum], name: str) -> Enum:
+    """An enum column stored as its string value, with a CHECK constraint."""
+    return Enum(
+        enum,
+        name=name,
+        native_enum=False,
+        create_constraint=True,
+        length=max(len(m.value) for m in enum),
+        values_callable=lambda e: [m.value for m in e],
+    )
+
+
+def one_owner_constraint(*columns: str) -> CheckConstraint:
+    """For attachments: exactly one owner column is set. SQLite adds booleans as 0 and 1."""
+    return CheckConstraint(
+        " + ".join(f"({c} IS NOT NULL)" for c in columns) + " = 1", name="one_owner"
+    )
 
 
 def create_db_engine(url: str, *, foreign_keys: bool = True) -> Engine:
