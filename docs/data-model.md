@@ -10,7 +10,6 @@ Part         id, name (unique, ignoring case), kind, description,
              verified, created_by,
              shelf_item_id (nullable, Shelf-help Item id),
              wokwi_type (nullable, e.g. "board-esp32-devkit-c-v4"),
-             width, height (canvas size in grid units),
              created_at, updated_at
 
 Pin          id, part_id → Part, name (unique within the part),
@@ -56,7 +55,8 @@ Attachment   id, original_filename, mime_type, size, stored_path, created_at,
 **Parts and pins**
 - **Pin `kind` is the pin's main role; `functions` lists the alternates.** For example, ESP32 GPIO21 is `gpio` with functions `["i2c_sda"]`. The checks use both.
 - **Pin `voltage`** means what a power pin supplies (`power_out`) or needs (`power_in`). For a signal pin it is the highest voltage the pin accepts. When empty, a signal pin takes the part's `logic_voltage`.
-- **Pin order:** `side` and `position` place the pin on the canvas card, in the order of the real header. The card then reads like the physical board.
+- **Pin order:** `side` and `position` place the pin on the canvas card, in the order of the real header. The card then reads like the physical board. The card's size is computed from its pins, never stored (see `pages.md`, Canvas spike findings).
+- **Pin names** are unique within a part. Repeated silkscreen names are numbered (`GND`, `GND2`); board pins are named by the chip's GPIO (`GPIO21`), with Wokwi's name in `wokwi_name` where it differs.
 - **Unverified parts:**
   - A part Claude creates starts with `verified = false`; a part the user creates starts verified.
   - The user marks a part verified from its page, and any later change Claude makes to its pins sets it back to unverified.
@@ -66,6 +66,7 @@ Attachment   id, original_filename, mime_type, size, stored_path, created_at,
 - **Shelf-help ids** (`shelf_item_id`, `shelf_project_id`) are plain integers with no foreign key, since they point into another database. The app never checks them; Claude does, through both MCP servers.
 
 **Designs**
+- **Placement position and rotation:** `x`, `y` are the card's top-left corner in canvas px, on the 10 px grid. `rotation` is 0, 90, 180 or 270 degrees clockwise (as Wokwi's `rotate`); rotating moves pins to other sides and keeps labels upright.
 - **Placement `ref`** is short, unique within the design and safe as an identifier (`[a-z][a-z0-9_]*`, up to 20 characters), e.g. `esp`, `bme`, `led1`. Wires and MCP tools refer to pins as `ref.PIN` (e.g. `esp.GPIO21`).
 - **Wires:**
   - A wire joins two pins of placements in the same design.

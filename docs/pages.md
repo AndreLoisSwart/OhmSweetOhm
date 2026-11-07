@@ -52,6 +52,37 @@ The design page has four areas around the canvas:
 - **History:** in the header's ⋯ menu. Revisions with author (you or Claude), time and summary, and Restore on each.
 - **Changes from Claude while the page is open:** the page refetches the design every few seconds while visible and shows "Claude changed this design" with a link to History.
 
+## Canvas spike findings
+
+Build step 2 (2026-11-07): a throwaway page at `/spike` (`frontend/src/features/spike/`, not in the nav, no backend) with `@xyflow/react` 12, a hard-coded ESP32 DevKit V1 (30 pins) and a BME280. It is removed when the real canvas lands in step 4; its pure logic (`layout.ts`: card layout, rotation, nets, wire colours) and its CSS tokens are meant to be lifted.
+
+**Recommended approach**
+- **Cards lay out from the pin data alone.** `layoutCard(part, rotation)` gives the card's size and each handle's position. Cards and handles are absolutely positioned in px, so nothing depends on the browser's text measurement and the server can compute the same layout (for Claude's automatic positions, phase 2 export). The stored `Part.width/height` is dropped as a result (see `data-model.md`).
+- **Grid and pitch:** 10 px grid, 20 px pin pitch (two grid steps), 40 px header. Placements snap to the grid, and every handle and card edge lands on it at every rotation (tested), so straight wires between facing pins are truly straight.
+- **Pin density:** 11 px monospace labels at 20 px pitch keep the 30-pin ESP32 readable at 1× (a 200 × 360 px card). Fit-to-view is capped at 1.25×. Marks only for input-only (I), strapping (S) and flash (F), as small amber letters after the name; kind, functions, voltage and all flags are in the pin's tooltip.
+- **Handles:** one per pin, `type="source"` with `ConnectionMode.Loose`, since any pin can wire to any other. Handle id = pin (use the pin id in the real canvas, not the name, since pins can be renamed). Colour = pin kind group; a lit pin gets an accent ring.
+- **Rotation is logical, not a CSS transform.** Rotating 90° clockwise moves each pin to the next side (left → top → right → bottom → left), reversing the order where the reading direction flips (left → top, right → bottom), and re-lays out the card with labels upright (vertical text on top and bottom sides). Rotation keeps the card's centre, snapped to the grid. After a rotation, `useUpdateNodeInternals(id)` must be called or wires keep pointing at the old handle positions. A CSS rotate of the card would turn the text and confuse React Flow's handle sides (the edge curve direction comes from the handle's `Position`). `Placement.rotation` stores degrees (0/90/180/270), like Wokwi's `rotate`.
+- **Wires:** custom `WireEdge`: a 5 px outline path (`--wire-outline`: dark in light mode, light in dark mode) under the 3 px wire in its real colour, plus an accent halo when selected or in the highlighted net. Readable for black wires in dark mode and white in light mode. Square routing (`smoothstep`) reads most like a wiring diagram and is the default; curved and straight were tried. Square wires don't avoid cards, and parallel wires leaving neighbouring pins share a vertical run; fine for small designs. Wokwi stores per-wire waypoints; adding them later is a phase 2 idea, not needed now.
+- **Net highlighting:** nets by union-find over the wires (`computeNets`), recomputed on every wire change. The highlighted net lives in a small external store, not React state; each card subscribes only to its own pins (`useSyncExternalStore` with a string snapshot) and each wire to one boolean, so a hover re-renders only what changes. Hover a pin or wire to highlight; click or tap a pin to pin the highlight (touch has no hover); click the pane to clear. Pin events are delegated, one listener per card.
+- **Refused wires:** `isValidConnection` blocks a pin to itself and a duplicate pair in either direction, matching the data rules; the target pin shows a red ring while dragging.
+- **Default wire colours** by pin kind work as specified (red for power, black for ground, else rotation).
+- **Fit on load:** use `useNodesInitialized()` and call `fitView` once. The `fitView` prop fires before a card with 30 handles is measured and fits only the first card.
+- **Theme:** React Flow's `colorMode="system"` plus its `--xy-*` variables mapped to our tokens; cards draw their own selected border (copper accent).
+
+**Touch**
+- **Tablet (editing):** pan with one finger on the empty canvas, pinch to zoom, drag a card to move it, and wire either by dragging from a pin or by tapping one pin then another (React Flow's `connectOnClick`). Tap-tap is the more reliable pattern on touch and is the one to teach. On a coarse pointer each handle gets a 20 px hit area (one pitch, so neighbours don't overlap) and `connectionRadius` is 14 px. Rotate and delete need buttons (the Inspector), since a tablet often has no keyboard. *Not yet tried on a real tablet*; the browser tools only emulate touch at phone widths.
+- **Phone (read-only):** `(max-width: 639px), (pointer: coarse) and (max-height: 480px)` selects read-only: no dragging, no wiring, no Delete key, and **`connectOnClick` off as well**, or a tap on a pin still starts a wire. Tapping a pin highlights its net and selects the card; the Inspector moves to the bottom and the legend is hidden. A fitted 30-pin board is about 0.6× on a 375 px screen, too small to read without pinching; the real view should fit to at least ~0.75× and let the user pan.
+
+**Performance** (Chromium, desktop, dev build)
+- Two parts: nothing measurable.
+- 52 boards (1,534 handles, 154 wires): hovering a pin re-renders in about 1 ms; adding 10 boards at once costs about 400 ms of main-thread work (mount and handle measurement). Real designs are a handful of parts, so `onlyRenderVisibleElements` and similar aren't needed.
+- Bundle: React Flow plus the spike is about 65 kB gzipped, in its own lazily loaded chunk. The design page should load lazily too, so the designs list doesn't pay for it.
+
+**Pin data notes for step 3**
+- Boards repeat silkscreen names (the DevKit has two GND pins), but pin names must be unique within a part. Number the repeats: `GND`, `GND2`.
+- Name pins by the chip's GPIO (`GPIO21`), not the board's silkscreen (`D21`, `TX0`, `VP`); `wokwi_name` carries Wokwi's name for the export. The spike's ESP32 pin data (sides, order, kinds, functions and flags) can seed the starter part.
+- The 30-pin DevKit doesn't break out the flash pins (GPIO6–11), so its card shows no F marks.
+
 ## Components
 
 | Component | Used for |

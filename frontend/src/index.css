@@ -91,6 +91,28 @@
   --status-green: oklch(0.52 0.13 150);
   --status-amber: oklch(0.56 0.12 70);
   --status-red: oklch(0.55 0.2 27);
+
+  /* Pin kinds (docs/pages.md, Visual style). */
+  --pin-power: oklch(0.6 0.21 27);
+  --pin-ground: oklch(0.3 0 0);
+  --pin-i2c: oklch(0.56 0.18 255);
+  --pin-spi: oklch(0.55 0.2 305);
+  --pin-uart: oklch(0.58 0.15 150);
+  --pin-analog: oklch(0.68 0.16 55);
+  --pin-gpio: oklch(0.72 0 0);
+
+  /* Wires are real wire colours, the same in both modes; the outline keeps them readable. */
+  --wire-red: oklch(0.6 0.22 27);
+  --wire-black: oklch(0.2 0 0);
+  --wire-orange: oklch(0.72 0.17 55);
+  --wire-yellow: oklch(0.88 0.17 95);
+  --wire-green: oklch(0.62 0.17 145);
+  --wire-blue: oklch(0.55 0.18 255);
+  --wire-purple: oklch(0.55 0.2 305);
+  --wire-gray: oklch(0.65 0 0);
+  --wire-white: oklch(0.98 0 0);
+  --wire-brown: oklch(0.45 0.08 50);
+  --wire-outline: oklch(0.35 0 0 / 0.75);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -130,6 +152,16 @@
     --status-green: oklch(0.75 0.14 150);
     --status-amber: oklch(0.8 0.13 80);
     --status-red: oklch(0.7 0.17 25);
+
+    --pin-power: oklch(0.68 0.19 27);
+    --pin-ground: oklch(0.62 0 0);
+    --pin-i2c: oklch(0.68 0.15 255);
+    --pin-spi: oklch(0.68 0.17 305);
+    --pin-uart: oklch(0.72 0.15 150);
+    --pin-analog: oklch(0.76 0.15 60);
+    --pin-gpio: oklch(0.88 0 0);
+
+    --wire-outline: oklch(0.82 0 0 / 0.8);
   }
 }
 

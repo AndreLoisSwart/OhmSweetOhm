@@ -1,0 +1,23 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "backend",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "cd backend && uv run uvicorn app.main:create_app --factory --reload --port 8097"],
+      "port": 8097
+    },
+    {
+      "name": "frontend",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "cd frontend && npm run dev"],
+      "port": 5174
+    },
+    {
+      "name": "ingress",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "cd backend && uv run python scripts/ingress_proxy.py"],
+      "port": 8096
+    }
+  ]
+}

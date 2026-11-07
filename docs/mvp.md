@@ -27,8 +27,8 @@ Details live in `data-model.md`, `checks.md`, `mcp.md` and `pages.md`. This file
 - [ ] Settings page with the token and the Claude Code / Claude Desktop setup
 
 **Platform**
-- [ ] HA add-on packaging, Ingress-compatible, data in `/data`, cold backups
-- [ ] Ports separate from Shelf-help, so both run side by side
+- [x] HA add-on packaging, Ingress-compatible, data in `/data`, cold backups
+- [x] Ports separate from Shelf-help, so both run side by side
 
 ## Starter parts
 
@@ -73,3 +73,9 @@ Decided (2026-11-07):
 - **Claude's permissions:** no deletes through MCP, but Claude may add, change and remove anything inside a design. Every change saves a revision first.
 - **Simulation is phase 2,** through Wokwi's `diagram.json` format rather than a simulator of our own.
 - **Name:** Ohm Sweet Ohm, by coin toss over Current Affairs.
+
+Decided after the canvas spike (2026-11-07, details in `pages.md`, Canvas spike findings):
+- **React Flow (`@xyflow/react` 12)** for the canvas, with custom part cards and wires.
+- **Cards are laid out from pin data,** on a 10 px grid with a 20 px pin pitch. `Part.width/height` is dropped; the size is computed.
+- **Rotation is logical:** pins move to other sides and labels stay upright, rather than turning the card with CSS. Stored as degrees.
+- **Phones get the read-only canvas** by media query, with tap to highlight a net; tablets wire by tap-pin-tap-pin or dragging.
