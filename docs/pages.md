@@ -59,6 +59,7 @@ The design page has four areas around the canvas:
 - **Highlighting:** hovering a pin or wire highlights its net on the canvas; tapping a pin pins the highlight and shows the net in the Inspector. The Inspector shows only pinned nets, never hovered ones: content appearing on hover moved the Remove button out from under the pointer mid-click.
 - **Editing keys:** Delete or Backspace removes the selection (through the server); R turns the selected parts a quarter turn about their centre.
 - **Unverified parts** are drawn with a dashed edge.
+- **Tried on a real tablet (2026-11-07):** placing parts, wiring, removing wires, pan and zoom all work.
 
 **Wire routing** (`features/designs/canvas/routing.ts`)
 - Each wire leaves its pin straight out for 20 px, then an A* search on the 10 px grid finds the cheapest square path to the other pin: a step costs 1, a turn 4, running on another wire's track 8 and on the track next to it 3, crossing one 1. Cards plus a 20 px margin are walls, and so is every other pin's stub end, so no wire seems to touch a pin it passes.
