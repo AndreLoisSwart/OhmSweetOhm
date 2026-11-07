@@ -38,9 +38,14 @@ const UNDO_DEPTH = 50
 export function useDesignActions(designId: number) {
   const queryClient = useQueryClient()
   const key = getGetDesignQueryKey(designId)
+  // Versions of the design this page saved, to tell its own changes from others'.
+  const own = useRef(new Set<string>())
   const options = {
     mutation: {
-      onSuccess: (design: DesignDetail) => queryClient.setQueryData(key, design),
+      onSuccess: (design: DesignDetail) => {
+        own.current.add(design.updated_at)
+        queryClient.setQueryData(key, design)
+      },
     },
   }
   const updateDesign = useUpdateDesign(options)
@@ -112,6 +117,13 @@ export function useDesignActions(designId: number) {
       together: (run: (actions: Raw) => Promise<unknown>) => step(() => run(raw)),
       restore: (revisionId: number) =>
         step(() => restoreRevision.mutateAsync({ designId, revisionId })),
+      /** Whether this page made the change that produced this version of the design. */
+      isOwn: (updatedAt: string) => own.current.has(updatedAt),
+      /** Someone else changed the design: the undo steps no longer apply. */
+      forgetUndo: () => {
+        stacks.current = { undo: [], redo: [] }
+        changed()
+      },
       undo: () => travel('undo', 'redo'),
       redo: () => travel('redo', 'undo'),
       canUndo: sizes.undo > 0,

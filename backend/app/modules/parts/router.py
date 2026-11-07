@@ -19,7 +19,7 @@ from app.modules.parts.schemas import (
 router = APIRouter(prefix="/parts", tags=["parts"])
 
 
-def _detail(session: Session, part: Part) -> PartDetail:
+def part_detail(session: Session, part: Part) -> PartDetail:
     used_in = designs.designs_using_part(session, part.id)
     return PartDetail.model_validate(part).model_copy(
         update={"used_in": [DesignRef.model_validate(d) for d in used_in]}
@@ -41,27 +41,27 @@ def list_parts(
 
 @router.post("", status_code=201)
 def create_part(data: PartCreate, session: SessionDep) -> PartDetail:
-    return _detail(session, service.create_part(session, data))
+    return part_detail(session, service.create_part(session, data))
 
 
 @router.get("/{part_id}")
 def get_part(part_id: int, session: SessionDep) -> PartDetail:
-    return _detail(session, service.get_part(session, part_id))
+    return part_detail(session, service.get_part(session, part_id))
 
 
 @router.patch("/{part_id}")
 def update_part(part_id: int, data: PartUpdate, session: SessionDep) -> PartDetail:
-    return _detail(session, service.update_part(session, part_id, data))
+    return part_detail(session, service.update_part(session, part_id, data))
 
 
 @router.put("/{part_id}/pins")
 def replace_pins(part_id: int, data: PinsReplace, session: SessionDep) -> PartDetail:
-    return _detail(session, service.replace_pins(session, part_id, data.pins))
+    return part_detail(session, service.replace_pins(session, part_id, data.pins))
 
 
 @router.post("/{part_id}/copy", status_code=201)
 def copy_part(part_id: int, session: SessionDep) -> PartDetail:
-    return _detail(session, service.copy_part(session, part_id))
+    return part_detail(session, service.copy_part(session, part_id))
 
 
 @router.delete("/{part_id}", status_code=204)

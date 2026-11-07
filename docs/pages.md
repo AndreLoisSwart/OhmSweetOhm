@@ -16,7 +16,7 @@
 | `/designs/:id` | Design | The canvas (below), with the name editable in the header |
 | `/parts` | Parts | The library: search, filter by kind and tag, an "Unverified" filter. Rows show name, kind, logic voltage, pin count and the unverified badge. **New part** opens a dialog (name, kind, logic voltage) and goes to the new part's page, as Shelf-help's New item does |
 | `/parts/:id` | Part | Fields (kind, voltages, I2C addresses, datasheet, Shelf-help item id, Wokwi type), the pin editor, notes (markdown), attachments (datasheets, pinout images), "Used in" designs, and "Mark verified" |
-| `/settings` | Settings | Claude (MCP): token and setup, same as Shelf-help. Tag management |
+| `/settings` | Settings | Claude (MCP): the token (hidden until shown; copy; make a new one), and the Claude Code command and Claude Desktop config for the add-on's host port 8097. Tag management |
 
 ## Design page
 
@@ -51,7 +51,7 @@ The design page has four areas around the canvas:
 - **History:** in the header's ⋯ menu. Revisions with author (you or Claude), time and summary, and Restore on each.
 - **Changes from Claude while the page is open:** the page refetches the design every few seconds while visible and shows "Claude changed this design" with a link to History.
 
-**As built in steps 4 to 6** (refetching for Claude's changes comes in step 7):
+**As built in steps 4 to 7:**
 - **Saving:** every change is sent straight away and the server answers with the whole design (placements, wires as `ref.PIN`, the parts used, computed nets); the canvas redraws from that answer. React Flow keeps only what is in flight: positions while dragging and the selection. A refused change shows a toast and the canvas stays as the server has it.
 - **Library:** on a desktop, a column on the left; drag a part onto the canvas to place it where it's dropped. On a tablet, a **Parts** button opens it over the canvas, and **+** on a part adds it near the middle of the view, beside (not on top of) the parts already there.
 - **Inspector:** on a desktop, a column on the right. Below desktop width it is a sheet over the bottom of the canvas that opens when a part or wire is selected or a pin is tapped (and from the ⓘ button for the design itself). A part shows its ref (editable), part, Rotate and Remove, a note and its pins with the net each is on. A wire shows its two ends, colour swatches, a label and Remove wire. Nothing selected: description, tags, Shelf-help project id, the nets, files and Delete design.
@@ -61,6 +61,7 @@ The design page has four areas around the canvas:
 - **Unverified parts** are drawn with a dashed edge.
 - **Undo and redo** (step 6): Ctrl+Z, and Ctrl+Shift+Z or Ctrl+Y (Cmd on a Mac), or the arrows in the header, which tablets need. They cover changes to placements and wires while the page is open, up to 50 steps; moving, rotating or deleting a selection is one step. Each step records the design as it was and undo sends it back as a layout, so undo is as reliable as any other save. Name, description and tags aren't part of undo.
 - **History** (step 6): in the header's ⋯ menu. Newest first, each with who (you or Claude), when, the summary of the change that followed, its part and wire counts, and Restore. Restoring closes the dialog; it can be undone with Ctrl+Z or from History.
+- **Changes from elsewhere** (step 7): the design is refetched every 5 seconds while the page is visible (paused in the background). A version this page didn't save shows a notice, "Claude changed this design" when the newest revision is Claude's, else "changed elsewhere", with a link to History; the undo steps are dropped, since they were recorded against the old design.
 - **Checks bar** (step 5): under the canvas, a line with the error, warning and note counts (or "No problems found"); it opens into the results, errors first. Selecting one highlights the pins it's about and the rest of their net, and shows the net in the Inspector. The designs list shows each design's counts.
 - **Tried on a real tablet (2026-11-07):** placing parts, wiring, removing wires, pan and zoom all work.
 

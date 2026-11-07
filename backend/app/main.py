@@ -1,14 +1,20 @@
+from collections.abc import Iterator
+from contextlib import contextmanager
+
 from fastapi import APIRouter, FastAPI
 from fastapi.routing import APIRoute
 from mcp.server.transport_security import TransportSecuritySettings
+from sqlalchemy.orm import Session
 
 from app.core import health
 from app.core.access import AccessMiddleware
 from app.core.config import settings
+from app.core.db import get_session
 from app.core.errors import register_error_handlers
 from app.core.frontend import mount_frontend
 from app.modules.attachments import router as attachments
 from app.modules.designs import router as designs
+from app.modules.mcp import router as mcp
 from app.modules.mcp import token
 from app.modules.mcp.server import build_server
 from app.modules.parts import router as parts
@@ -21,10 +27,20 @@ def operation_id(route: APIRoute) -> str:
 
 
 def create_app() -> FastAPI:
+    @contextmanager
+    def open_session() -> Iterator[Session]:
+        # The same session the API's dependency gives (tests override it).
+        provider = app.dependency_overrides.get(get_session, get_session)
+        sessions = provider()
+        try:
+            yield next(sessions)
+        finally:
+            sessions.close()
+
     # MCP at /mcp. Stateless JSON responses: nothing to keep between requests, and
     # plain responses pass through any proxy. Its own Host check is off because it would
     # reject the HA box's LAN address; the token (core/access.py) does that job.
-    mcp_server = build_server()
+    mcp_server = build_server(open_session)
     mcp_app = mcp_server.streamable_http_app(
         streamable_http_path="/mcp",
         stateless_http=True,
@@ -42,7 +58,7 @@ def create_app() -> FastAPI:
     )
 
     api = APIRouter(prefix="/api")
-    for module in (health, parts, designs, tags, attachments):
+    for module in (health, parts, designs, tags, attachments, mcp):
         api.include_router(module.router)
 
     app.include_router(api)

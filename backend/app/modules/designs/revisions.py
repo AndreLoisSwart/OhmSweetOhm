@@ -72,6 +72,15 @@ def before_canvas_change(session: Session, design: Design) -> None:
     save_revision(session, design, Author.USER, SESSION_SUMMARY)
 
 
+def before_change(session: Session, design: Design, claude: str | None) -> None:
+    """Before changing placements or wires: Claude's changes each get a revision, with
+    `claude` as its summary; the canvas's get one per editing session."""
+    if claude is not None:
+        save_revision(session, design, Author.CLAUDE, claude)
+    else:
+        before_canvas_change(session, design)
+
+
 def apply_snapshot(session: Session, design: Design, snapshot: Snapshot) -> None:
     """Makes the design's placements and wires match the snapshot.
 
@@ -153,10 +162,12 @@ def list_revisions(design: Design) -> list[RevisionOut]:
     ]
 
 
-def restore_revision(session: Session, design: Design, revision_id: int) -> None:
+def restore_revision(
+    session: Session, design: Design, revision_id: int, author: Author = Author.USER
+) -> None:
     revision = next((r for r in design.revisions if r.id == revision_id), None)
     if revision is None:
         raise NotFoundError(f"Revision {revision_id} is not in this design")
     snapshot = Snapshot.model_validate(revision.snapshot)
-    save_revision(session, design, Author.USER, "Before restoring an earlier version")
+    save_revision(session, design, author, "Before restoring an earlier version")
     apply_snapshot(session, design, snapshot)

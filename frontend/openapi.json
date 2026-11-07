@@ -1463,6 +1463,47 @@
           }
         }
       }
+    },
+    "/api/mcp/token": {
+      "get": {
+        "tags": [
+          "mcp"
+        ],
+        "summary": "Get Mcp Token",
+        "operationId": "get_mcp_token",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/McpToken"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "mcp"
+        ],
+        "summary": "Regenerate Mcp Token",
+        "description": "Replaces the token; clients using the old one stop working.",
+        "operationId": "regenerate_mcp_token",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/McpToken"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1977,6 +2018,19 @@
           "none"
         ],
         "title": "LogicVoltage"
+      },
+      "McpToken": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "title": "Token"
+          }
+        },
+        "type": "object",
+        "required": [
+          "token"
+        ],
+        "title": "McpToken"
       },
       "NetOut": {
         "properties": {

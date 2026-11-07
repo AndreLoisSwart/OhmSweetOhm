@@ -1,6 +1,7 @@
 import { ReactFlowProvider, useEdgesState, useNodesState } from '@xyflow/react'
 import {
   ArrowLeft,
+  Bot,
   History,
   Info,
   Library,
@@ -11,10 +12,10 @@ import {
   Workflow,
   X,
 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { errorMessage } from '@/api/fetcher'
-import { useDeleteDesign, useGetDesign } from '@/api/generated/designs/designs'
+import { listRevisions, useDeleteDesign, useGetDesign } from '@/api/generated/designs/designs'
 import type { DesignDetail } from '@/api/generated/model'
 import { EditableText } from '@/components/editable-text'
 import { EmptyState } from '@/components/empty-state'
@@ -37,7 +38,7 @@ import { HighlightContext, HighlightStore, usePinnedNet } from './canvas/highlig
 import { buildEdges, buildNodes, type PartNodeType, type WireEdgeType } from './canvas/model'
 import { Inspector } from './inspector'
 import { LibraryPanel } from './library-panel'
-import { quietly, useDesignActions } from './use-design-actions'
+import { type DesignActions, quietly, useDesignActions } from './use-design-actions'
 
 function DesignEditor({ design }: { design: DesignDetail }) {
   const navigate = useNavigate()
@@ -49,6 +50,7 @@ function DesignEditor({ design }: { design: DesignDetail }) {
   const [libraryOpen, setLibraryOpen] = useState(false)
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
+  const changedBy = useOutsideChanges(design, actions)
 
   // React Flow keeps its own copy (positions while dragging, selection); it is rebuilt
   // from every answer the server gives.
@@ -169,6 +171,27 @@ function DesignEditor({ design }: { design: DesignDetail }) {
             </Button>
           )}
         </header>
+        {changedBy.who && (
+          <div className="flex shrink-0 items-center gap-2 border-b bg-primary/10 px-3 py-1.5 text-sm">
+            <Bot className="size-4 shrink-0" />
+            <span className="flex-1">
+              {changedBy.who === 'claude'
+                ? 'Claude changed this design.'
+                : 'This design was changed elsewhere.'}
+            </span>
+            <Button
+              variant="link"
+              size="sm"
+              className="h-auto px-0"
+              onClick={() => setHistoryOpen(true)}
+            >
+              History
+            </Button>
+            <Button variant="ghost" size="icon-xs" aria-label="Dismiss" onClick={changedBy.dismiss}>
+              <X />
+            </Button>
+          </div>
+        )}
         <div className="flex min-h-0 flex-1">
           {wide && !readOnly && (
             <aside className="w-60 shrink-0 border-r">
@@ -249,6 +272,26 @@ function DesignEditor({ design }: { design: DesignDetail }) {
   )
 }
 
+/**
+ * Notices changes this page didn't make (Claude over MCP, or another tab): says who,
+ * and drops the undo steps, which were recorded against the old design.
+ */
+function useOutsideChanges(design: DesignDetail, actions: DesignActions) {
+  const seen = useRef(design.updated_at)
+  const [who, setWho] = useState<'claude' | 'elsewhere' | null>(null)
+  useEffect(() => {
+    if (design.updated_at === seen.current) return
+    seen.current = design.updated_at
+    if (actions.isOwn(design.updated_at)) return
+    actions.forgetUndo()
+    // Claude's changes each save a revision; the newest says who.
+    void listRevisions(design.id)
+      .then((revisions) => setWho(revisions[0]?.author === 'claude' ? 'claude' : 'elsewhere'))
+      .catch(() => setWho('elsewhere'))
+  }, [design.updated_at, design.id, actions])
+  return { who, dismiss: () => setWho(null) }
+}
+
 /** Below the canvas on tablets and phones: the inspector, when there is something to show. */
 function BottomSheet({
   open,
@@ -277,7 +320,15 @@ function BottomSheet({
 export function DesignPage() {
   const designId = Number(useParams().id)
   usePageWidth('full')
-  const { data: design, error, isPending } = useGetDesign(designId)
+  // Every few seconds while the page is visible (paused in the background), so changes
+  // Claude makes over MCP show up.
+  const {
+    data: design,
+    error,
+    isPending,
+  } = useGetDesign(designId, {
+    query: { refetchInterval: 5000 },
+  })
 
   if (isPending) return <DetailSkeleton />
   if (error) {

@@ -1,17 +1,494 @@
-"""The MCP server: Ohm Sweet Ohm's tools for Claude and other MCP clients.
+"""The MCP server: Ohm Sweet Ohm's tools for Claude (docs/mcp.md).
 
-A stub for now, with no tools: build step 7 (docs/mvp.md) adds the tools from
-docs/mcp.md. It is mounted at /mcp already, so the access layer and packaging are
-proven from the start.
+Tools call the same service functions as the REST API, so every rule applies and Claude
+sees what the app shows. On top of those, for Claude:
+- Nothing is deleted: no parts, pins, designs, tags or revisions. Inside a design,
+  placements and wires can be removed, since every change saves a revision first.
+- Free text is append-only: part notes and design descriptions are added to.
+- Parts Claude creates start unverified, and so does any part whose pins Claude changes.
+- None means "leave unchanged": fields can't be cleared through these tools.
 """
 
+import functools
+import inspect
+from collections.abc import Callable
+from contextlib import AbstractContextManager
+from datetime import datetime
+from typing import Annotated
+
 from mcp.server.mcpserver import MCPServer
+from mcp.server.mcpserver.exceptions import ToolError
+from mcp.types import ToolAnnotations
+from pydantic import BaseModel, Field, ValidationError
+from sqlalchemy.orm import Session
+
+from app.core.errors import ConflictError, NotFoundError
+from app.modules.checks.schemas import CheckSummary, DesignChecks
+from app.modules.checks.service import run_checks
+from app.modules.designs import revisions as revisions_service
+from app.modules.designs import service as designs
+from app.modules.designs.models import Design, WireColor
+from app.modules.designs.schemas import (
+    DesignCreate,
+    DesignSummary,
+    DesignUpdate,
+    NetOut,
+    PinRef,
+    PlacementIn,
+    PlacementUpdate,
+    Ref,
+    RevisionOut,
+    Rotation,
+    WireIn,
+    WireUpdate,
+)
+from app.modules.parts import service as part_service
+from app.modules.parts.models import Author, LogicVoltage, PartKind
+from app.modules.parts.router import part_detail
+from app.modules.parts.schemas import PartCreate, PartDetail, PartSummary, PartUpdate, PinIn
+from app.modules.tags import service as tags
+from app.modules.tags.schemas import TagCreate, TagOut, TagRef
 
 INSTRUCTIONS = """\
 Ohm Sweet Ohm is the user's electronics workbench: a library of off-the-shelf modules
-with their pins, and wiring designs built from them. No tools are available yet.
+(parts with pins) and designs (wiring diagrams of placed parts and pin-to-pin wires).
+Shelf-help, a separate server, holds stock (have/low/out/need) and projects; parts and
+designs carry Shelf-help ids (shelf_item_id, shelf_project_id).
+
+- Refer to pins as `ref.PIN`, e.g. `esp.GPIO21`. Use the exact pin names from get_part.
+- Run check_design after changing a design, and fix the errors or explain them.
+- Parts you create are unverified. Take pinouts from the datasheet or the maker's page,
+  say where they came from in the part's notes (append_part_notes), and ask the user to
+  check them. Changing a part's pins makes it unverified again.
+- Search before creating a part. When adding one, also find or create its Shelf-help
+  item and store the id.
+- "Do I have what this design needs?": look up each part's Shelf-help item. Offer to mark
+  missing ones as need.
+- Every change you make to a design saves a revision first, so the user can undo it from
+  History in the app. Nothing can be deleted through these tools (parts, pins, designs,
+  tags); ask the user to do that in the app. Notes and descriptions can only be added to.
 """
 
+READ = ToolAnnotations(readOnlyHint=True)
+WRITE = ToolAnnotations(readOnlyHint=False, destructiveHint=False)
+# Removing a placement or wire inside a design: undoable, but it does remove something.
+REMOVE = ToolAnnotations(readOnlyHint=False, destructiveHint=True)
 
-def build_server() -> MCPServer:
-    return MCPServer(name="Ohm Sweet Ohm", instructions=INSTRUCTIONS)
+SessionOpener = Callable[[], AbstractContextManager[Session]]
+
+
+class PlacedPart(BaseModel):
+    ref: str
+    part_id: int
+    part_name: str
+    verified: bool
+    x: int
+    y: int
+    rotation: int
+    note: str
+
+
+class WireView(BaseModel):
+    a: str
+    b: str
+    color: WireColor
+    label: str
+
+
+class DesignView(BaseModel):
+    """A design as a netlist: its parts, wires and computed nets, and its check counts."""
+
+    id: int
+    name: str
+    description_md: str
+    shelf_project_id: int | None
+    tags: list[TagRef]
+    updated_at: datetime
+    parts: list[PlacedPart]
+    wires: list[WireView]
+    nets: list[NetOut]
+    check_summary: CheckSummary
+
+
+def _view(design: Design) -> DesignView:
+    detail = designs.detail(design)
+    names = {p.id: p for p in detail.parts}
+    return DesignView(
+        id=detail.id,
+        name=detail.name,
+        description_md=detail.description_md,
+        shelf_project_id=detail.shelf_project_id,
+        tags=detail.tags,
+        updated_at=detail.updated_at,
+        parts=[
+            PlacedPart(
+                ref=p.ref,
+                part_id=p.part_id,
+                part_name=names[p.part_id].name,
+                verified=names[p.part_id].verified,
+                x=p.x,
+                y=p.y,
+                rotation=p.rotation,
+                note=p.note,
+            )
+            for p in detail.placements
+        ],
+        wires=[WireView(a=w.a, b=w.b, color=w.color, label=w.label) for w in detail.wires],
+        nets=detail.nets,
+        check_summary=detail.check_summary,
+    )
+
+
+def _part_detail(session: Session, part_id: int) -> PartDetail:
+    return part_detail(session, part_service.get_part(session, part_id))
+
+
+def _explained(fn):
+    """Lets the model read why a call was refused (a missing record, a broken rule,
+    an invalid value). The SDK hides the text of other exceptions, as crashes."""
+
+    @functools.wraps(fn)
+    def wrapper(*args, **kwargs):
+        try:
+            return fn(*args, **kwargs)
+        except (NotFoundError, ConflictError) as e:
+            raise ToolError(str(e)) from e
+        except ValidationError as e:
+            problems = "; ".join(
+                f"{'.'.join(map(str, err['loc']))}: {err['msg'].removeprefix('Value error, ')}"
+                for err in e.errors()
+            )
+            raise ToolError(problems) from e
+
+    return wrapper
+
+
+def _set(**fields) -> dict:
+    """Only the fields given, for partial updates."""
+    return {name: value for name, value in fields.items() if value is not None}
+
+
+def _placement_summary(
+    ref: str, new_ref: str | None, moved: bool, rotated: bool, noted: bool
+) -> str:
+    """e.g. "Moved and rotated esp", "Renamed bme to sensor", "Moved bme (now sensor)"."""
+    verbs = [v for v, done in (("moved", moved), ("rotated", rotated)) if done]
+    if noted:
+        verbs.append("changed the note of")
+    if not verbs:
+        return f"Renamed {ref} to {new_ref}" if new_ref else f"Changed {ref}"
+    text = " and ".join([", ".join(verbs[:-1]), verbs[-1]] if len(verbs) > 1 else verbs)
+    renamed = f" (now {new_ref})" if new_ref else ""
+    return f"{text[0].upper()}{text[1:]} {ref}{renamed}"
+
+
+def _listed(items: list[str], limit: int = 3) -> str:
+    shown = ", ".join(items[:limit])
+    return shown if len(items) <= limit else f"{shown} and {len(items) - limit} more"
+
+
+def build_server(open_session: SessionOpener) -> MCPServer:
+    server = MCPServer(name="Ohm Sweet Ohm", instructions=INSTRUCTIONS)
+
+    def tool(annotations: ToolAnnotations):
+        """Registers a tool, its docstring (without code indentation) as the description."""
+
+        def register(fn):
+            description = inspect.cleandoc(fn.__doc__ or "")
+            return server.tool(description=description, annotations=annotations)(_explained(fn))
+
+        return register
+
+    # --- Library ---
+
+    @tool(READ)
+    def search_parts(
+        query: Annotated[str, Field(max_length=200)] | None = None,
+        kind: PartKind | None = None,
+        tag_id: int | None = None,
+        unverified_only: bool = False,
+    ) -> list[PartSummary]:
+        """Parts in the library, by name. query matches names and descriptions."""
+        with open_session() as session:
+            found = part_service.list_parts(
+                session,
+                query,
+                [kind] if kind else None,
+                [tag_id] if tag_id is not None else None,
+                False if unverified_only else None,
+            )
+            return [PartSummary.model_validate(p) for p in found]
+
+    @tool(READ)
+    def get_part(part_id: int) -> PartDetail:
+        """A part with every pin (id, kind, alternate functions, voltage, flags, side and
+        position in header order), and the designs it's placed in."""
+        with open_session() as session:
+            return _part_detail(session, part_id)
+
+    @tool(WRITE)
+    def create_part(
+        name: str,
+        kind: PartKind,
+        pins: list[PinIn],
+        logic_voltage: LogicVoltage = LogicVoltage.V3V3,
+        description: str = "",
+        supply_min_v: float | None = None,
+        supply_max_v: float | None = None,
+        i2c_addresses: list[int] | None = None,
+        datasheet_url: str = "",
+        notes_md: str = "",
+        shelf_item_id: int | None = None,
+        wokwi_type: str | None = None,
+        tag_ids: list[int] | None = None,
+    ) -> PartDetail:
+        """Creates a part with its pins. It starts unverified, for the user to check.
+        Pins go in header order per side (left and right top to bottom, top and bottom
+        left to right); names are unique and have no spaces or dots (number repeats: GND,
+        GND2). Name board pins by the chip's GPIO (GPIO21), not the silkscreen (D21).
+        A pin's kind is its main role; functions lists alternates (GPIO21: gpio with
+        functions ["i2c_sda"]). voltage: what a power pin supplies or needs, or the most a
+        signal pin accepts. i2c_addresses: 7-bit, the default first. Say where the pinout
+        came from in notes_md."""
+        data = PartCreate(
+            name=name,
+            kind=kind,
+            pins=pins,
+            logic_voltage=logic_voltage,
+            description=description,
+            supply_min_v=supply_min_v,
+            supply_max_v=supply_max_v,
+            i2c_addresses=i2c_addresses or [],
+            datasheet_url=datasheet_url,
+            notes_md=notes_md,
+            shelf_item_id=shelf_item_id,
+            wokwi_type=wokwi_type,
+            tag_ids=tag_ids or [],
+        )
+        with open_session() as session:
+            part = part_service.create_part(session, data, Author.CLAUDE)
+            return _part_detail(session, part.id)
+
+    @tool(WRITE)
+    def update_part(
+        part_id: int,
+        name: str | None = None,
+        kind: PartKind | None = None,
+        logic_voltage: LogicVoltage | None = None,
+        description: str | None = None,
+        supply_min_v: float | None = None,
+        supply_max_v: float | None = None,
+        i2c_addresses: list[int] | None = None,
+        datasheet_url: str | None = None,
+        shelf_item_id: int | None = None,
+        wokwi_type: str | None = None,
+        tag_ids: list[int] | None = None,
+        pins: list[PinIn] | None = None,
+    ) -> PartDetail:
+        """Changes the fields given. pins, when given, is the whole pin list in header
+        order: send every existing pin with its id (from get_part), changed or not, plus
+        new ones without an id. That adds, renames and reorders pins; removing one isn't
+        possible here. Changing the pins sets the part unverified. Notes are added with
+        append_part_notes."""
+        fields = _set(
+            name=name,
+            kind=kind,
+            logic_voltage=logic_voltage,
+            description=description,
+            supply_min_v=supply_min_v,
+            supply_max_v=supply_max_v,
+            i2c_addresses=i2c_addresses,
+            datasheet_url=datasheet_url,
+            shelf_item_id=shelf_item_id,
+            wokwi_type=wokwi_type,
+            tag_ids=tag_ids,
+        )
+        with open_session() as session:
+            if fields:
+                part_service.update_part(session, part_id, PartUpdate(**fields))
+            if pins is not None:
+                part_service.replace_pins(session, part_id, pins, Author.CLAUDE)
+            return _part_detail(session, part_id)
+
+    @tool(WRITE)
+    def append_part_notes(part_id: int, text: Annotated[str, Field(min_length=1)]) -> PartDetail:
+        """Adds markdown to the end of the part's notes (never replaces them), e.g. where a
+        pinout came from or a wiring tip."""
+        with open_session() as session:
+            part_service.append_notes(session, part_id, text)
+            return _part_detail(session, part_id)
+
+    @tool(READ)
+    def list_tags() -> list[TagOut]:
+        """All tags, with how many parts and designs use each."""
+        with open_session() as session:
+            return tags.list_tags(session)
+
+    @tool(WRITE)
+    def create_tag(name: str) -> TagOut:
+        """Creates a tag for parts and designs. Names are unique, ignoring case."""
+        with open_session() as session:
+            return tags.create_tag(session, TagCreate(name=name))
+
+    # --- Designs ---
+
+    @tool(READ)
+    def list_designs(
+        query: Annotated[str, Field(max_length=200)] | None = None,
+    ) -> list[DesignSummary]:
+        """Designs, most recently changed first, with part count, Shelf-help project id and
+        check counts. query matches names and descriptions."""
+        with open_session() as session:
+            return [designs.summary(d) for d in designs.list_designs(session, query)]
+
+    @tool(READ)
+    def get_design(design_id: int) -> DesignView:
+        """A design as a netlist: placed parts (ref, part, position), wires
+        (`esp.GPIO21` to `bme.SDA`, colour) and the nets they make, with check counts."""
+        with open_session() as session:
+            return _view(designs.get_design(session, design_id))
+
+    @tool(WRITE)
+    def create_design(
+        name: str,
+        description_md: str = "",
+        shelf_project_id: int | None = None,
+        tag_ids: list[int] | None = None,
+    ) -> DesignView:
+        """Creates an empty design. description_md is markdown."""
+        data = DesignCreate(
+            name=name,
+            description_md=description_md,
+            shelf_project_id=shelf_project_id,
+            tag_ids=tag_ids or [],
+        )
+        with open_session() as session:
+            return _view(designs.create_design(session, data))
+
+    @tool(WRITE)
+    def update_design(
+        design_id: int,
+        name: str | None = None,
+        shelf_project_id: int | None = None,
+        tag_ids: list[int] | None = None,
+    ) -> DesignView:
+        """Renames a design, links it to a Shelf-help project, or sets its tags."""
+        data = DesignUpdate(**_set(name=name, shelf_project_id=shelf_project_id, tag_ids=tag_ids))
+        with open_session() as session:
+            return _view(designs.update_design(session, design_id, data))
+
+    @tool(WRITE)
+    def append_design_description(
+        design_id: int, text: Annotated[str, Field(min_length=1)]
+    ) -> DesignView:
+        """Adds markdown to the end of the design's description (never replaces it)."""
+        with open_session() as session:
+            return _view(designs.append_description(session, design_id, text))
+
+    @tool(WRITE)
+    def add_parts(design_id: int, parts: list[PlacementIn]) -> DesignView:
+        """Places one or more library parts. ref is the short name wires use (`bme`,
+        letters, digits and _); left out, it's made from the part's name. x and y are the
+        card's top-left corner in canvas px on a 10 px grid; left out, the part goes to the
+        right of those already placed. rotation: 0, 90, 180 or 270 clockwise."""
+        with open_session() as session:
+            design = designs.get_design(session, design_id)
+            names = [p.ref or part_service.get_part(session, p.part_id).name for p in parts]
+            summary = f"Added {_listed(names)}"
+            return _view(designs.add_placements(session, design.id, parts, claude=summary))
+
+    @tool(WRITE)
+    def update_placement(
+        design_id: int,
+        ref: str,
+        new_ref: Ref | None = None,
+        x: int | None = None,
+        y: int | None = None,
+        rotation: Rotation | None = None,
+        note: str | None = None,
+    ) -> DesignView:
+        """Moves, rotates, renames or annotates a placed part, found by its ref."""
+        with open_session() as session:
+            design = designs.get_design(session, design_id)
+            placement = designs.placement_by_ref(design, ref)
+            summary = _placement_summary(
+                placement.ref,
+                new_ref,
+                moved=x is not None or y is not None,
+                rotated=rotation is not None,
+                noted=note is not None,
+            )
+            data = PlacementUpdate(**_set(ref=new_ref, x=x, y=y, rotation=rotation, note=note))
+            return _view(
+                designs.update_placement(session, design.id, placement.id, data, claude=summary)
+            )
+
+    @tool(REMOVE)
+    def remove_placement(design_id: int, ref: str) -> DesignView:
+        """Removes a placed part and its wires from the design (not from the library).
+        A revision is saved first, so the user can undo it."""
+        with open_session() as session:
+            design = designs.get_design(session, design_id)
+            placement = designs.placement_by_ref(design, ref)
+            wires = sum(placement.id in (w.a_placement_id, w.b_placement_id) for w in design.wires)
+            summary = f"Removed {placement.ref} and its {wires} wire{'s' if wires != 1 else ''}"
+            return _view(designs.remove_placement(session, design.id, placement.id, claude=summary))
+
+    @tool(WRITE)
+    def connect(design_id: int, wires: list[WireIn]) -> DesignView:
+        """Adds wires between pins, as `ref.PIN` (pin names match ignoring case). All are
+        added or none. Without a colour, power is red, ground black, others rotate. A pin
+        can have many wires; a pin to itself, or a second wire between the same two pins,
+        is refused."""
+        with open_session() as session:
+            summary = f"Connected {_listed([f'{w.a} to {w.b}' for w in wires])}"
+            return _view(designs.add_wires(session, design_id, wires, claude=summary))
+
+    @tool(WRITE)
+    def update_wire(
+        design_id: int,
+        a: PinRef,
+        b: PinRef,
+        color: WireColor | None = None,
+        label: Annotated[str, Field(max_length=100)] | None = None,
+    ) -> DesignView:
+        """Changes the colour or label of the wire between two pins."""
+        with open_session() as session:
+            design = designs.get_design(session, design_id)
+            wire = designs.wire_between(design, a, b)
+            data = WireUpdate(**_set(color=color, label=label))
+            summary = f"Changed the wire {a} to {b}"
+            return _view(designs.update_wire(session, design.id, wire.id, data, claude=summary))
+
+    @tool(REMOVE)
+    def disconnect(design_id: int, a: PinRef, b: PinRef) -> DesignView:
+        """Removes the wire between two pins (either order). A revision is saved first."""
+        with open_session() as session:
+            design = designs.get_design(session, design_id)
+            wire = designs.wire_between(design, a, b)
+            summary = f"Disconnected {a} from {b}"
+            return _view(designs.remove_wire(session, design.id, wire.id, claude=summary))
+
+    @tool(READ)
+    def check_design(design_id: int) -> DesignChecks:
+        """Runs every design check (short circuits, voltage mismatches, SDA/SCL swaps, I2C
+        address clashes, risky pins, unverified parts...), errors first. Each result names
+        its pins and net."""
+        with open_session() as session:
+            return run_checks(designs.get_design(session, design_id))
+
+    @tool(READ)
+    def list_revisions(design_id: int) -> list[RevisionOut]:
+        """Saved versions of the design, newest first. Each is the design as it was before
+        the change in its summary."""
+        with open_session() as session:
+            return revisions_service.list_revisions(designs.get_design(session, design_id))
+
+    @tool(WRITE)
+    def restore_revision(design_id: int, revision_id: int) -> DesignView:
+        """Puts the design's parts and wires back as they were in a revision. The current
+        state is saved as a revision first, so this can be undone too."""
+        with open_session() as session:
+            return _view(designs.restore_revision(session, design_id, revision_id, Author.CLAUDE))
+
+    return server

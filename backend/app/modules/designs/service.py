@@ -27,7 +27,7 @@ from app.modules.designs.schemas import (
     WireUpdate,
 )
 from app.modules.parts import service as parts
-from app.modules.parts.models import Part, Pin, PinKind, PinSide
+from app.modules.parts.models import Author, Part, Pin, PinKind, PinSide
 from app.modules.tags import service as tags
 from app.modules.tags.models import Tag
 
@@ -128,6 +128,16 @@ def update_design(session: Session, design_id: int, data: DesignUpdate) -> Desig
     return design
 
 
+def append_description(session: Session, design_id: int, text: str) -> Design:
+    """Adds to the description (markdown) after a blank line; never rewrites it."""
+    design = get_design(session, design_id)
+    current = design.description_md.rstrip()
+    design.description_md = f"{current}\n\n{text.strip()}" if current else text.strip()
+    _touch(design)
+    session.commit()
+    return design
+
+
 def delete_design(session: Session, design_id: int) -> None:
     design = get_design(session, design_id)
     # Placements, wires, tag links and attachments go with it.
@@ -180,9 +190,11 @@ def _next_x(design: Design) -> int:
     return _snap(right + 80)
 
 
-def add_placements(session: Session, design_id: int, items: list[PlacementIn]) -> Design:
+def add_placements(
+    session: Session, design_id: int, items: list[PlacementIn], claude: str | None = None
+) -> Design:
     design = get_design(session, design_id)
-    revisions.before_canvas_change(session, design)
+    revisions.before_change(session, design, claude)
     taken = {p.ref for p in design.placements}
     for item in items:
         part = parts.get_part(session, item.part_id)
@@ -215,10 +227,14 @@ def _get_placement(design: Design, placement_id: int) -> Placement:
 
 
 def update_placement(
-    session: Session, design_id: int, placement_id: int, data: PlacementUpdate
+    session: Session,
+    design_id: int,
+    placement_id: int,
+    data: PlacementUpdate,
+    claude: str | None = None,
 ) -> Design:
     design = get_design(session, design_id)
-    revisions.before_canvas_change(session, design)
+    revisions.before_change(session, design, claude)
     placement = _get_placement(design, placement_id)
     changes = data.model_dump(exclude_unset=True)
     if "ref" in changes and changes["ref"] != placement.ref:
@@ -234,9 +250,11 @@ def update_placement(
     return design
 
 
-def remove_placement(session: Session, design_id: int, placement_id: int) -> Design:
+def remove_placement(
+    session: Session, design_id: int, placement_id: int, claude: str | None = None
+) -> Design:
     design = get_design(session, design_id)
-    revisions.before_canvas_change(session, design)
+    revisions.before_change(session, design, claude)
     placement = _get_placement(design, placement_id)
     # Its wires go with it.
     design.wires = [
@@ -283,9 +301,11 @@ def _resolve(design: Design, pin_ref: str) -> tuple[Placement, Pin]:
     return placement, pin
 
 
-def add_wires(session: Session, design_id: int, items: list[WireIn]) -> Design:
+def add_wires(
+    session: Session, design_id: int, items: list[WireIn], claude: str | None = None
+) -> Design:
     design = get_design(session, design_id)
-    revisions.before_canvas_change(session, design)
+    revisions.before_change(session, design, claude)
     joined = {
         frozenset({(w.a_placement_id, w.a_pin_id), (w.b_placement_id, w.b_pin_id)})
         for w in design.wires
@@ -325,9 +345,11 @@ def _get_wire(design: Design, wire_id: int) -> Wire:
     return wire
 
 
-def update_wire(session: Session, design_id: int, wire_id: int, data: WireUpdate) -> Design:
+def update_wire(
+    session: Session, design_id: int, wire_id: int, data: WireUpdate, claude: str | None = None
+) -> Design:
     design = get_design(session, design_id)
-    revisions.before_canvas_change(session, design)
+    revisions.before_change(session, design, claude)
     wire = _get_wire(design, wire_id)
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(wire, field, value)
@@ -336,9 +358,11 @@ def update_wire(session: Session, design_id: int, wire_id: int, data: WireUpdate
     return design
 
 
-def remove_wire(session: Session, design_id: int, wire_id: int) -> Design:
+def remove_wire(
+    session: Session, design_id: int, wire_id: int, claude: str | None = None
+) -> Design:
     design = get_design(session, design_id)
-    revisions.before_canvas_change(session, design)
+    revisions.before_change(session, design, claude)
     design.wires.remove(_get_wire(design, wire_id))
     _touch(design)
     session.commit()
@@ -351,14 +375,34 @@ def remove_wire(session: Session, design_id: int, wire_id: int) -> Design:
 def apply_layout(session: Session, design_id: int, snapshot: Snapshot) -> Design:
     """Sets placements and wires to a snapshot: the canvas's undo and redo."""
     design = get_design(session, design_id)
-    revisions.before_canvas_change(session, design)
+    revisions.before_change(session, design, None)
     revisions.apply_snapshot(session, design, snapshot)
     session.commit()
     return design
 
 
-def restore_revision(session: Session, design_id: int, revision_id: int) -> Design:
+def restore_revision(
+    session: Session, design_id: int, revision_id: int, author: Author = Author.USER
+) -> Design:
     design = get_design(session, design_id)
-    revisions.restore_revision(session, design, revision_id)
+    revisions.restore_revision(session, design, revision_id, author)
     session.commit()
     return design
+
+
+# Lookups by name, for MCP tools (Claude names things, the canvas uses ids).
+
+
+def placement_by_ref(design: Design, ref: str) -> Placement:
+    placement = next((p for p in design.placements if p.ref == ref.strip().lower()), None)
+    if placement is None:
+        raise NotFoundError(f'No part "{ref}" in this design')
+    return placement
+
+
+def wire_between(design: Design, a: str, b: str) -> Wire:
+    ends = {_resolve(design, a), _resolve(design, b)}
+    for wire in design.wires:
+        if {(wire.a_placement, wire.a_pin), (wire.b_placement, wire.b_pin)} == ends:
+            return wire
+    raise NotFoundError(f"{a} and {b} aren't wired together")

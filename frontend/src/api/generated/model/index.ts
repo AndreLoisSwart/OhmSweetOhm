@@ -23,6 +23,7 @@ export * from './listAttachmentsParams';
 export * from './listDesignsParams';
 export * from './listPartsParams';
 export * from './logicVoltage';
+export * from './mcpToken';
 export * from './netOut';
 export * from './ownerType';
 export * from './partCreate';

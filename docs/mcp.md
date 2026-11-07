@@ -22,10 +22,10 @@ These are the same as Shelf-help's:
 
 | Tool | What it does |
 |---|---|
-| `search_parts(query?, kind?, tag?)` | Parts with name, kind, logic voltage, verified flag and Shelf-help item id |
-| `get_part(part_id)` | The full part, with every pin (kind, functions, voltage, flags) in header order |
+| `search_parts(query?, kind?, tag_id?, unverified_only?)` | Parts with name, kind, logic voltage, verified flag, pin count and Shelf-help item id |
+| `get_part(part_id)` | The full part, with every pin (id, kind, functions, voltage, flags, side, position) in header order, and the designs it's placed in |
 | `create_part(...)` | A new part with its pins. Starts unverified |
-| `update_part(part_id, ...)` | Change fields; add, rename or reorder pins. A wired pin can't be removed. Sets the part unverified if pins change |
+| `update_part(part_id, ..., pins?)` | Change fields. `pins` is the whole list, every existing pin sent with its id, plus new ones: that adds, renames and reorders pins. Leaving a pin out is refused (no deletes through MCP). Sets the part unverified if pins change; field changes don't. Notes aren't a field here (append only) |
 | `append_part_notes(part_id, text)` | Add to the part's notes |
 | `list_tags()`, `create_tag(name)` | Tags for parts and designs |
 
@@ -35,18 +35,23 @@ These are the same as Shelf-help's:
 |---|---|
 | `list_designs(query?)` | Designs with part count, Shelf-help project id and last change |
 | `get_design(design_id)` | Placements (ref, part, position), wires (`esp.GPIO21 → bme.SDA`, colour) and computed nets. Readable as a netlist |
-| `create_design(name, description?, shelf_project_id?)` | A new, empty design |
-| `update_design(design_id, name?, shelf_project_id?)` | Rename or link to Shelf-help |
+| `create_design(name, description_md?, shelf_project_id?, tag_ids?)` | A new, empty design |
+| `update_design(design_id, name?, shelf_project_id?, tag_ids?)` | Rename, link to Shelf-help, or set tags |
 | `append_design_description(design_id, text)` | Add to the description |
-| `add_parts(design_id, parts: [{part_id, ref, x?, y?}])` | Place one or more parts |
+| `add_parts(design_id, parts: [{part_id, ref?, x?, y?, rotation?, note?}])` | Place one or more parts. Without a ref one is made from the part's name; without a position the part goes to the right of the others |
 | `update_placement(design_id, ref, new_ref?, x?, y?, rotation?, note?)` | Move, rename or annotate |
 | `remove_placement(design_id, ref)` | Remove a part and its wires (revision saved first) |
 | `connect(design_id, wires: [{a: "esp.GPIO21", b: "bme.SDA", color?, label?}])` | Add one or more wires |
+| `update_wire(design_id, a, b, color?, label?)` | Change a wire's colour or label |
 | `disconnect(design_id, a, b)` | Remove a wire |
 | `check_design(design_id)` | Run every check (see `checks.md`) |
 | `list_revisions(design_id)`, `restore_revision(design_id, revision_id)` | History, and undo |
 
-Tools that change a design take batches (`add_parts`, `connect`), so that building a circuit is a few calls rather than dozens. Each call is one revision.
+Tools that change a design take batches (`add_parts`, `connect`), so that building a circuit is a few calls rather than dozens. Each call that changes placements or wires saves one revision first (`author = claude`), summarising the change: "Added esp, BME280", "Connected esp.3V3 to bme.VIN, … and 1 more", "Moved and rotated esp", "Removed led1 and its 2 wires", "Disconnected esp.GND from bme.GND". Renaming a design, its tags and its description aren't in revisions (they aren't in a snapshot).
+
+Every design answer is a `DesignView`: the design with its placed parts (ref, part, verified, position), wires as `ref.PIN`, computed nets and check counts. Refusals (a missing ref, a duplicate wire, a pin removal) come back as tool errors with the reason.
+
+**Built in step 7 (2026-11-07):** all 21 tools above, in `backend/app/modules/mcp/server.py`, calling the same service functions as the REST API. Tested over `/mcp` with the token (`tests/test_mcp.py`), and end to end against a running app: parts created, placed and wired over MCP appeared on an open design page within seconds, with the "Claude changed this design" notice and Claude's revisions in History.
 
 ## Server instructions (draft)
 

@@ -92,15 +92,29 @@ def update_part(session: Session, part_id: int, data: PartUpdate) -> Part:
     return part
 
 
-def replace_pins(session: Session, part_id: int, pins: list[PinIn]) -> Part:
+def replace_pins(
+    session: Session, part_id: int, pins: list[PinIn], author: Author = Author.USER
+) -> Part:
     """Sets the part's whole pin list. Pins sent with an id are updated in place (so wires
-    to them survive a rename); pins left out are removed; the rest are added."""
+    to them survive a rename); pins left out are removed; the rest are added.
+
+    Claude can't remove pins (nothing is deleted through MCP), and any change Claude
+    makes to the pins sets the part back to unverified.
+    """
     part = get_part(session, part_id)
     existing = {pin.id: pin for pin in part.pins}
     for data in pins:
         if data.id is not None and data.id not in existing:
             raise NotFoundError(f"Pin {data.id} is not on this part")
     kept_ids = {data.id for data in pins if data.id is not None}
+    if author == Author.CLAUDE:
+        if missing := set(existing) - kept_ids:
+            names = ", ".join(sorted(existing[pin_id].name for pin_id in missing))
+            raise ConflictError(
+                f"Pins can't be removed through MCP; ask the user to remove {names} in the "
+                "app. Send every existing pin, with its id"
+            )
+        before = _pin_signature(part.pins)
     if wired := designs.wired_pin_ids(session, set(existing) - kept_ids):
         names = ", ".join(sorted(existing[pin_id].name for pin_id in wired))
         raise ConflictError(f"Wired in a design, so it can't be removed: {names}")
@@ -125,9 +139,30 @@ def replace_pins(session: Session, part_id: int, pins: list[PinIn]) -> Part:
             for field, value in fields.items():
                 setattr(pin, field, value)
             pin.position = position
+    if author == Author.CLAUDE and _pin_signature(part.pins) != before:
+        part.verified = False
     part.updated_at = utcnow()
     session.commit()
     session.refresh(part)
+    return part
+
+
+def _pin_signature(pins: list[Pin]) -> list[tuple]:
+    """What a pin change is judged on: everything about each pin, in order."""
+    return sorted(
+        (p.side, p.position, p.name, p.kind, tuple(p.functions), p.voltage, tuple(p.flags))
+        for p in pins
+    )
+
+
+def append_notes(session: Session, part_id: int, text: str) -> Part:
+    """Adds to the part's notes (markdown) after a blank line; never rewrites them."""
+    part = get_part(session, part_id)
+    part.notes_md = (
+        f"{part.notes_md.rstrip()}\n\n{text.strip()}" if part.notes_md.strip() else text.strip()
+    )
+    part.updated_at = utcnow()
+    session.commit()
     return part
 
 

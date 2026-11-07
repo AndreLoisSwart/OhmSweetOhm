@@ -47,7 +47,7 @@ def test_mcp_needs_the_token(lan):
 def test_mcp_with_the_token(lan):
     res = lan.post("/mcp", headers=auth(f"Bearer {token.get_token()}"), json=rpc("tools/list"))
     assert res.status_code == 200, res.text
-    assert res.json()["result"]["tools"] == []  # tools arrive in build step 7
+    assert res.json()["result"]["tools"]  # listed in full in test_mcp.py
 
 
 def test_a_token_does_not_open_the_rest(lan):
@@ -81,6 +81,14 @@ def test_token_is_kept_and_private():
     assert token.get_token() == first
     mode = stat.S_IMODE(os.stat(settings.data_dir / token.TOKEN_FILE).st_mode)
     assert mode == 0o600
+
+
+def test_token_endpoints_are_ingress_only(api, lan):
+    first = api.get("/api/mcp/token").json()["token"]
+    assert first == token.get_token()
+    assert lan.get("/api/mcp/token").status_code == 403
+    new = api.post("/api/mcp/token").json()["token"]
+    assert new != first and new == token.get_token()
 
 
 def test_regenerating_retires_the_old_token(lan):
