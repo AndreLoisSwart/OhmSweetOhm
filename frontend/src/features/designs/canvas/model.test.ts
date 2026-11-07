@@ -4,8 +4,10 @@ import { BME280, ESP32_DEVKIT_V1 } from '@/features/parts/card/sample-parts'
 import {
   buildEdges,
   buildNodes,
+  describeNet,
   freeSpot,
   netsByPin,
+  powerNote,
   routeInput,
   snapshotOf,
   turned,
@@ -17,7 +19,14 @@ const canvasPart = (id: number, part: typeof BME280): CanvasPart => ({
   kind: 'board',
   logic_voltage: '3v3',
   verified: true,
-  pins: part.pins.map((p, i) => ({ ...p, id: id * 100 + i, wokwi_name: null, tie: null })),
+  pins: part.pins.map((p, i) => ({
+    ...p,
+    id: id * 100 + i,
+    wokwi_name: null,
+    tie: null,
+    code_name: null,
+    default_code_name: null,
+  })),
 })
 
 const design: DesignDetail = {
@@ -112,5 +121,36 @@ describe('snapshotOf', () => {
       note: '',
     })
     expect(snap.wires[0]).toMatchObject({ a: 'esp.GPIO21', b: 'bme.SDA', color: 'blue' })
+  })
+})
+
+describe('power on nets', () => {
+  const powered: DesignDetail = {
+    ...design,
+    wires: [],
+    nets: [
+      { name: '3V3', pins: ['bme.VIN', 'esp.3V3'] },
+      { name: 'GND', pins: ['bme.GND', 'esp.GND'] },
+      { name: 'VIN', pins: ['esp.VIN'] },
+      { name: 'bme.SDA', pins: ['bme.SDA', 'esp.GPIO21'] },
+    ],
+  }
+  const net = (name: string) => powered.nets.find((n) => n.name === name)!
+
+  it('says who supplies a rail and what it feeds', () => {
+    expect(describeNet(powered, net('3V3'))).toEqual({
+      title: '3V3 (3.3 V)',
+      detail: 'Supplied by esp.3V3 (3.3 V) · feeds bme.VIN',
+    })
+    expect(describeNet(powered, net('VIN')).title).toBe('VIN: no supply')
+    expect(describeNet(powered, net('GND')).title).toBe('GND (ground)')
+    expect(describeNet(powered, net('bme.SDA')).title).toBe('Net bme.SDA')
+  })
+
+  it('notes power pins for the inspector', () => {
+    expect(powerNote(powered, 'esp.3V3')).toBe('feeds bme.VIN')
+    expect(powerNote(powered, 'bme.VIN')).toBe('from esp.3V3')
+    expect(powerNote(powered, 'esp.VIN')).toBe('no supply on this net')
+    expect(powerNote(powered, 'esp.GPIO21')).toBeNull()
   })
 })

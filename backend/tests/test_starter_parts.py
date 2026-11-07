@@ -13,10 +13,10 @@ def library(api):
 
 
 def test_all_load_unverified_and_once(api, library):
-    assert len(library) == len(STARTER_PARTS) == 21
+    assert len(library) == len(STARTER_PARTS) == 22
     assert all(p["verified"] is False for p in library.values())
     again = api.post("/api/parts/starter").json()
-    assert again["added"] == [] and len(again["skipped"]) == 21
+    assert again["added"] == [] and len(again["skipped"]) == 22
     listed = api.get("/api/parts/starter").json()
     assert all(p["present"] for p in listed)
 
@@ -24,7 +24,7 @@ def test_all_load_unverified_and_once(api, library):
 def test_only_missing_ones_are_added(api):
     api.post("/api/parts", json={"name": "led (5 mm)", "kind": "actuator"})
     res = api.post("/api/parts/starter").json()
-    assert res["skipped"] == ["LED (5 mm)"] and len(res["added"]) == 20
+    assert res["skipped"] == ["LED (5 mm)"] and len(res["added"]) == 21
 
 
 def test_each_says_to_check_it(api, library):

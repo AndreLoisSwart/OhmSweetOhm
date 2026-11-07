@@ -46,6 +46,7 @@ These are the same as Shelf-help's:
 | `disconnect(design_id, a, b)` | Remove a wire |
 | `check_design(design_id)` | Run every check (see `checks.md`) |
 | `list_revisions(design_id)`, `restore_revision(design_id, revision_id)` | History, and undo |
+| `get_pin_map(design_id, lang?, board?)` | From step 10. The design's pins as firmware constants: `pins.h` (`lang` "c", the default) or `pins.py` ("py"), as `{lang, filename, board, boards, text}`. `board` is needed only with more than one board |
 
 Tools that change a design take batches (`add_parts`, `connect`), so that building a circuit is a few calls rather than dozens. Each call that changes placements or wires saves one revision first (`author = claude`), summarising the change: "Added esp, BME280", "Connected esp.3V3 to bme.VIN, … and 1 more", "Moved and rotated esp", "Removed led1 and its 2 wires", "Disconnected esp.GND from bme.GND". Renaming a design, its tags and its description aren't in revisions (they aren't in a snapshot).
 
@@ -68,4 +69,5 @@ Every design answer is a `DesignView`: the design with its placed parts (ref, pa
 > - **Parts you create are unverified.** Take pinouts from the datasheet or the maker's page, say where they came from in the part's notes, and ask the user to check them.
 > - **Search before creating a part.** When adding a part, also find or create its Shelf-help item and store the id.
 > - **"Do I have what this design needs?":** look up each part's Shelf-help item. Offer to mark missing ones as `need`.
+> - **Writing firmware (not ESPHome):** get the pin map, save it in the firmware as `pins.h` or `pins.py`, and use its constants rather than bare pin numbers. If a board pin has no code name, say so rather than guess.
 > - **Nothing can be deleted.** Removing parts and wires within a design is fine, since every change is undoable.

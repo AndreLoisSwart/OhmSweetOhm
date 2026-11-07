@@ -81,6 +81,7 @@ def test_tool_list(mcp):
         "update_wire",
         "disconnect",
         "check_design",
+        "get_pin_map",
         "list_revisions",
         "restore_revision",
     }
@@ -267,3 +268,31 @@ def test_zero_unlinks_shelf_help(mcp, api):
         "/api/parts", json={"name": "LED", "kind": "actuator", "shelf_item_id": 4}
     ).json()
     assert mcp("update_part", part_id=part["id"], shelf_item_id=0)["shelf_item_id"] is None
+
+
+def test_get_pin_map(mcp, api):
+    esp = api.post("/api/parts", json={"name": "ESP", "kind": "board", "pins": ESP_PINS}).json()
+    bme = api.post(
+        "/api/parts",
+        json={"name": "BME", "kind": "sensor", "i2c_addresses": [0x76], "pins": BME_PINS},
+    ).json()
+    design = api.post("/api/designs", json={"name": "Weather"}).json()
+    api.post(
+        f"/api/designs/{design['id']}/placements",
+        json={
+            "parts": [{"part_id": esp["id"], "ref": "esp"}, {"part_id": bme["id"], "ref": "bme"}]
+        },
+    )
+    api.post(
+        f"/api/designs/{design['id']}/wires",
+        json={"wires": [{"a": "esp.GPIO21", "b": "bme.SDA"}, {"a": "esp.GPIO22", "b": "bme.SCL"}]},
+    )
+    out = mcp("get_pin_map", design_id=design["id"])
+    assert out["filename"] == "pins.h"
+    assert "constexpr uint8_t BME_SDA = 21;  // esp.GPIO21" in out["text"]
+    assert "BME_I2C_ADDR = 0x76" in out["text"]
+    py = mcp("get_pin_map", design_id=design["id"], lang="py")
+    assert "BME_SCL = 22" in py["text"]
+    with pytest.raises(ToolError, match="no board"):
+        empty = api.post("/api/designs", json={"name": "Empty"}).json()
+        mcp("get_pin_map", design_id=empty["id"])

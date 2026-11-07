@@ -166,6 +166,7 @@ def _pin_signature(pins: list[Pin]) -> list[tuple]:
             p.voltage,
             tuple(p.flags),
             p.tie or "",
+            p.code_name or "",
         )
         for p in pins
     )
@@ -216,6 +217,7 @@ def copy_part(session: Session, part_id: int) -> Part:
                 position=pin.position,
                 wokwi_name=pin.wokwi_name,
                 tie=pin.tie,
+                code_name=pin.code_name,
             )
             for pin in source.pins
         ],

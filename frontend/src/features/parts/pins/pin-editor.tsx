@@ -25,7 +25,7 @@ import { NativeSelect } from '@/components/native-select'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { pinColor } from '@/features/parts/card/pin-style'
+import { pinColor, powerRole } from '@/features/parts/card/pin-style'
 import {
   PIN_FLAG_LABELS,
   PIN_FLAG_SHORT,
@@ -35,7 +35,15 @@ import {
   PIN_SIDE_LABELS,
   PIN_SIDES,
 } from '@/features/parts/labels'
-import { type DraftPin, fromPins, newPin, pinErrors, toPinsIn, withPositions } from './draft'
+import {
+  type DraftPin,
+  defaultCodeName,
+  fromPins,
+  newPin,
+  pinErrors,
+  toPinsIn,
+  withPositions,
+} from './draft'
 import { PastePinsDialog } from './paste-pins-dialog'
 import { PartPreview } from './part-preview'
 
@@ -78,7 +86,8 @@ function CheckList<T extends string>({
 
 /** Alternate roles, flags and the Wokwi name: less used, so behind a button. */
 function PinDetails({ pin, onChange }: { pin: DraftPin; onChange: Change }) {
-  const count = pin.functions.length + pin.flags.length + (pin.tie ? 1 : 0)
+  const count =
+    pin.functions.length + pin.flags.length + (pin.tie ? 1 : 0) + (pin.code_name ? 1 : 0)
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -97,6 +106,7 @@ function PinDetails({ pin, onChange }: { pin: DraftPin; onChange: Change }) {
                 ...pin.functions.map((f) => PIN_KIND_LABELS[f]),
                 ...pin.flags.map((f) => PIN_FLAG_SHORT[f]),
                 ...(pin.tie ? [`tied ${pin.tie}`] : []),
+                ...(pin.code_name ? [`code ${pin.code_name}`] : []),
               ].join(', ')}
             </span>
           )}
@@ -126,6 +136,16 @@ function PinDetails({ pin, onChange }: { pin: DraftPin; onChange: Change }) {
                 onChange={(e) => onChange(pin.key, { tie: e.target.value || null })}
                 placeholder="e.g. 3V3"
                 title="Pins of this part with the same name here are joined inside it (two 3V3 pins, say). Ground pins are joined anyway."
+                className="font-mono"
+              />
+            </label>
+            <label className="grid gap-1 text-xs font-medium text-muted-foreground">
+              Code name
+              <Input
+                value={pin.code_name ?? ''}
+                onChange={(e) => onChange(pin.key, { code_name: e.target.value || null })}
+                placeholder={defaultCodeName(pin.name) ?? 'None'}
+                title="What firmware calls this pin, for the pin map. Leave it empty when the name says it: GPIO21 is 21, D2 is 2, A0 is A0."
                 className="font-mono"
               />
             </label>
@@ -186,8 +206,12 @@ function PinRow({
           <GripVertical className="size-4" />
         </button>
         <span
-          className="size-2.5 shrink-0 rounded-full"
-          style={{ background: pinColor(pin.kind) }}
+          className="size-2.5 shrink-0 rounded-full border-2"
+          style={
+            powerRole(pin.kind) === 'load'
+              ? { borderColor: pinColor(pin.kind) }
+              : { background: pinColor(pin.kind), borderColor: pinColor(pin.kind) }
+          }
           aria-hidden
         />
         <Input

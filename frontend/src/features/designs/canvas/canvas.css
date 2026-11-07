@@ -28,6 +28,17 @@
 .ohm-canvas .pin-handle.pin-power {
   background: var(--pin-power);
 }
+/* Power by direction: a supply's output is filled with a ring round it, a load's input
+   is a hollow ring. */
+.ohm-canvas .pin-handle.pin-source {
+  outline: 1.5px solid var(--pin-power);
+  outline-offset: 1.5px;
+}
+.ohm-canvas .pin-handle.pin-load {
+  background: var(--card);
+  border-color: var(--pin-power);
+}
+
 .ohm-canvas .pin-handle.pin-ground {
   background: var(--pin-ground);
 }

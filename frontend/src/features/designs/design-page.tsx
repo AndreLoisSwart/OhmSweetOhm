@@ -2,6 +2,7 @@ import { ReactFlowProvider, useEdgesState, useNodesState } from '@xyflow/react'
 import {
   ArrowLeft,
   Bot,
+  FileCode,
   History,
   Info,
   Library,
@@ -34,6 +35,7 @@ import { PHONE_QUERY, useMediaQuery } from '@/lib/use-media-query'
 import { DesignCanvas } from './canvas/design-canvas'
 import { ChecksBar } from './checks-bar'
 import { HistoryDialog } from './history-dialog'
+import { PinMapDialog } from './pin-map-dialog'
 import { HighlightContext, HighlightStore, usePinnedNet } from './canvas/highlight'
 import { buildEdges, buildNodes, type PartNodeType, type WireEdgeType } from './canvas/model'
 import { Inspector } from './inspector'
@@ -50,6 +52,7 @@ function DesignEditor({ design }: { design: DesignDetail }) {
   const [libraryOpen, setLibraryOpen] = useState(false)
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
+  const [pinMapOpen, setPinMapOpen] = useState(false)
   const [checksOpen, setChecksOpen] = useState(false)
   const changedBy = useOutsideChanges(design, actions)
 
@@ -158,8 +161,13 @@ function DesignEditor({ design }: { design: DesignDetail }) {
                 <History />
                 History
               </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setPinMapOpen(true)}>
+                <FileCode />
+                Pin map
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          <PinMapDialog design={design} open={pinMapOpen} onOpenChange={setPinMapOpen} />
           <HistoryDialog
             designId={design.id}
             open={historyOpen}

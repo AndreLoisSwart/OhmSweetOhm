@@ -42,6 +42,9 @@ from app.modules.designs.schemas import (
     WireIn,
     WireUpdate,
 )
+from app.modules.firmware import service as firmware
+from app.modules.firmware.pinmap import Lang
+from app.modules.firmware.schemas import PinMapOut
 from app.modules.parts import service as part_service
 from app.modules.parts.models import Author, LogicVoltage, PartKind
 from app.modules.parts.router import part_detail
@@ -66,6 +69,9 @@ designs carry Shelf-help ids (shelf_item_id, shelf_project_id).
   the Shelf-help tools before storing it. 0 unlinks.
 - Ground pins of a part are joined inside it, and so are pins sharing a tie (two 3V3 pins
   tied "3V3"); nets include them. Set tie when creating parts with repeated supply pins.
+- Writing firmware for a design (not ESPHome): get_pin_map and save it in the firmware
+  as pins.h or pins.py, then use its constants, never bare pin numbers. If a board pin
+  has no code name, say so rather than guessing.
 - "Do I have what this design needs?": look up each part's Shelf-help item. Offer to mark
   missing ones as need.
 - Every change you make to a design saves a revision first, so the user can undo it from
@@ -537,6 +543,17 @@ def build_server(open_session: SessionOpener) -> MCPServer:
         its pins and net."""
         with open_session() as session:
             return run_checks(designs.get_design(session, design_id))
+
+    @tool(READ)
+    def get_pin_map(design_id: int, lang: Lang = Lang.C, board: str | None = None) -> PinMapOut:
+        """The design's pins as firmware constants: `pins.h` for Arduino/PlatformIO
+        (lang "c") or `pins.py` for MicroPython (lang "py", ESP32 boards only). Each signal
+        pin of a part wired to the board is `REF_PIN` = the board pin's code name, e.g.
+        `BME_SDA = 21`; I2C addresses and buses (I2C_SDA, SPI_SCK...) too. board is the
+        board's ref, needed only when the design has more than one. Save `text` as
+        `filename` in the firmware and use its constants rather than pin numbers."""
+        with open_session() as session:
+            return firmware.pin_map(session, design_id, lang, board)
 
     @tool(READ)
     def list_revisions(design_id: int) -> Revisions:

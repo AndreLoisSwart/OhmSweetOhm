@@ -4,6 +4,7 @@ import type {
   CanvasPart,
   DesignDetail,
   NetOut,
+  PinOut,
   PlacementOut,
   Snapshot,
   WireOut,
@@ -147,4 +148,87 @@ export function snapshotOf(design: DesignDetail): Snapshot {
       label,
     })),
   }
+}
+
+/** Every placed pin, by `ref.PIN`. */
+export function pinsByKey(design: DesignDetail): Map<string, PinOut> {
+  const parts = partsById(design)
+  return new Map(
+    design.placements.flatMap((p) =>
+      parts.get(p.part_id)!.pins.map((pin) => [`${p.ref}.${pin.name}`, pin] as const),
+    ),
+  )
+}
+
+export interface NetPower {
+  /** supply: has a power output; load-only: power inputs with nothing supplying them. */
+  role: 'supply' | 'load-only' | 'ground' | 'signal'
+  sources: { key: string; voltage: number | null }[]
+  loads: string[]
+  /** Other pins on the net (signals, or ground). */
+  others: string[]
+}
+
+/** Who supplies a net and who it feeds, from its pins' kinds. */
+export function netPower(design: DesignDetail, net: NetOut): NetPower {
+  const pins = pinsByKey(design)
+  const kindOf = (key: string) => pins.get(key)?.kind
+  const sources = net.pins
+    .filter((k) => kindOf(k) === 'power_out')
+    .map((key) => ({ key, voltage: pins.get(key)?.voltage ?? null }))
+  const loads = net.pins.filter((k) => kindOf(k) === 'power_in')
+  const others = net.pins.filter((k) => !['power_out', 'power_in'].includes(kindOf(k) ?? ''))
+  const role = sources.length
+    ? 'supply'
+    : loads.length
+      ? 'load-only'
+      : net.pins.some((k) => kindOf(k) === 'ground')
+        ? 'ground'
+        : 'signal'
+  return { role, sources, loads, others }
+}
+
+const volts = (v: number | null) => (v === null ? '' : ` (${v} V)`)
+const listed = (keys: string[]) => keys.join(', ')
+
+/** A net in words: "3V3 (3.3 V)" / "Supplied by esp.3V3, feeds bme.VIN, oled.VCC". */
+export function describeNet(design: DesignDetail, net: NetOut): { title: string; detail: string } {
+  const power = netPower(design, net)
+  switch (power.role) {
+    case 'supply': {
+      const [first] = power.sources
+      const by = power.sources.map((s) => `${s.key}${volts(s.voltage)}`)
+      return {
+        title: `${net.name}${power.sources.length === 1 ? volts(first.voltage) : ''}`,
+        detail: [
+          `Supplied by ${listed(by)}`,
+          power.loads.length ? `feeds ${listed(power.loads)}` : 'feeds nothing yet',
+          power.others.length ? `also on it: ${listed(power.others)}` : '',
+        ]
+          .filter(Boolean)
+          .join(' · '),
+      }
+    }
+    case 'load-only':
+      return {
+        title: `${net.name}: no supply`,
+        detail: `Nothing supplies ${listed(power.loads)}${power.others.length ? ` · also on it: ${listed(power.others)}` : ''}`,
+      }
+    case 'ground':
+      return { title: `${net.name} (ground)`, detail: listed(net.pins) }
+    default:
+      return { title: `Net ${net.name}`, detail: listed(net.pins) }
+  }
+}
+
+/** For a power pin in the inspector: "feeds bme.VIN, oled.VCC" or "from esp.3V3". */
+export function powerNote(design: DesignDetail, key: string): string | null {
+  const pin = pinsByKey(design).get(key)
+  const net = netsByPin(design).get(key)
+  if (!pin || !net || !['power_out', 'power_in'].includes(pin.kind)) return null
+  const power = netPower(design, net)
+  if (pin.kind === 'power_out')
+    return power.loads.length ? `feeds ${listed(power.loads)}` : 'feeds nothing yet'
+  const from = power.sources.filter((s) => s.key !== key).map((s) => s.key)
+  return from.length ? `from ${listed(from)}` : 'no supply on this net'
 }

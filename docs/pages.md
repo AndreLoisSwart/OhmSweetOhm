@@ -15,7 +15,7 @@
 | `/` | Designs | List of designs, most recently changed first: name, part count, check summary (error/warning counts), Shelf-help project link marker. New design button. Filter by tag |
 | `/designs/:id` | Design | The canvas (below), with the name editable in the header |
 | `/parts` | Parts | The library: search, filter by kind and tag, an "Unverified" filter. Rows show name, kind, logic voltage, pin count and the unverified badge. **New part** opens a dialog (name, kind, logic voltage) and goes to the new part's page, as Shelf-help's New item does. **Starter parts** lists the 21 starter modules, ticks the ones already in the library, and adds the rest (unverified), then shows the Unverified filter |
-| `/parts/:id` | Part | Fields (kind, voltages, I2C addresses, datasheet, Shelf-help item id, Wokwi type), the pin editor, notes (markdown), attachments (datasheets, pinout images), "Used in" designs, and "Mark verified" |
+| `/parts/:id` | Part | Fields (kind, voltages, I2C addresses, datasheet, Shelf-help item id, Wokwi type), the pin editor (each pin's roles, flags, tie, code name and Wokwi name behind its details button), notes (markdown), attachments (datasheets, pinout images), "Used in" designs, and "Mark verified" |
 | `/settings` | Settings | Claude (MCP): the token (hidden until shown; copy; make a new one), and the Claude Code command and Claude Desktop config for the add-on's host port 8097. Tag management |
 
 ## Design page
@@ -64,6 +64,8 @@ The design page has four areas around the canvas:
 - **Undo and redo** (step 6): Ctrl+Z, and Ctrl+Shift+Z or Ctrl+Y (Cmd on a Mac), or the arrows in the header, which tablets need. They cover changes to placements and wires while the page is open, up to 50 steps; moving, rotating or deleting a selection is one step. Each step records the design as it was and undo sends it back as a layout, so undo is as reliable as any other save. Name, description and tags aren't part of undo.
 - **History** (step 6): in the header's ⋯ menu. Newest first, each with who (you or Claude), when, the summary of the change that followed, its part and wire counts, and Restore. Restoring closes the dialog; it can be undone with Ctrl+Z or from History.
 - **Changes from elsewhere** (step 7): the design is refetched every 5 seconds while the page is visible (paused in the background). A version this page didn't save shows a notice, "Claude changed this design" when the newest revision is Claude's, else "changed elsewhere", with a link to History; the undo steps are dropped, since they were recorded against the old design.
+- **Pin map** (step 10): in the header's ⋯ menu. The design's `pins.h` (Arduino) or `pins.py` (MicroPython), with a board picker when the design has more than one, Copy and Download. It's fetched fresh each time it opens. A design with no board, or MicroPython for a board with named pins (the Uno's `A0`), shows the reason instead.
+- **Who supplies what:** a highlighted rail is described in the Inspector by its supply and loads ("3V3 (3.3 V) — Supplied by esp.3V3 · feeds bme.VIN, oled.VCC"; a rail with loads and no supply says so). In a part's pin list, power pins add "feeds …" or "from …".
 - **Checks bar** (step 5): under the canvas, a line with the error, warning and note counts (or "No problems found"); it opens into the results, errors first. Selecting one highlights the pins it's about and the rest of their net, and shows the net in the Inspector. The designs list shows each design's counts.
 - **Tried on a real tablet (2026-11-07):** placing parts, wiring, removing wires, pan and zoom all work.
 
@@ -132,5 +134,6 @@ Shared components (PageHeader, EmptyState, ConfirmDialog, EditableText, Markdown
   - **Accent:** a different hue from Shelf-help's muted blue (e.g. copper/amber), so the two panels are easy to tell apart.
   - **Icon:** a circuit-board or house-with-a-plug mark; `mdi:home-lightning-bolt` in the HA sidebar.
 - **Pin kinds** have fixed colours: power red, ground black or gray, I2C blue, SPI purple, UART green, analog orange, GPIO neutral.
+  - Power pins also show their direction: a supply's output (`power_out`) is a filled red dot with a ring round it, a load's input (`power_in`) a hollow red ring. The same marks are used on the canvas, in the part preview, the pin editor and the Inspector.
   - These, the wire colours and the check severities are the only other colours.
   - Wire colours are drawn as real wire colours. They stay readable in dark mode because of an outline.

@@ -9,11 +9,24 @@ export interface ShownPin extends CardPin {
   flags: readonly PinFlag[]
 }
 
+/** Power pins are drawn by direction: a supply's output, or a load's input. */
+export type PowerRole = 'source' | 'load'
+
+export const powerRole = (kind: PinKind): PowerRole | null =>
+  kind === 'power_out' ? 'source' : kind === 'power_in' ? 'load' : null
+
+const powerLine = (pin: ShownPin) => {
+  const v = pin.voltage !== null ? ` ${pin.voltage} V` : ''
+  if (pin.kind === 'power_out') return `Supplies power${v}`
+  if (pin.kind === 'power_in') return `Takes power${v}`
+  return pin.voltage !== null ? `${pin.voltage} V` : ''
+}
+
 export const pinTooltip = (pin: ShownPin) =>
   [
     `${pin.name}: ${PIN_KIND_LABELS[pin.kind]}`,
+    powerLine(pin),
     pin.functions.length ? `Also ${pin.functions.map((f) => PIN_KIND_LABELS[f]).join(', ')}` : '',
-    pin.voltage !== null ? `${pin.voltage} V` : '',
     pin.flags.length ? `Flags: ${pin.flags.join(', ')}` : '',
   ]
     .filter(Boolean)

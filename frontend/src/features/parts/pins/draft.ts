@@ -17,6 +17,8 @@ export interface DraftPin {
   wokwi_name: string | null
   /** Pins of the part with the same tie are joined inside it. */
   tie: string | null
+  /** What firmware calls the pin, where defaultCodeName gets it wrong. */
+  code_name: string | null
 }
 
 let counter = 0
@@ -53,13 +55,14 @@ export function fromPins(pins: PinOut[]): DraftPin[] {
     position: p.position,
     wokwi_name: p.wokwi_name,
     tie: p.tie,
+    code_name: p.code_name,
   }))
 }
 
 /** What the API takes: the whole list, each side in order. */
 export function toPinsIn(pins: DraftPin[]): PinIn[] {
   return sortBySide(pins).map(
-    ({ id, name, kind, functions, voltage, flags, side, wokwi_name, tie }) => ({
+    ({ id, name, kind, functions, voltage, flags, side, wokwi_name, tie, code_name }) => ({
       ...(id !== undefined && { id }),
       name: name.trim(),
       kind,
@@ -69,6 +72,7 @@ export function toPinsIn(pins: DraftPin[]): PinIn[] {
       side,
       wokwi_name: wokwi_name?.trim() || null,
       tie: tie?.trim() || null,
+      code_name: code_name?.trim() || null,
     }),
   )
 }
@@ -91,6 +95,9 @@ export function pinErrors(pins: DraftPin[]): Map<string, string> {
     } else seen.set(lower, pin.key)
     if (pin.voltage !== null && !(pin.voltage > 0 && pin.voltage <= 60) && !errors.has(pin.key))
       errors.set(pin.key, 'Voltage must be above 0 and at most 60')
+    const code = pin.code_name?.trim()
+    if (code && !/^[A-Za-z0-9_]{1,20}$/.test(code) && !errors.has(pin.key))
+      errors.set(pin.key, 'Code name: letters, digits or _ (up to 20)')
   }
   return errors
 }
@@ -138,5 +145,15 @@ export function newPin(name: string, side: PinSide): DraftPin {
     position: 0,
     wokwi_name: null,
     tie: null,
+    code_name: null,
   }
+}
+
+/** What firmware calls a pin when its code name is empty: GPIO21 → 21, D2 → 2, A0 → A0.
+ * The same rule as the server's (parts/models.py, default_code_name). */
+export function defaultCodeName(name: string): string | null {
+  const match = /^(GPIO|D|A)(\d+)$/i.exec(name.trim())
+  if (!match) return null
+  const n = String(Number(match[2]))
+  return match[1].toUpperCase() === 'A' ? `A${n}` : n
 }

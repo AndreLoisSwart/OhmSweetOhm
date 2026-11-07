@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { PinOut } from '@/api/generated/model'
 import {
+  defaultCodeName,
   fromPins,
   guessKind,
   newPin,
@@ -21,6 +22,8 @@ const out = (id: number, name: string, side: PinOut['side'], position: number): 
   position,
   wokwi_name: null,
   tie: null,
+  code_name: null,
+  default_code_name: null,
 })
 
 describe('drafts', () => {
@@ -101,5 +104,23 @@ describe('parseNames', () => {
       'SDA',
       'INT_1',
     ])
+  })
+})
+
+describe('code names', () => {
+  it('come from the pin name like the server', () => {
+    expect(defaultCodeName('GPIO21')).toBe('21')
+    expect(defaultCodeName('gpio05')).toBe('5')
+    expect(defaultCodeName('D2')).toBe('2')
+    expect(defaultCodeName('a7')).toBe('A7')
+    expect(defaultCodeName('SDA')).toBeNull()
+    expect(defaultCodeName('3V3')).toBeNull()
+  })
+
+  it('are trimmed, sent as null when blank, and checked', () => {
+    const pin = { ...newPin('IO7', 'left'), code_name: ' LED ' }
+    expect(toPinsIn([pin])[0].code_name).toBe('LED')
+    expect(toPinsIn([{ ...pin, code_name: ' ' }])[0].code_name).toBeNull()
+    expect(pinErrors([{ ...pin, code_name: 'a b' }]).get(pin.key)).toMatch(/Code name/)
   })
 })

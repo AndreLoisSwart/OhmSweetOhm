@@ -3,7 +3,7 @@ import { type ComponentProps, type CSSProperties, type ReactNode, useMemo } from
 import type { PinSide } from '@/api/generated/model'
 import { FLAG_MARKS } from '@/features/parts/labels'
 import { layoutCard, type PinSlot, type Rotation } from './layout'
-import { pinColor, pinTooltip, type ShownPin } from './pin-style'
+import { pinColor, pinTooltip, powerRole, type ShownPin } from './pin-style'
 
 function PinLabel({
   pin,
@@ -58,11 +58,23 @@ function PinLabel({
 
 /** A plain pin dot, for cards outside the canvas (the part preview). */
 function PinDot({ slot }: { slot: PinSlot<ShownPin> }) {
+  const color = pinColor(slot.pin.kind)
+  const role = powerRole(slot.pin.kind)
   return (
     <span
       title={pinTooltip(slot.pin)}
-      className="absolute size-2.5 -translate-1/2 rounded-full border-2 border-card"
-      style={{ left: slot.x, top: slot.y, background: pinColor(slot.pin.kind) }}
+      className={cn(
+        'absolute size-2.5 -translate-1/2 rounded-full border-2',
+        // A supply: filled, with a ring round it. A load: a hollow ring.
+        role === 'source' && 'outline-[1.5px] outline-offset-[1.5px]',
+        role === 'load' ? 'bg-card' : 'border-card',
+      )}
+      style={{
+        left: slot.x,
+        top: slot.y,
+        ...(role === 'load' ? { borderColor: color } : { background: color }),
+        ...(role === 'source' && { outlineColor: color, outlineStyle: 'solid' }),
+      }}
     />
   )
 }

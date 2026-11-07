@@ -26,4 +26,5 @@ export interface PinIn {
   side: PinSide;
   wokwi_name?: string | null;
   tie?: string | null;
+  code_name?: string | null;
 }

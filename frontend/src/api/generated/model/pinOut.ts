@@ -19,4 +19,6 @@ export interface PinOut {
   position: number;
   wokwi_name: string | null;
   tie: string | null;
+  code_name: string | null;
+  default_code_name: string | null;
 }

@@ -14,6 +14,7 @@ from app.core.errors import register_error_handlers
 from app.core.frontend import mount_frontend
 from app.modules.attachments import router as attachments
 from app.modules.designs import router as designs
+from app.modules.firmware import router as firmware
 from app.modules.mcp import router as mcp
 from app.modules.mcp import token
 from app.modules.mcp.server import build_server
@@ -58,7 +59,7 @@ def create_app() -> FastAPI:
     )
 
     api = APIRouter(prefix="/api")
-    for module in (health, parts, designs, tags, attachments, mcp):
+    for module in (health, parts, designs, firmware, tags, attachments, mcp):
         api.include_router(module.router)
 
     app.include_router(api)

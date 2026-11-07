@@ -33,7 +33,7 @@ Details live in `data-model.md`, `checks.md`, `mcp.md` and `pages.md`. This file
 ## Starter parts
 
 These are entered and verified by hand (or by Claude, then checked), from the maker's pinouts:
-- **Boards:** ESP32 DevKit V1 (30-pin), ESP32-C3 SuperMini, Arduino Uno R3, Arduino Nano, Wemos D1 Mini
+- **Boards:** ESP32 DevKit V1 (30-pin), ESP32-C3 SuperMini, Arduino Uno R3, Arduino Nano, Arduino Pro Micro (added in step 10), Wemos D1 Mini
 - **Sensors:** BME280, DHT22, DS18B20, HC-SR04, PIR (HC-SR501), BH1750, INA219
 - **Displays:** SSD1306 128×64 I2C
 - **Actuators:** relay module (1-channel), SG90 servo, LED, push button, WS2812B strip
@@ -57,9 +57,16 @@ Packaging and the canvas are the riskiest parts, so they come first.
 8. **Starter parts.** Enter and verify the set above.
 9. **Polish.** Phone read-only view, empty states, errors, icon.
 
+**After phase 1: firmware support** (details in `future-enhancements.md`, Firmware from a design). Each step is built only when started:
+
+10. **Pin map.** `Pin.code_name`, a Pro Micro starter part, and a design's pins as a C++ `pins.h` or MicroPython `pins.py`, through the API, the inspector and MCP.
+11. **Bring-up sketch.** A library-free Arduino sketch that checks the built circuit against the design.
+12. **Library hints.** `Part.libraries` and a `platformio.ini` `lib_deps` block per design.
+13. **Firmware link and drift check.** `Design.firmware_repo`, and Claude comparing the repo's `pins.h` with the design.
+
 ## Out of scope for phase 1
 
-- Simulation, Wokwi export and firmware generation (see `future-enhancements.md`)
+- Simulation, Wokwi export and firmware generation (see `future-enhancements.md`; firmware support is planned as steps 10–13 above)
 - Breadboard view, PCB layout, schematic symbols
 - Passive components as values (resistor ohms, capacitor farads) beyond simple parts
 - Stock tracking (that's Shelf-help)
@@ -85,3 +92,8 @@ Decided after the canvas spike (2026-11-07, details in `pages.md`, Canvas spike 
 Decided in step 4 (2026-11-07):
 - **Wires are routed automatically** around cards and apart from each other, from the saved positions; routes aren't stored. Hand-placed bend points wait for phase 2.
 - **The API speaks `ref.PIN`** for wire ends, and every change to a design answers with the whole design, nets included.
+
+Decided for firmware support (2026-11-07):
+- **The app generates the pin map, bring-up sketch and library list; Claude writes the firmware.** Generated files are deterministic, so they can be regenerated and compared.
+- **Target boards:** ESP32 variants, Arduino Uno, Nano and Pro Micro. No Raspberry Pi or Pico for now.
+- **No REST access from outside Ingress for this either.** Files come from the app's download buttons, or reach a firmware repo through Claude over MCP.

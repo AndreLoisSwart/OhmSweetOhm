@@ -6,7 +6,8 @@ and mark it verified in the app.
 
 Pins are listed per side in header order (left and right top to bottom, top and bottom
 left to right), as the card draws them. Board pins are named by the chip's GPIO where
-there is one, with the silkscreen label in the notes.
+there is one, with the silkscreen label in the notes. Arduino boards use D2 and A0, so
+every board pin gets its code name from the name rule (models.default_code_name).
 """
 
 from app.modules.parts.schemas import PartCreate
@@ -243,6 +244,56 @@ ARDUINO_NANO = {
             ("RST2", "reset", {"tie": "RST"}),
             ("D0", "uart_rx"),
             ("D1", "uart_tx"),
+        ),
+    ],
+}
+
+# Arduino Pro Micro (ATmega32U4, 5 V / 16 MHz), top view with the USB socket at the top.
+ARDUINO_PRO_MICRO = {
+    "name": "Arduino Pro Micro (5 V)",
+    "kind": "board",
+    "logic_voltage": "5v",
+    "supply_min_v": 5,
+    "supply_max_v": 12,
+    "description": "ATmega32U4 with native USB (SparkFun-style Pro Micro), 5 V logic.",
+    "notes_md": notes(
+        "Silkscreen shows bare numbers: TX0/RX1 are D1/D0 (Serial1), 2 and 3 are I2C SDA/SCL, "
+        "14/15/16 are SPI MISO/SCK/MOSI, A0–A3 are D18–D21. 4, 6, 8, 9 and 10 also read "
+        "analog (A6–A10). There's no SS pin broken out: use any pin as chip select.",
+        "Serial is the native USB port, so a sketch should wait for it before printing. RAW "
+        "takes 5–12 V into the regulator; VCC is the 5 V rail (USB or regulator). The "
+        "3.3 V / 8 MHz version looks the same but runs at 3.3 V.",
+    ),
+    "pins": [
+        *side(
+            "left",
+            ("D1", "uart_tx"),
+            ("D0", "uart_rx"),
+            ("GND", "ground"),
+            ("GND2", "ground"),
+            ("D2", "gpio", {"functions": ["i2c_sda"]}),
+            ("D3", "gpio", {"functions": ["i2c_scl"]}),
+            ("D4", "gpio", {"functions": ["analog"]}),
+            ("D5", "gpio"),
+            ("D6", "gpio", {"functions": ["analog"]}),
+            ("D7", "gpio"),
+            ("D8", "gpio", {"functions": ["analog"]}),
+            ("D9", "gpio", {"functions": ["analog"]}),
+        ),
+        *side(
+            "right",
+            ("RAW", "power_in", {"voltage": 5}),
+            ("GND3", "ground"),
+            ("RST", "reset"),
+            ("VCC", "power_out", {"voltage": 5}),
+            ("A3", "analog", ALSO_GPIO),
+            ("A2", "analog", ALSO_GPIO),
+            ("A1", "analog", ALSO_GPIO),
+            ("A0", "analog", ALSO_GPIO),
+            ("D15", "gpio", {"functions": ["spi_sck"]}),
+            ("D14", "gpio", {"functions": ["spi_miso"]}),
+            ("D16", "gpio", {"functions": ["spi_mosi"]}),
+            ("D10", "gpio", {"functions": ["analog"]}),
         ),
     ],
 }
@@ -585,6 +636,7 @@ STARTER_PARTS: list[dict] = [
     ESP32_C3_SUPERMINI,
     ARDUINO_UNO_R3,
     ARDUINO_NANO,
+    ARDUINO_PRO_MICRO,
     WEMOS_D1_MINI,
     BME280,
     DHT22,

@@ -17,11 +17,11 @@ import { EditableText } from '@/components/editable-text'
 import { Button } from '@/components/ui/button'
 import { AttachmentList } from '@/features/attachments/attachment-list'
 import { UnverifiedBadge } from '@/features/parts/badges'
-import { pinColor } from '@/features/parts/card/pin-style'
+import { pinColor, powerRole } from '@/features/parts/card/pin-style'
 import { parseOptionalId } from '@/features/parts/fields'
 import { TagEditor } from '@/features/tags/tag-editor'
 import { HighlightContext, usePinnedNet } from './canvas/highlight'
-import { netsByPin, turned } from './canvas/model'
+import { describeNet, netsByPin, powerNote, turned } from './canvas/model'
 import { type DesignActions, quietly } from './use-design-actions'
 
 const WIRE_COLORS: WireColor[] = [
@@ -140,6 +140,8 @@ function PartInspector({
           {part.pins.map((pin) => {
             const key = `${placement.ref}.${pin.name}`
             const net = nets.get(key)
+            const note = powerNote(design, key)
+            const role = powerRole(pin.kind)
             return (
               <li key={pin.id}>
                 <button
@@ -148,8 +150,12 @@ function PartInspector({
                   onClick={() => store.toggle(net?.pins ?? [key])}
                 >
                   <span
-                    className="size-2 shrink-0 rounded-full"
-                    style={{ background: pinColor(pin.kind) }}
+                    className="size-2 shrink-0 rounded-full border-[1.5px]"
+                    style={
+                      role === 'load'
+                        ? { borderColor: pinColor(pin.kind) }
+                        : { background: pinColor(pin.kind), borderColor: pinColor(pin.kind) }
+                    }
                   />
                   <span className="w-20 shrink-0 truncate font-mono">{pin.name}</span>
                   <span
@@ -157,6 +163,11 @@ function PartInspector({
                   >
                     {net ? net.name : '—'}
                   </span>
+                  {note && (
+                    <span className="min-w-0 truncate text-muted-foreground" title={note}>
+                      {note}
+                    </span>
+                  )}
                 </button>
               </li>
             )
@@ -331,10 +342,11 @@ function NetNotice({ design }: { design: DesignDetail }) {
   const pins = usePinnedNet()
   if (!pins.length) return null
   const net = netsByPin(design).get(pins[0])
+  const described = net && describeNet(design, net)
   return (
     <div className="rounded-md bg-primary/10 p-2 text-xs">
-      <div className="font-medium">{net ? `Net ${net.name}` : `${pins[0]} (not wired)`}</div>
-      {net && <div className="mt-0.5 font-mono text-muted-foreground">{net.pins.join(', ')}</div>}
+      <div className="font-medium">{described ? described.title : `${pins[0]} (not wired)`}</div>
+      {described && <div className="mt-0.5 text-muted-foreground">{described.detail}</div>}
     </div>
   )
 }

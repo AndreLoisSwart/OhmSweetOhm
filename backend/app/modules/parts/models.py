@@ -1,3 +1,4 @@
+import re
 from datetime import datetime
 from enum import StrEnum
 
@@ -152,5 +153,32 @@ class Pin(Base):
     # Pins of a part with the same tie are joined inside it (two 3V3 pins, say), so
     # wiring one wires them all. Ground pins are always joined, tie or not.
     tie: Mapped[str | None] = mapped_column(String(20))
+    # What firmware calls this pin (`21`, `A0`), where the name rule gets it wrong.
+    code_name: Mapped[str | None] = mapped_column(String(20))
 
     part: Mapped[Part] = relationship(back_populates="pins")
+
+    @property
+    def default_code_name(self) -> str | None:
+        """The code name from the pin's name: GPIO21 → 21, D2 → 2, A0 → A0; else none."""
+        return default_code_name(self.name)
+
+    @property
+    def effective_code_name(self) -> str | None:
+        return self.code_name or self.default_code_name
+
+
+# Pin name → code name prefix: GPIO21 → 21, D2 → 2, A0 → A0.
+_CODE_NAME_RULES = (
+    (re.compile(r"^GPIO(\d+)$", re.I), ""),
+    (re.compile(r"^D(\d+)$", re.I), ""),
+    (re.compile(r"^A(\d+)$", re.I), "A"),
+)
+
+
+def default_code_name(name: str) -> str | None:
+    for pattern, prefix in _CODE_NAME_RULES:
+        if match := pattern.match(name):
+            # Leading zeros dropped (GPIO05 → 5).
+            return f"{prefix}{int(match[1])}"
+    return None

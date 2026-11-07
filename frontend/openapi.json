@@ -1196,6 +1196,74 @@
         }
       }
     },
+    "/api/designs/{design_id}/pinmap": {
+      "get": {
+        "tags": [
+          "firmware"
+        ],
+        "summary": "Get Pin Map",
+        "description": "The design's pins for firmware: `pins.h` (lang=c) or `pins.py` (lang=py). With more\nthan one board in the design, `board` is its ref.",
+        "operationId": "get_pin_map",
+        "parameters": [
+          {
+            "name": "design_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Design Id"
+            }
+          },
+          {
+            "name": "lang",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Lang",
+              "default": "c"
+            }
+          },
+          {
+            "name": "board",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Board"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PinMapOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/tags": {
       "get": {
         "tags": [
@@ -2055,6 +2123,14 @@
         ],
         "title": "Health"
       },
+      "Lang": {
+        "type": "string",
+        "enum": [
+          "c",
+          "py"
+        ],
+        "title": "Lang"
+      },
       "LogicVoltage": {
         "type": "string",
         "enum": [
@@ -2697,6 +2773,19 @@
               }
             ],
             "title": "Tie"
+          },
+          "code_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 20,
+                "pattern": "^([A-Za-z0-9_]+)?$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Code Name"
           }
         },
         "type": "object",
@@ -2730,6 +2819,41 @@
           "other"
         ],
         "title": "PinKind"
+      },
+      "PinMapOut": {
+        "properties": {
+          "lang": {
+            "$ref": "#/components/schemas/Lang"
+          },
+          "filename": {
+            "type": "string",
+            "title": "Filename"
+          },
+          "board": {
+            "type": "string",
+            "title": "Board"
+          },
+          "boards": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Boards"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "lang",
+          "filename",
+          "board",
+          "boards",
+          "text"
+        ],
+        "title": "PinMapOut"
       },
       "PinOut": {
         "properties": {
@@ -2797,6 +2921,28 @@
               }
             ],
             "title": "Tie"
+          },
+          "code_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Code Name"
+          },
+          "default_code_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Code Name"
           }
         },
         "type": "object",
@@ -2810,7 +2956,9 @@
           "side",
           "position",
           "wokwi_name",
-          "tie"
+          "tie",
+          "code_name",
+          "default_code_name"
         ],
         "title": "PinOut"
       },

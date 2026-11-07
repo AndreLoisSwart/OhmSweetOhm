@@ -4,7 +4,7 @@ import { memo, useContext, useEffect } from 'react'
 import type { PinSide } from '@/api/generated/model'
 import { pinColorGroup, pinKey, type Rotation } from '@/features/parts/card/layout'
 import { PartCard } from '@/features/parts/card/part-card'
-import { pinTooltip } from '@/features/parts/card/pin-style'
+import { pinTooltip, powerRole } from '@/features/parts/card/pin-style'
 import { PinEventsContext } from './context'
 import { useHighlightedPins } from './highlight'
 import type { PartNodeType } from './model'
@@ -45,7 +45,12 @@ function PartNodeComponent({ id, data, selected }: NodeProps<PartNodeType>) {
           type="source"
           position={POSITION[side]}
           title={pinTooltip(pin)}
-          className={cn('pin-handle', `pin-${pinColorGroup(pin.kind)}`, on && 'pin-lit')}
+          className={cn(
+            'pin-handle',
+            `pin-${pinColorGroup(pin.kind)}`,
+            powerRole(pin.kind) && `pin-${powerRole(pin.kind)}`,
+            on && 'pin-lit',
+          )}
           style={{ left: x, top: y, right: 'auto', bottom: 'auto' }}
         />
       )}
