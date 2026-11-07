@@ -25,4 +25,5 @@ export interface PinIn {
   flags?: PinFlag[];
   side: PinSide;
   wokwi_name?: string | null;
+  tie?: string | null;
 }

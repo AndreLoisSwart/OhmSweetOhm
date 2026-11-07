@@ -217,3 +217,13 @@ def test_delete(api):
     part = make(api, pins=[pin("VIN", "power_in")])
     assert api.delete(f"/api/parts/{part['id']}").status_code == 204
     assert api.get(f"/api/parts/{part['id']}").status_code == 404
+
+
+def test_ties_are_kept_and_copied(api):
+    part = make(
+        api,
+        pins=[pin("3V3", "power_out", tie=" 3V3 "), pin("3V3_2", "power_out", tie="3V3"), pin("A")],
+    )
+    assert [p["tie"] for p in part["pins"]] == ["3V3", "3V3", None]
+    copy = api.post(f"/api/parts/{part['id']}/copy").json()
+    assert [p["tie"] for p in copy["pins"]] == ["3V3", "3V3", None]

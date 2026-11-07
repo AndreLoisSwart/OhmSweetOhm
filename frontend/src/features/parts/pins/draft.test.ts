@@ -20,6 +20,7 @@ const out = (id: number, name: string, side: PinOut['side'], position: number): 
   side,
   position,
   wokwi_name: null,
+  tie: null,
 })
 
 describe('drafts', () => {

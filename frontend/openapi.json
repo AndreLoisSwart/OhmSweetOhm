@@ -2639,6 +2639,18 @@
               }
             ],
             "title": "Wokwi Name"
+          },
+          "tie": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 20
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tie"
           }
         },
         "type": "object",
@@ -2728,6 +2740,17 @@
               }
             ],
             "title": "Wokwi Name"
+          },
+          "tie": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tie"
           }
         },
         "type": "object",
@@ -2740,7 +2763,8 @@
           "flags",
           "side",
           "position",
-          "wokwi_name"
+          "wokwi_name",
+          "tie"
         ],
         "title": "PinOut"
       },

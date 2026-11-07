@@ -22,7 +22,7 @@ These are the same as Shelf-help's:
 
 | Tool | What it does |
 |---|---|
-| `search_parts(query?, kind?, tag_id?, unverified_only?)` | Parts with name, kind, logic voltage, verified flag, pin count and Shelf-help item id |
+| `search_parts(query?, kind?, tag_id?, unverified_only?)` → `{parts}` | Parts with name, kind, logic voltage, verified flag, pin count and Shelf-help item id |
 | `get_part(part_id)` | The full part, with every pin (id, kind, functions, voltage, flags, side, position) in header order, and the designs it's placed in |
 | `create_part(...)` | A new part with its pins. Starts unverified |
 | `update_part(part_id, ..., pins?)` | Change fields. `pins` is the whole list, every existing pin sent with its id, plus new ones: that adds, renames and reorders pins. Leaving a pin out is refused (no deletes through MCP). Sets the part unverified if pins change; field changes don't. Notes aren't a field here (append only) |
@@ -48,6 +48,11 @@ These are the same as Shelf-help's:
 | `list_revisions(design_id)`, `restore_revision(design_id, revision_id)` | History, and undo |
 
 Tools that change a design take batches (`add_parts`, `connect`), so that building a circuit is a few calls rather than dozens. Each call that changes placements or wires saves one revision first (`author = claude`), summarising the change: "Added esp, BME280", "Connected esp.3V3 to bme.VIN, … and 1 more", "Moved and rotated esp", "Removed led1 and its 2 wires", "Disconnected esp.GND from bme.GND". Renaming a design, its tags and its description aren't in revisions (they aren't in a snapshot).
+
+**After the first test with Claude Desktop (2026-11-07):**
+- **Tool schemas are written out in full.** Some clients drop JSON Schema `$defs`, which left Claude guessing pin fields and allowed values; `inline_schema` puts every type in place, and `X | None` fields read as plain `X` (optional by not being required).
+- **Lists come wrapped** (`{"parts": [...]}`, `{"designs": [...]}`, `{"tags": [...]}`, `{"revisions": [...]}`), so an empty list and a full one look alike.
+- **Shelf-help ids:** `0` unlinks (`shelf_item_id`, `shelf_project_id`). The app still can't check ids; the instructions tell Claude to look each one up in Shelf-help first.
 
 Every design answer is a `DesignView`: the design with its placed parts (ref, part, verified, position), wires as `ref.PIN`, computed nets and check counts. Refusals (a missing ref, a duplicate wire, a pin removal) come back as tool errors with the reason.
 

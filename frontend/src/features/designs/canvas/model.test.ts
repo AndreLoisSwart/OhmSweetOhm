@@ -17,7 +17,7 @@ const canvasPart = (id: number, part: typeof BME280): CanvasPart => ({
   kind: 'board',
   logic_voltage: '3v3',
   verified: true,
-  pins: part.pins.map((p, i) => ({ ...p, id: id * 100 + i, wokwi_name: null })),
+  pins: part.pins.map((p, i) => ({ ...p, id: id * 100 + i, wokwi_name: null, tie: null })),
 })
 
 const design: DesignDetail = {

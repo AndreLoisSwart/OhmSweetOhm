@@ -15,6 +15,8 @@ export interface DraftPin {
   /** Order within its side; kept current by withPositions. */
   position: number
   wokwi_name: string | null
+  /** Pins of the part with the same tie are joined inside it. */
+  tie: string | null
 }
 
 let counter = 0
@@ -50,13 +52,14 @@ export function fromPins(pins: PinOut[]): DraftPin[] {
     side: p.side,
     position: p.position,
     wokwi_name: p.wokwi_name,
+    tie: p.tie,
   }))
 }
 
 /** What the API takes: the whole list, each side in order. */
 export function toPinsIn(pins: DraftPin[]): PinIn[] {
   return sortBySide(pins).map(
-    ({ id, name, kind, functions, voltage, flags, side, wokwi_name }) => ({
+    ({ id, name, kind, functions, voltage, flags, side, wokwi_name, tie }) => ({
       ...(id !== undefined && { id }),
       name: name.trim(),
       kind,
@@ -65,6 +68,7 @@ export function toPinsIn(pins: DraftPin[]): PinIn[] {
       flags,
       side,
       wokwi_name: wokwi_name?.trim() || null,
+      tie: tie?.trim() || null,
     }),
   )
 }
@@ -133,5 +137,6 @@ export function newPin(name: string, side: PinSide): DraftPin {
     side,
     position: 0,
     wokwi_name: null,
+    tie: null,
   }
 }

@@ -90,7 +90,7 @@ def test_overvoltage_from_a_5v_part(bench):
     bench.part("bme", ("SDA", "i2c_sda"), logic="3v3")
     bench.wire(("uno.A4", "bme.SDA"))
     [result] = bench.results("overvoltage")
-    assert result["message"] == "bme.SDA (3.3 V max) is on a 5 V net driven by uno.A4"
+    assert result["message"].startswith("bme.SDA (3.3 V max) is on an I2C line pulled up to 5 V")
     assert result["pins"] == ["bme.SDA", "uno.A4"]
 
 
@@ -117,6 +117,16 @@ def test_undervoltage_supply(bench):
     bench.wire(("reg.OUT", "relay.VCC"), ("reg.OUT", "ok.VCC"))
     [result] = bench.results("undervoltage_supply")
     assert result["pins"] == ["relay.VCC", "reg.OUT"]
+
+
+def test_undervoltage_from_the_pins_own_voltage(bench):
+    # No supply range on the part: the VCC pin's voltage (what it needs) is used.
+    bench.part("reg", SUPPLY_3V3, kind="power")
+    bench.part("relay", ("VCC", "power_in", {"voltage": 5}))
+    bench.part("bme", ("VIN", "power_in", {"voltage": 3.3}))
+    bench.wire(("reg.OUT", "relay.VCC"), ("reg.OUT", "bme.VIN"))
+    [result] = bench.results("undervoltage_supply")
+    assert result["message"] == "relay.VCC needs at least 5 V but gets 3.3 V from reg.OUT"
 
 
 def test_no_ground(bench):
@@ -247,3 +257,66 @@ def test_an_empty_design_is_clean(api, bench):
         "summary": {"error": 0, "warning": 0, "note": 0},
         "results": [],
     }
+
+
+def test_ground_pins_of_a_part_are_one_net(api, bench):
+    bench.part("esp", ("GND", "ground"), ("GND2", "ground"), SUPPLY_3V3, kind="board")
+    bench.part("reg", ("OUT", "power_out", {"voltage": 5}), kind="power")
+    # A supply wired to the second ground pin shorts to the first one too.
+    bench.wire(("reg.OUT", "esp.GND2"))
+    nets = api.get(f"/api/designs/{bench.design['id']}").json()["nets"]
+    assert [n["pins"] for n in nets] == [["esp.GND", "esp.GND2", "reg.OUT"]]
+    assert len(bench.results("power_short")) == 1
+
+
+def test_tied_pins_join_and_unwired_ties_make_no_net(api, bench):
+    bench.part(
+        "board",
+        ("3V3", "power_out", {"voltage": 3.3, "tie": "3V3"}),
+        ("3V3_2", "power_out", {"voltage": 3.3, "tie": "3V3"}),
+        ("GND", "ground"),
+        ("GND2", "ground"),
+        kind="board",
+    )
+    bench.part("bme", ("VIN", "power_in"), ("GND", "ground"))
+    assert api.get(f"/api/designs/{bench.design['id']}").json()["nets"] == []
+    bench.wire(("board.3V3_2", "bme.VIN"))
+    [net] = api.get(f"/api/designs/{bench.design['id']}").json()["nets"]
+    assert net == {"name": "3V3", "pins": ["bme.VIN", "board.3V3", "board.3V3_2"]}
+    # Two supplies of one part, tied, aren't two supplies fighting.
+    assert bench.results("output_to_output") == []
+
+
+def test_a_swapped_bus_still_shows_its_address_clash_and_one_error_per_net(bench):
+    bench.part(
+        "esp",
+        ("GPIO21", "gpio", {"functions": ["i2c_sda"]}),
+        ("GPIO22", "gpio", {"functions": ["i2c_scl"]}),
+        kind="board",
+    )
+    bench.part("bme", ("SDA", "i2c_sda"), ("SCL", "i2c_scl"), i2c_addresses=[0x76])
+    bench.part("bme2", ("SDA", "i2c_sda"), ("SCL", "i2c_scl"), i2c_addresses=[0x76])
+    # bme is wired the wrong way round; bme2 is right.
+    bench.wire(
+        ("esp.GPIO21", "bme.SCL"),
+        ("esp.GPIO22", "bme.SDA"),
+        ("esp.GPIO21", "bme2.SDA"),
+        ("esp.GPIO22", "bme2.SCL"),
+    )
+    mismatches = bench.results("i2c_mismatch")
+    assert len(mismatches) == 2  # one per net, not one per pair
+    assert "SDA and SCL are wired together" in mismatches[0]["message"]
+    [clash] = bench.results("i2c_address_clash")
+    assert "bme, bme2" in clash["message"]
+    assert len(bench.results("i2c_pullups")) == 1  # one bus
+
+
+def test_i2c_overvoltage_speaks_of_pull_ups(bench):
+    bench.part("uno", ("A4", "gpio", {"functions": ["i2c_sda"]}), kind="board", logic="5v")
+    bench.part("bme", ("SDA", "i2c_sda"), logic="3v3")
+    bench.wire(("uno.A4", "bme.SDA"))
+    [result] = bench.results("overvoltage")
+    assert (
+        result["message"]
+        == "bme.SDA (3.3 V max) is on an I2C line pulled up to 5 V by uno.A4's side"
+    )

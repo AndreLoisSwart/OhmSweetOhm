@@ -149,5 +149,8 @@ class Pin(Base):
     position: Mapped[int]
     # Wokwi's name for this pin where it differs (phase 2 export).
     wokwi_name: Mapped[str | None] = mapped_column(String(40))
+    # Pins of a part with the same tie are joined inside it (two 3V3 pins, say), so
+    # wiring one wires them all. Ground pins are always joined, tie or not.
+    tie: Mapped[str | None] = mapped_column(String(20))
 
     part: Mapped[Part] = relationship(back_populates="pins")

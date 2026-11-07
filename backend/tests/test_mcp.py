@@ -98,8 +98,8 @@ def test_claudes_parts_start_unverified(mcp, api):
     assert part["verified"] is False
     assert part["created_by"] == "claude"
     assert [p["name"] for p in part["pins"]] == ["VIN", "GND", "SCL", "SDA"]
-    assert [p["name"] for p in mcp("search_parts", query="bme")] == ["BME280"]
-    assert mcp("search_parts", unverified_only=True)[0]["id"] == part["id"]
+    assert [p["name"] for p in mcp("search_parts", query="bme")["parts"]] == ["BME280"]
+    assert mcp("search_parts", unverified_only=True)["parts"][0]["id"] == part["id"]
 
 
 def test_pin_changes_unverify_and_cant_remove_pins(mcp, api):
@@ -164,7 +164,7 @@ def test_building_a_design_from_scratch(mcp, api):
         "unverified_part",
     ]
     # Every change saved a revision first, by Claude, saying what it did.
-    history = mcp("list_revisions", design_id=design["id"])
+    history = mcp("list_revisions", design_id=design["id"])["revisions"]
     assert [r["summary"] for r in history] == [
         "Connected esp.3V3 to bme.VIN, esp.GND to bme.GND, esp.GPIO21 to bme.SDA and 1 more",
         "Added esp, BME280",
@@ -202,14 +202,14 @@ def test_changing_and_undoing(mcp, api):
     removed = mcp("remove_placement", design_id=d, ref="sensor")
     assert [p["ref"] for p in removed["parts"]] == ["esp"] and removed["wires"] == []
 
-    history = mcp("list_revisions", design_id=d)
+    history = mcp("list_revisions", design_id=d)["revisions"]
     assert history[0]["summary"] == "Removed sensor and its 1 wire"
     assert history[1]["summary"] == "Disconnected sensor.GND from esp.GND"
     assert history[3]["summary"] == "Moved and rotated bme (now sensor)"
     # Undo the removal.
     restored = mcp("restore_revision", design_id=d, revision_id=history[0]["id"])
     assert sorted(p["ref"] for p in restored["parts"]) == ["esp", "sensor"]
-    assert mcp("list_revisions", design_id=d)[0]["author"] == "claude"
+    assert mcp("list_revisions", design_id=d)["revisions"][0]["author"] == "claude"
 
 
 def test_refusals_explain_themselves(mcp):
@@ -226,9 +226,9 @@ def test_tags_and_listing(mcp):
     tag = mcp("create_tag", name="Garden")
     d = mcp("create_design", name="Waterer", tag_ids=[tag["id"]], shelf_project_id=12)
     assert d["tags"] == [{"id": tag["id"], "name": "Garden"}]
-    listed = mcp("list_designs")
+    listed = mcp("list_designs")["designs"]
     assert listed[0]["shelf_project_id"] == 12
-    assert mcp("list_tags")[0]["design_count"] == 1
+    assert mcp("list_tags")["tags"][0]["design_count"] == 1
 
 
 def test_placement_summaries():
@@ -237,3 +237,33 @@ def test_placement_summaries():
     assert summary("bme", "sensor", False, False, False) == "Renamed bme to sensor"
     assert summary("esp", None, True, False, False) == "Moved esp"
     assert summary("esp", None, True, True, True) == "Moved, rotated and changed the note of esp"
+
+
+def test_schemas_are_written_out_in_full(mcp):
+    """Some clients drop $defs: every type and allowed value is inline instead."""
+    tools = {t["name"]: t for t in mcp.rpc("tools/list")["tools"]}
+    for tool in tools.values():
+        assert "$ref" not in str(tool["inputSchema"]), tool["name"]
+    kind = tools["search_parts"]["inputSchema"]["properties"]["kind"]
+    assert kind["type"] == "string" and "board" in kind["enum"]
+    wire = tools["connect"]["inputSchema"]["properties"]["wires"]["items"]
+    assert set(wire["properties"]) == {"a", "b", "color", "label"}
+    assert "red" in wire["properties"]["color"]["enum"]
+    pin = tools["create_part"]["inputSchema"]["properties"]["pins"]["items"]["properties"]
+    assert {"name", "kind", "side", "functions", "flags", "voltage"} <= set(pin)
+    assert "input_only" in pin["flags"]["items"]["enum"]
+
+
+def test_lists_look_the_same_empty_or_full(mcp):
+    assert mcp("list_designs") == {"designs": []}
+    mcp("create_design", name="One")
+    assert len(mcp("list_designs")["designs"]) == 1
+
+
+def test_zero_unlinks_shelf_help(mcp, api):
+    d = mcp("create_design", name="Waterer", shelf_project_id=12)["id"]
+    assert mcp("update_design", design_id=d, shelf_project_id=0)["shelf_project_id"] is None
+    part = api.post(
+        "/api/parts", json={"name": "LED", "kind": "actuator", "shelf_item_id": 4}
+    ).json()
+    assert mcp("update_part", part_id=part["id"], shelf_item_id=0)["shelf_item_id"] is None

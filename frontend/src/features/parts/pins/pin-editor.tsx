@@ -78,7 +78,7 @@ function CheckList<T extends string>({
 
 /** Alternate roles, flags and the Wokwi name: less used, so behind a button. */
 function PinDetails({ pin, onChange }: { pin: DraftPin; onChange: Change }) {
-  const count = pin.functions.length + pin.flags.length
+  const count = pin.functions.length + pin.flags.length + (pin.tie ? 1 : 0)
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -96,6 +96,7 @@ function PinDetails({ pin, onChange }: { pin: DraftPin; onChange: Change }) {
               {[
                 ...pin.functions.map((f) => PIN_KIND_LABELS[f]),
                 ...pin.flags.map((f) => PIN_FLAG_SHORT[f]),
+                ...(pin.tie ? [`tied ${pin.tie}`] : []),
               ].join(', ')}
             </span>
           )}
@@ -118,6 +119,16 @@ function PinDetails({ pin, onChange }: { pin: DraftPin; onChange: Change }) {
               value={pin.flags}
               onChange={(flags) => onChange(pin.key, { flags })}
             />
+            <label className="grid gap-1 text-xs font-medium text-muted-foreground">
+              Tied to
+              <Input
+                value={pin.tie ?? ''}
+                onChange={(e) => onChange(pin.key, { tie: e.target.value || null })}
+                placeholder="e.g. 3V3"
+                title="Pins of this part with the same name here are joined inside it (two 3V3 pins, say). Ground pins are joined anyway."
+                className="font-mono"
+              />
+            </label>
             <label className="grid gap-1 text-xs font-medium text-muted-foreground">
               Wokwi pin name
               <Input

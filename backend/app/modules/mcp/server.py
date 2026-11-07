@@ -62,6 +62,10 @@ designs carry Shelf-help ids (shelf_item_id, shelf_project_id).
   check them. Changing a part's pins makes it unverified again.
 - Search before creating a part. When adding one, also find or create its Shelf-help
   item and store the id.
+- This app can't see Shelf-help, so it can't check Shelf-help ids: look each one up with
+  the Shelf-help tools before storing it. 0 unlinks.
+- Ground pins of a part are joined inside it, and so are pins sharing a tie (two 3V3 pins
+  tied "3V3"); nets include them. Set tie when creating parts with repeated supply pins.
 - "Do I have what this design needs?": look up each part's Shelf-help item. Offer to mark
   missing ones as need.
 - Every change you make to a design saves a revision first, so the user can undo it from
@@ -108,6 +112,54 @@ class DesignView(BaseModel):
     wires: list[WireView]
     nets: list[NetOut]
     check_summary: CheckSummary
+
+
+# Lists come wrapped in an object, so an empty list and a full one look the same to the
+# client (bare lists are sent as one content block per item, or none).
+
+
+class PartsFound(BaseModel):
+    parts: list[PartSummary]
+
+
+class Tags(BaseModel):
+    tags: list[TagOut]
+
+
+class Designs(BaseModel):
+    designs: list[DesignSummary]
+
+
+class Revisions(BaseModel):
+    revisions: list[RevisionOut]
+
+
+def inline_schema(schema: dict) -> dict:
+    """The schema with `$defs` written out where they're used, and `X | None` fields
+    shown as plain X (they're optional by not being required).
+
+    Some MCP clients drop `$defs`, leaving fields that point at nothing: no pin fields, no
+    allowed values. Written out in place, every client sees them.
+    """
+    defs = schema.get("$defs", {})
+
+    def walk(node):
+        if isinstance(node, list):
+            return [walk(item) for item in node]
+        if not isinstance(node, dict):
+            return node
+        if "$ref" in node:
+            target = walk(defs[node["$ref"].rsplit("/", 1)[-1]])
+            extra = {k: walk(v) for k, v in node.items() if k != "$ref"}
+            return {**target, **extra}
+        node = {k: walk(v) for k, v in node.items() if k != "$defs"}
+        options = node.get("anyOf")
+        if options and len(options) == 2 and {"type": "null"} in options:
+            kept = next(o for o in options if o != {"type": "null"})
+            node = {**{k: v for k, v in node.items() if k != "anyOf"}, **kept}
+        return node
+
+    return walk(schema)
 
 
 def _view(design: Design) -> DesignView:
@@ -164,8 +216,12 @@ def _explained(fn):
 
 
 def _set(**fields) -> dict:
-    """Only the fields given, for partial updates."""
-    return {name: value for name, value in fields.items() if value is not None}
+    """Only the fields given, for partial updates. A Shelf-help id of 0 unlinks it."""
+    given = {name: value for name, value in fields.items() if value is not None}
+    for link in ("shelf_item_id", "shelf_project_id"):
+        if given.get(link) == 0:
+            given[link] = None
+    return given
 
 
 def _placement_summary(
@@ -207,7 +263,7 @@ def build_server(open_session: SessionOpener) -> MCPServer:
         kind: PartKind | None = None,
         tag_id: int | None = None,
         unverified_only: bool = False,
-    ) -> list[PartSummary]:
+    ) -> PartsFound:
         """Parts in the library, by name. query matches names and descriptions."""
         with open_session() as session:
             found = part_service.list_parts(
@@ -217,7 +273,7 @@ def build_server(open_session: SessionOpener) -> MCPServer:
                 [tag_id] if tag_id is not None else None,
                 False if unverified_only else None,
             )
-            return [PartSummary.model_validate(p) for p in found]
+            return PartsFound(parts=[PartSummary.model_validate(p) for p in found])
 
     @tool(READ)
     def get_part(part_id: int) -> PartDetail:
@@ -289,7 +345,8 @@ def build_server(open_session: SessionOpener) -> MCPServer:
         order: send every existing pin with its id (from get_part), changed or not, plus
         new ones without an id. That adds, renames and reorders pins; removing one isn't
         possible here. Changing the pins sets the part unverified. Notes are added with
-        append_part_notes."""
+        append_part_notes. shelf_item_id: 0 unlinks; look the id up in Shelf-help before
+        storing it, since this app can't check it."""
         fields = _set(
             name=name,
             kind=kind,
@@ -319,10 +376,10 @@ def build_server(open_session: SessionOpener) -> MCPServer:
             return _part_detail(session, part_id)
 
     @tool(READ)
-    def list_tags() -> list[TagOut]:
+    def list_tags() -> Tags:
         """All tags, with how many parts and designs use each."""
         with open_session() as session:
-            return tags.list_tags(session)
+            return Tags(tags=tags.list_tags(session))
 
     @tool(WRITE)
     def create_tag(name: str) -> TagOut:
@@ -335,11 +392,13 @@ def build_server(open_session: SessionOpener) -> MCPServer:
     @tool(READ)
     def list_designs(
         query: Annotated[str, Field(max_length=200)] | None = None,
-    ) -> list[DesignSummary]:
+    ) -> Designs:
         """Designs, most recently changed first, with part count, Shelf-help project id and
         check counts. query matches names and descriptions."""
         with open_session() as session:
-            return [designs.summary(d) for d in designs.list_designs(session, query)]
+            return Designs(
+                designs=[designs.summary(d) for d in designs.list_designs(session, query)]
+            )
 
     @tool(READ)
     def get_design(design_id: int) -> DesignView:
@@ -372,7 +431,9 @@ def build_server(open_session: SessionOpener) -> MCPServer:
         shelf_project_id: int | None = None,
         tag_ids: list[int] | None = None,
     ) -> DesignView:
-        """Renames a design, links it to a Shelf-help project, or sets its tags."""
+        """Renames a design, links it to a Shelf-help project, or sets its tags.
+        shelf_project_id: 0 unlinks; look the id up in Shelf-help before storing it, since
+        this app can't check it."""
         data = DesignUpdate(**_set(name=name, shelf_project_id=shelf_project_id, tag_ids=tag_ids))
         with open_session() as session:
             return _view(designs.update_design(session, design_id, data))
@@ -478,11 +539,13 @@ def build_server(open_session: SessionOpener) -> MCPServer:
             return run_checks(designs.get_design(session, design_id))
 
     @tool(READ)
-    def list_revisions(design_id: int) -> list[RevisionOut]:
+    def list_revisions(design_id: int) -> Revisions:
         """Saved versions of the design, newest first. Each is the design as it was before
         the change in its summary."""
         with open_session() as session:
-            return revisions_service.list_revisions(designs.get_design(session, design_id))
+            return Revisions(
+                revisions=revisions_service.list_revisions(designs.get_design(session, design_id))
+            )
 
     @tool(WRITE)
     def restore_revision(design_id: int, revision_id: int) -> DesignView:
@@ -490,5 +553,9 @@ def build_server(open_session: SessionOpener) -> MCPServer:
         state is saved as a revision first, so this can be undone too."""
         with open_session() as session:
             return _view(designs.restore_revision(session, design_id, revision_id, Author.CLAUDE))
+
+    # Every tool's arguments, written out in full (see inline_schema).
+    for registered in server._tool_manager.list_tools():
+        registered.parameters = inline_schema(registered.parameters)
 
     return server

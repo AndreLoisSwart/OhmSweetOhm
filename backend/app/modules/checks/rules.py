@@ -98,7 +98,12 @@ def overvoltage(ctx: Context) -> Iterator[CheckResult]:
                 id="overvoltage",
                 severity=Severity.ERROR,
                 message=(
-                    f"{pin.key} ({volts(rated)} max) is on a {volts(v)} net driven by {driver.key}"
+                    # I2C lines are open-drain: the level comes from the pull-ups.
+                    f"{pin.key} ({volts(rated)} max) is on an I2C line pulled up to "
+                    f"{volts(v)} by {driver.key}'s side"
+                    if _is_i2c(pin) or _is_i2c(driver)
+                    else f"{pin.key} ({volts(rated)} max) is on a {volts(v)} net "
+                    f"driven by {driver.key}"
                 ),
                 pins=[pin.key, driver.key],
                 net=net.name,
@@ -112,7 +117,8 @@ def undervoltage_supply(ctx: Context) -> Iterator[CheckResult]:
             continue
         v, source = power
         for pin in net.of_kind(PinKind.POWER_IN):
-            low = pin.part.supply_min_v
+            # The part's lowest supply voltage; failing that, what the pin says it needs.
+            low = pin.part.supply_min_v if pin.part.supply_min_v is not None else pin.pin.voltage
             if low is not None and v < low - TOLERANCE_V:
                 yield CheckResult(
                     id="undervoltage_supply",
@@ -192,46 +198,81 @@ def _only(pin: CPin, role: PinKind, other: PinKind) -> bool:
     return pin.has_role(role) and not pin.has_role(other)
 
 
+def _is_i2c(pin: CPin) -> bool:
+    return pin.kind in (PinKind.I2C_SDA, PinKind.I2C_SCL)
+
+
 @rule
 def i2c_mismatch(ctx: Context) -> Iterator[CheckResult]:
+    # One error per net: SDA-only and SCL-only pins of different parts on it, at least
+    # one of them so by kind (a GPIO whose usual role is SDA, wired to a sensor's SCL).
     for net in ctx.nets:
-        for sda in net.pins:
-            for scl in other_parts(net, sda):
-                # SDA-only on one side, SCL-only on the other, and at least one of them by
-                # its main kind: a GPIO whose usual role is SDA, wired to a sensor's SCL.
-                if not (
-                    _only(sda, PinKind.I2C_SDA, PinKind.I2C_SCL)
-                    and _only(scl, PinKind.I2C_SCL, PinKind.I2C_SDA)
-                ):
-                    continue
-                if sda.kind != PinKind.I2C_SDA and scl.kind != PinKind.I2C_SCL:
-                    continue
-                yield CheckResult(
-                    id="i2c_mismatch",
-                    severity=Severity.ERROR,
-                    message=f"SDA ({sda.key}) is wired to SCL ({scl.key})",
-                    pins=[sda.key, scl.key],
-                    net=net.name,
-                )
+        sda = [p for p in net.pins if _only(p, PinKind.I2C_SDA, PinKind.I2C_SCL)]
+        scl = [p for p in net.pins if _only(p, PinKind.I2C_SCL, PinKind.I2C_SDA)]
+        pairs = [
+            (a, b)
+            for a in sda
+            for b in scl
+            if a.placement is not b.placement
+            and (a.kind == PinKind.I2C_SDA or b.kind == PinKind.I2C_SCL)
+        ]
+        if not pairs:
+            continue
+        involved = list(dict.fromkeys(p for pair in pairs for p in pair))
+        named = ", ".join(
+            f"{p.key} ({'SDA' if p.has_role(PinKind.I2C_SDA) else 'SCL'})" for p in involved
+        )
+        yield CheckResult(
+            id="i2c_mismatch",
+            severity=Severity.ERROR,
+            message=f"SDA and SCL are wired together: {named}",
+            pins=[p.key for p in involved],
+            net=net.name,
+        )
 
 
-def i2c_buses(ctx: Context) -> Iterator[CNet]:
-    """Nets with an SDA pin by kind: one per I2C bus."""
-    for net in ctx.nets:
-        if net.of_kind(PinKind.I2C_SDA):
-            yield net
+def i2c_buses(ctx: Context) -> list[list[CPin]]:
+    """The I2C pins of each bus. Parts are on one bus when their SDA or SCL pins share a
+    net, either way round, so a swapped pair still counts as one bus."""
+    parent: dict[int, int] = {}
+
+    def find(x: int) -> int:
+        parent.setdefault(x, x)
+        while parent[x] != x:
+            x = parent[x]
+        return x
+
+    i2c_nets = [
+        net
+        for net in ctx.nets
+        if any(p.has_role(PinKind.I2C_SDA) or p.has_role(PinKind.I2C_SCL) for p in net.pins)
+        and any(_is_i2c(p) for p in net.pins)
+    ]
+    for net in i2c_nets:
+        placements = [p.placement.id for p in net.pins]
+        for other in placements[1:]:
+            parent[find(other)] = find(placements[0])
+    buses: dict[int, list[CPin]] = {}
+    for net in i2c_nets:
+        for pin in net.pins:
+            if pin.has_role(PinKind.I2C_SDA) or pin.has_role(PinKind.I2C_SCL):
+                buses.setdefault(find(pin.placement.id), []).append(pin)
+    return list(buses.values())
 
 
 @rule
 def i2c_address_clash(ctx: Context) -> Iterator[CheckResult]:
-    for net in i2c_buses(ctx):
-        by_address: dict[int, list[CPin]] = {}
-        for pin in net.of_kind(PinKind.I2C_SDA):
-            if pin.part.i2c_addresses:
-                by_address.setdefault(pin.part.i2c_addresses[0], []).append(pin)
-        for address, pins in by_address.items():
-            if len({p.placement.id for p in pins}) > 1:
-                refs = ", ".join(p.placement.ref for p in pins)
+    for bus in i2c_buses(ctx):
+        devices: dict[int, list[CPin]] = {}
+        for pin in bus:
+            if pin.part.i2c_addresses and _is_i2c(pin):
+                devices.setdefault(pin.placement.id, []).append(pin)
+        by_address: dict[int, list[list[CPin]]] = {}
+        for pins in devices.values():
+            by_address.setdefault(pins[0].part.i2c_addresses[0], []).append(pins)
+        for address, parts_pins in by_address.items():
+            if len(parts_pins) > 1:
+                refs = ", ".join(pins[0].placement.ref for pins in parts_pins)
                 yield CheckResult(
                     id="i2c_address_clash",
                     severity=Severity.ERROR,
@@ -239,21 +280,21 @@ def i2c_address_clash(ctx: Context) -> Iterator[CheckResult]:
                         f"{refs} share the I2C address 0x{address:02x} on one bus. "
                         "Change one's address (if it has another) or use a second bus"
                     ),
-                    pins=[p.key for p in pins],
-                    net=net.name,
+                    pins=[p.key for pins in parts_pins for p in pins],
+                    net=ctx.net_of[parts_pins[0][0].key].name,
                 )
 
 
 @rule
 def i2c_pullups(ctx: Context) -> Iterator[CheckResult]:
     # Parts don't record whether they carry pull-ups yet, so this is a reminder per bus.
-    for net in i2c_buses(ctx):
+    for bus in i2c_buses(ctx):
         yield CheckResult(
             id="i2c_pullups",
             severity=Severity.NOTE,
             message="Make sure the I2C bus has pull-ups. Most breakouts include them",
-            pins=net.keys,
-            net=net.name,
+            pins=[p.key for p in bus],
+            net=ctx.net_of[bus[0].key].name,
         )
 
 

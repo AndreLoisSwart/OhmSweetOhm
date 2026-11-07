@@ -18,4 +18,5 @@ export interface PinOut {
   side: PinSide;
   position: number;
   wokwi_name: string | null;
+  tie: string | null;
 }

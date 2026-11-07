@@ -150,7 +150,16 @@ def replace_pins(
 def _pin_signature(pins: list[Pin]) -> list[tuple]:
     """What a pin change is judged on: everything about each pin, in order."""
     return sorted(
-        (p.side, p.position, p.name, p.kind, tuple(p.functions), p.voltage, tuple(p.flags))
+        (
+            p.side,
+            p.position,
+            p.name,
+            p.kind,
+            tuple(p.functions),
+            p.voltage,
+            tuple(p.flags),
+            p.tie or "",
+        )
         for p in pins
     )
 
@@ -199,6 +208,7 @@ def copy_part(session: Session, part_id: int) -> Part:
                 side=pin.side,
                 position=pin.position,
                 wokwi_name=pin.wokwi_name,
+                tie=pin.tie,
             )
             for pin in source.pins
         ],

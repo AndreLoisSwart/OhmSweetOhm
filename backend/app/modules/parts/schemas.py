@@ -51,9 +51,12 @@ class PinIn(BaseModel):
     flags: list[PinFlag] = []
     side: PinSide
     wokwi_name: Annotated[str, StringConstraints(max_length=40)] | None = None
+    # Pins of this part with the same tie are joined inside it, e.g. two 3V3 pins both
+    # tied "3V3". Ground pins are joined anyway.
+    tie: Annotated[str, StringConstraints(max_length=20)] | None = None
 
     _unique_lists = field_validator("functions", "flags")(_unique)
-    _optional = field_validator("wokwi_name")(_clean_optional)
+    _optional = field_validator("wokwi_name", "tie")(_clean_optional)
 
 
 def check_pin_names(pins: list[PinIn]) -> list[PinIn]:
@@ -85,6 +88,7 @@ class PinOut(BaseModel):
     side: PinSide
     position: int
     wokwi_name: str | None
+    tie: str | None
 
 
 class PartSummary(BaseModel):

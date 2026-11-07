@@ -14,7 +14,8 @@ Part         id, name (unique, ignoring case), kind, description,
 
 Pin          id, part_id → Part, name (unique within the part),
              kind, functions (JSON list), voltage (nullable),
-             flags (JSON list), side, position, wokwi_name (nullable)
+             flags (JSON list), side, position, wokwi_name (nullable),
+             tie (nullable)
 
 Design       id, name, description_md,
              shelf_project_id (nullable, Shelf-help Project id),
@@ -75,7 +76,8 @@ Attachment   id, original_filename, mime_type, size, stored_path, created_at,
   - A wire from a pin to itself is refused, and so is a second wire between the same two pins (in either direction).
   - A pin can have many wires.
 - **Wire colour:** when none is given, it defaults by pin kind: red for power, black for ground, otherwise the next colour in a fixed rotation (blue, green, yellow, orange, purple, white, brown), counting only the design's signal wires.
-- **Nets** are computed from wires (union-find) whenever they are read, and never stored. A net is named after its power or ground pin when it has one (`3V3`, `GND`; a `power_out` pin first, then ground, then `power_in`), otherwise after its lowest `ref.PIN`. Two separate nets that would share a name are numbered (`GND`, `GND_2`).
+- **Pins joined inside a part:** all of a part's ground pins are one node, and so are its pins with the same `tie` (two 3V3 pins both tied `3V3`). Nets include them once any of them is wired, so a board's GND and GND2 are one net, and a short to either is caught.
+- **Nets** are computed from wires and those joins (union-find) whenever they are read, and never stored. A net is named after its power or ground pin when it has one (`3V3`, `GND`; a `power_out` pin first, then ground, then `power_in`), otherwise after its lowest `ref.PIN`. Two separate nets that would share a name are numbered (`GND`, `GND_2`).
 - **Removing a placement** removes its wires. This is allowed for Claude too (see Revisions).
 - **Positions when Claude adds a part:** a placement added without a position goes to the right of the existing parts, on the grid. Positions are snapped to the grid on save.
 - **Automatic refs:** a placement added without a ref gets the first letters of its part's name (`bme` from "BME280 breakout", `esp` from "ESP32 DevKit"), then `bme2`, `bme3`. Refs are stored in lower case.
