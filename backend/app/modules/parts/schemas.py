@@ -189,3 +189,16 @@ class PartUpdate(_PartFields):
     _unique_lists = field_validator("i2c_addresses")(lambda v: _unique(v) if v else v)
     _url = field_validator("datasheet_url")(_clean_url)
     _optional = field_validator("wokwi_type")(_clean_optional)
+
+
+class StarterPartOut(BaseModel):
+    name: str
+    kind: PartKind
+    pin_count: int
+    # Already in the library (by name, ignoring case).
+    present: bool
+
+
+class StarterAdded(BaseModel):
+    added: list[str]
+    skipped: list[str]

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ApiError, apiFetch, errorMessage, isConnectionError } from './fetcher'
+import { ApiError, apiFetch, errorMessage, isConnectionError, validationMessage } from './fetcher'
 
 const respond = (status: number, body: string) =>
   vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(body, { status }))
@@ -44,5 +44,37 @@ describe('errorMessage', () => {
       'Too long',
     )
     expect(errorMessage(new ApiError(500, 'oops'))).toBe('Something went wrong (500)')
+  })
+})
+
+describe('validationMessage', () => {
+  it('says what a pattern means instead of showing it', () => {
+    expect(
+      validationMessage({
+        type: 'string_pattern_mismatch',
+        loc: ['body', 'pins', 2, 'name'],
+        msg: "String should match pattern '^[^\\s.]+$'",
+      }),
+    ).toBe("Pin names can't have spaces or dots (pins are named ref.PIN)")
+  })
+
+  it('names the field for other problems', () => {
+    expect(
+      validationMessage({
+        type: 'less_than_equal',
+        loc: ['body', 'supply_max_v'],
+        msg: 'Input should be less than or equal to 60',
+      }),
+    ).toBe('Supply max V: input should be less than or equal to 60')
+  })
+
+  it('keeps the rules’ own sentences', () => {
+    expect(
+      validationMessage({
+        type: 'value_error',
+        loc: ['body', 'pins'],
+        msg: 'Value error, Two pins are called "GND". Number repeats, e.g. GND and GND2',
+      }),
+    ).toBe('Two pins are called "GND". Number repeats, e.g. GND and GND2')
   })
 })

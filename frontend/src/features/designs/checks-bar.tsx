@@ -1,6 +1,6 @@
 import { cn } from 'cn'
 import { ChevronDown, CircleCheck, CircleX, Info, TriangleAlert } from 'lucide-react'
-import { useContext, useState } from 'react'
+import { useContext } from 'react'
 import type { CheckResult, CheckSummary, DesignDetail, Severity } from '@/api/generated/model'
 import { plural } from '@/lib/format'
 import { HighlightContext } from './canvas/highlight'
@@ -29,7 +29,15 @@ export function CheckCounts({ summary, className }: { summary: CheckSummary; cla
   return <span className={cn('flex flex-wrap items-center gap-x-3', className)}>{parts}</span>
 }
 
-function ResultRow({ result, design }: { result: CheckResult; design: DesignDetail }) {
+function ResultRow({
+  result,
+  design,
+  onPick,
+}: {
+  result: CheckResult
+  design: DesignDetail
+  onPick?: () => void
+}) {
   const store = useContext(HighlightContext)
   const Icon = ICON[result.severity]
   const net = design.nets.find((n) => n.name === result.net)
@@ -39,7 +47,10 @@ function ResultRow({ result, design }: { result: CheckResult; design: DesignDeta
         type="button"
         className="flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted"
         // Highlights the pins it's about, and the rest of their net.
-        onClick={() => store.toggle([...new Set([...result.pins, ...(net?.pins ?? [])])])}
+        onClick={() => {
+          store.toggle([...new Set([...result.pins, ...(net?.pins ?? [])])])
+          onPick?.()
+        }}
       >
         <Icon className={cn('mt-0.5 size-4 shrink-0', TONE[result.severity])} />
         <span className="min-w-0 flex-1">{result.message}</span>
@@ -52,15 +63,25 @@ function ResultRow({ result, design }: { result: CheckResult; design: DesignDeta
 }
 
 /** Under the canvas: a summary line that opens into the list of results. */
-export function ChecksBar({ design }: { design: DesignDetail }) {
-  const [open, setOpen] = useState(false)
+export function ChecksBar({
+  design,
+  open,
+  onOpenChange,
+  onPick,
+}: {
+  design: DesignDetail
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  /** After a result is picked (its pins are highlighted). */
+  onPick?: () => void
+}) {
   const { summary, results } = design.checks
   return (
     <div className="shrink-0 border-t bg-background">
       <button
         type="button"
         className="flex h-9 w-full items-center gap-3 px-3 text-sm"
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => onOpenChange(!open)}
         aria-expanded={open}
         disabled={!results.length}
       >
@@ -85,7 +106,7 @@ export function ChecksBar({ design }: { design: DesignDetail }) {
       {open && results.length > 0 && (
         <ul className="max-h-[35vh] overflow-y-auto px-1 pb-2">
           {results.map((result, i) => (
-            <ResultRow key={i} result={result} design={design} />
+            <ResultRow key={i} result={result} design={design} onPick={onPick} />
           ))}
         </ul>
       )}

@@ -14,5 +14,9 @@ export const RoutesContext = createContext<Map<string, Point[]>>(new Map())
  * room for wires that loop round the outside of the cards. */
 export const FIT = { padding: 0.2, maxZoom: 1.25 }
 
+/** On a phone, fitting a whole design makes labels unreadably small: fit no smaller than
+ * 0.75× and let the user pan to the rest. */
+export const PHONE_FIT = { padding: 0.1, minZoom: 0.75, maxZoom: 1.25 }
+
 /** Library rows carry the part's id under this type when dragged onto the canvas. */
 export const PART_DRAG_TYPE = 'application/x-ohm-part'

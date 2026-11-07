@@ -39,6 +39,8 @@ These are entered and verified by hand (or by Claude, then checked), from the ma
 - **Actuators:** relay module (1-channel), SG90 servo, LED, push button, WS2812B strip
 - **Power:** USB 5 V supply, AMS1117 3.3 V regulator, 18650 holder
 
+**As built in step 8:** the set is data in `backend/app/modules/parts/starter.py`, typed by Claude from the makers' pinouts (no outside library copied). **Starter parts** on the Parts page adds the ones not yet in the library (matched by name), as Claude's and unverified; each part's notes say what to check (silkscreen labels, pin order that varies between makers, pull-ups, level shifting). Verifying them against the real boards, and marking each verified, is the user's half of this step. Tests load the whole set and wire a few of them up to check the checks read them right.
+
 Before copying pin data from an outside library (Fritzing parts are CC-BY-SA; check Wokwi's element definitions' licence), confirm the licence allows it. Typing pinouts from datasheets is always fine.
 
 ## Build order

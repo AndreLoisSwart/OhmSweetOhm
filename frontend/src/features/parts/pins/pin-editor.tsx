@@ -406,6 +406,12 @@ export function PinEditor({ part }: { part: PartDetail }) {
             </Button>
           ))}
         </div>
+        {draft.length === 0 && (
+          <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+            No pins yet. Paste a header's pin names in one go, or add them one by one, in the order
+            they sit on the board. Kinds are guessed from the names; check them after.
+          </p>
+        )}
         {sides.map((side) => (
           <SideSection
             key={side}

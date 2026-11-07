@@ -27,7 +27,7 @@ import {
 import type { DesignDetail } from '@/api/generated/model'
 import { GRID } from '@/features/parts/card/layout'
 import { type DesignActions, quietly } from '../use-design-actions'
-import { FIT, PART_DRAG_TYPE, PinEventsContext, RoutesContext } from './context'
+import { FIT, PART_DRAG_TYPE, PHONE_FIT, PinEventsContext, RoutesContext } from './context'
 import { HighlightContext } from './highlight'
 import { netsByPin, type PartNodeType, routeInput, turned, type WireEdgeType } from './model'
 import { PartNode } from './part-node'
@@ -61,6 +61,8 @@ export function DesignCanvas({
 }: Props) {
   const store = useContext(HighlightContext)
   const { fitView, screenToFlowPosition } = useReactFlow()
+  // Read-only is the phone view (docs/pages.md).
+  const fit = readOnly ? PHONE_FIT : FIT
 
   // Fit once every card has been measured (the fitView prop fires too early, see pages.md).
   const initialized = useNodesInitialized()
@@ -70,10 +72,10 @@ export function DesignCanvas({
     // A frame later: the page switches to full width as it opens, after the first measure.
     const frame = requestAnimationFrame(() => {
       fitted.current = true
-      void fitView(FIT)
+      void fitView(fit)
     })
     return () => cancelAnimationFrame(frame)
-  }, [initialized, fitView])
+  }, [initialized, fitView, fit])
 
   // Nets come from the server with every answer; a change of wires clears the highlight.
   const nets = useMemo(() => netsByPin(design), [design])
@@ -236,7 +238,7 @@ export function DesignCanvas({
           connectionRadius={14}
           snapToGrid
           snapGrid={[GRID, GRID]}
-          fitViewOptions={FIT}
+          fitViewOptions={fit}
           minZoom={0.2}
           maxZoom={3}
           nodesDraggable={!readOnly}
@@ -253,7 +255,7 @@ export function DesignCanvas({
           proOptions={{ hideAttribution: true }}
         >
           <Background variant={BackgroundVariant.Dots} gap={GRID * 2} size={1.2} />
-          <Controls showInteractive={false} fitViewOptions={FIT} />
+          <Controls showInteractive={false} fitViewOptions={fit} />
           <MiniMap pannable zoomable className="!bg-card max-lg:!hidden" />
           {children}
         </ReactFlow>

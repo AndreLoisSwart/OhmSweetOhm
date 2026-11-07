@@ -173,6 +173,52 @@
         }
       }
     },
+    "/api/parts/starter": {
+      "get": {
+        "tags": [
+          "parts"
+        ],
+        "summary": "List Starter Parts",
+        "description": "The starter modules (docs/mvp.md), and whether each is in the library yet.",
+        "operationId": "list_starter_parts",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/StarterPartOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Starter Parts"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "parts"
+        ],
+        "summary": "Add Starter Parts",
+        "description": "Adds the starter parts that aren't in the library yet, unverified.",
+        "operationId": "add_starter_parts",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StarterAdded"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/parts/{part_id}": {
       "get": {
         "tags": [
@@ -3123,6 +3169,57 @@
         ],
         "title": "Snapshot",
         "description": "A design's placements and wires: what a revision keeps, and what undo sends."
+      },
+      "StarterAdded": {
+        "properties": {
+          "added": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Added"
+          },
+          "skipped": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Skipped"
+          }
+        },
+        "type": "object",
+        "required": [
+          "added",
+          "skipped"
+        ],
+        "title": "StarterAdded"
+      },
+      "StarterPartOut": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/PartKind"
+          },
+          "pin_count": {
+            "type": "integer",
+            "title": "Pin Count"
+          },
+          "present": {
+            "type": "boolean",
+            "title": "Present"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "kind",
+          "pin_count",
+          "present"
+        ],
+        "title": "StarterPartOut"
       },
       "TagCreate": {
         "properties": {

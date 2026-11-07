@@ -46,10 +46,34 @@ export function errorMessage(error: unknown): string {
     if (typeof detail === 'string') return detail
     // FastAPI validation errors: a list, each with a message. Show the first one.
     if (Array.isArray(detail) && typeof detail[0]?.msg === 'string') {
-      return detail[0].msg.replace(/^Value error, /, '')
+      return validationMessage(detail[0] as ValidationIssue)
     }
     if (error.status === 422) return 'Some of the values are not valid'
     return `Something went wrong (${error.status})`
   }
   return 'Something went wrong'
+}
+
+type ValidationIssue = { type?: string; loc?: (string | number)[]; msg: string }
+
+// What a field must look like, for the patterns the API checks (say it plainly instead
+// of showing the regular expression).
+const PATTERNS: Record<string, string> = {
+  name: "Pin names can't have spaces or dots (pins are named ref.PIN)",
+  ref: 'A ref starts with a letter, then letters, digits or _ (up to 20)',
+  new_ref: 'A ref starts with a letter, then letters, digits or _ (up to 20)',
+  a: 'Wire ends are written ref.PIN, e.g. esp.GPIO21',
+  b: 'Wire ends are written ref.PIN, e.g. esp.GPIO21',
+}
+
+/** "Supply max v: must be at most 60" rather than pydantic's wording alone. */
+export function validationMessage(issue: ValidationIssue): string {
+  const field = [...(issue.loc ?? [])].reverse().find((part) => typeof part === 'string')
+  const msg = issue.msg.replace(/^Value error, /, '')
+  if (issue.type === 'string_pattern_mismatch' && field && PATTERNS[field]) return PATTERNS[field]
+  // Errors raised by the API's own rules read as sentences already.
+  if (issue.type === 'value_error' || !field || ['body', 'query', 'path'].includes(field))
+    return msg
+  const label = field.replace(/_/g, ' ').replace(/\bv\b/, 'V')
+  return `${label[0].toUpperCase()}${label.slice(1)}: ${msg[0].toLowerCase()}${msg.slice(1)}`
 }

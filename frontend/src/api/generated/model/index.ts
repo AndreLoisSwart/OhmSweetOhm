@@ -49,6 +49,8 @@ export * from './placementUpdateRotation';
 export * from './revisionOut';
 export * from './severity';
 export * from './snapshot';
+export * from './starterAdded';
+export * from './starterPartOut';
 export * from './tagCreate';
 export * from './tagOut';
 export * from './tagRef';

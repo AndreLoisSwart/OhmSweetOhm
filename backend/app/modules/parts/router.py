@@ -14,6 +14,8 @@ from app.modules.parts.schemas import (
     PartSummary,
     PartUpdate,
     PinsReplace,
+    StarterAdded,
+    StarterPartOut,
 )
 
 router = APIRouter(prefix="/parts", tags=["parts"])
@@ -42,6 +44,18 @@ def list_parts(
 @router.post("", status_code=201)
 def create_part(data: PartCreate, session: SessionDep) -> PartDetail:
     return part_detail(session, service.create_part(session, data))
+
+
+@router.get("/starter")
+def list_starter_parts(session: SessionDep) -> list[StarterPartOut]:
+    """The starter modules (docs/mvp.md), and whether each is in the library yet."""
+    return service.list_starter_parts(session)
+
+
+@router.post("/starter")
+def add_starter_parts(session: SessionDep) -> StarterAdded:
+    """Adds the starter parts that aren't in the library yet, unverified."""
+    return service.add_starter_parts(session)
 
 
 @router.get("/{part_id}")

@@ -50,6 +50,7 @@ function DesignEditor({ design }: { design: DesignDetail }) {
   const [libraryOpen, setLibraryOpen] = useState(false)
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
+  const [checksOpen, setChecksOpen] = useState(false)
   const changedBy = useOutsideChanges(design, actions)
 
   // React Flow keeps its own copy (positions while dragging, selection); it is rebuilt
@@ -65,6 +66,13 @@ function DesignEditor({ design }: { design: DesignDetail }) {
   const placement = design.placements.find((p) => String(p.id) === selectedNode?.id)
   const selectedEdge = edges.find((e) => e.selected)
   const wire = design.wires.find((w) => String(w.id) === selectedEdge?.id)
+
+  const closeSheet = () => {
+    setDetailsOpen(false)
+    setNodes((ns) => ns.map((n) => (n.selected ? { ...n, selected: false } : n)))
+    setEdges((es) => es.map((e) => (e.selected ? { ...e, selected: false } : e)))
+    store.clear()
+  }
 
   const inspector = (
     <Inspector
@@ -248,20 +256,22 @@ function DesignEditor({ design }: { design: DesignDetail }) {
                 </>
               )}
               {!wide && (
-                <BottomSheet
-                  open={Boolean(placement || wire || detailsOpen)}
-                  onClose={() => {
-                    setDetailsOpen(false)
-                    setNodes((ns) => ns.map((n) => (n.selected ? { ...n, selected: false } : n)))
-                    setEdges((es) => es.map((e) => (e.selected ? { ...e, selected: false } : e)))
-                    store.clear()
-                  }}
-                >
+                <BottomSheet open={Boolean(placement || wire || detailsOpen)} onClose={closeSheet}>
                   {inspector}
                 </BottomSheet>
               )}
             </div>
-            <ChecksBar design={design} />
+            <ChecksBar
+              design={design}
+              open={checksOpen}
+              onOpenChange={(open) => {
+                // Below desktop width the sheet and the list share the bottom of the
+                // screen: they take turns, so the canvas stays in view.
+                if (open && !wide) closeSheet()
+                setChecksOpen(open)
+              }}
+              onPick={() => !wide && setChecksOpen(false)}
+            />
           </div>
           {wide && (
             <aside className="w-80 shrink-0 overflow-y-auto border-l p-4">{inspector}</aside>

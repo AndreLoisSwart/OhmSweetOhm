@@ -30,7 +30,9 @@ import type {
   PartDetail,
   PartSummary,
   PartUpdate,
-  PinsReplace
+  PinsReplace,
+  StarterAdded,
+  StarterPartOut
 } from '../model';
 
 import { apiFetch } from '../../fetcher';
@@ -258,6 +260,181 @@ export const useCreatePart = <TError = ErrorType<HTTPValidationError>,
         TContext
       > => {
       return useMutation(getCreatePartMutationOptions(options), queryClient);
+    }
+    export const getListStarterPartsUrl = () => {
+
+
+
+
+  return `/api/parts/starter`
+}
+
+/**
+ * The starter modules (docs/mvp.md), and whether each is in the library yet.
+ * @summary List Starter Parts
+ */
+export const listStarterParts = async ( options?: Parameters<typeof apiFetch>[1]): Promise<StarterPartOut[]> => {
+
+  return apiFetch<StarterPartOut[]>(getListStarterPartsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListStarterPartsQueryKey = () => {
+    return [
+    `/api/parts/starter`
+    ] as const;
+    }
+
+
+export const getListStarterPartsQueryOptions = <TData = Awaited<ReturnType<typeof listStarterParts>>, TError = ErrorType<unknown>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStarterParts>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListStarterPartsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listStarterParts>>> = ({ signal }) => listStarterParts({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listStarterParts>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListStarterPartsQueryResult = NonNullable<Awaited<ReturnType<typeof listStarterParts>>>
+export type ListStarterPartsQueryError = ErrorType<unknown>
+
+
+export function useListStarterParts<TData = Awaited<ReturnType<typeof listStarterParts>>, TError = ErrorType<unknown>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStarterParts>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listStarterParts>>,
+          TError,
+          Awaited<ReturnType<typeof listStarterParts>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListStarterParts<TData = Awaited<ReturnType<typeof listStarterParts>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStarterParts>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listStarterParts>>,
+          TError,
+          Awaited<ReturnType<typeof listStarterParts>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListStarterParts<TData = Awaited<ReturnType<typeof listStarterParts>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStarterParts>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List Starter Parts
+ */
+
+export function useListStarterParts<TData = Awaited<ReturnType<typeof listStarterParts>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listStarterParts>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListStarterPartsQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export const getAddStarterPartsUrl = () => {
+
+
+
+
+  return `/api/parts/starter`
+}
+
+/**
+ * Adds the starter parts that aren't in the library yet, unverified.
+ * @summary Add Starter Parts
+ */
+export const addStarterParts = async ( options?: Parameters<typeof apiFetch>[1]): Promise<StarterAdded> => {
+
+  return apiFetch<StarterAdded>(getAddStarterPartsUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getAddStarterPartsMutationKey = () => ['addStarterParts'] as const;
+
+export const getAddStarterPartsMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addStarterParts>>, TError,void, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof addStarterParts>>, TError,void, TContext> => {
+
+const mutationKey = getAddStarterPartsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof addStarterParts>>, void> = () => {
+
+
+          return  addStarterParts(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AddStarterPartsMutationResult = NonNullable<Awaited<ReturnType<typeof addStarterParts>>>
+
+    export type AddStarterPartsMutationError = ErrorType<unknown>
+
+
+    /**
+ * @summary Add Starter Parts
+ */
+export const useAddStarterParts = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addStarterParts>>, TError,void, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof addStarterParts>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getAddStarterPartsMutationOptions(options), queryClient);
     }
     export const getGetPartUrl = (partId: number,) => {
 

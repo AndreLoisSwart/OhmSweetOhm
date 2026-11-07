@@ -1,5 +1,5 @@
 import { keepPreviousData } from '@tanstack/react-query'
-import { Cpu, Plus, Search, X } from 'lucide-react'
+import { Cpu, PackagePlus, Plus, Search, X } from 'lucide-react'
 import { useSearchParams } from 'react-router'
 import type { PartKind } from '@/api/generated/model'
 import { useListParts } from '@/api/generated/parts/parts'
@@ -17,6 +17,14 @@ import { Toggle } from '@/components/ui/toggle'
 import { PART_KIND_LABELS, PART_KINDS } from './labels'
 import { NewPartDialog } from './new-part-dialog'
 import { PartRow } from './part-row'
+import { StarterPartsDialog } from './starter-parts-dialog'
+
+const starterButton = (
+  <Button variant="outline" aria-label="Starter parts" title="Starter parts">
+    <PackagePlus />
+    <span className="hidden sm:inline">Starter parts</span>
+  </Button>
+)
 
 const newPartButton = (
   <Button>
@@ -60,7 +68,15 @@ export function PartsPage() {
 
   return (
     <>
-      <PageHeader title="Parts" actions={<NewPartDialog trigger={newPartButton} />} />
+      <PageHeader
+        title="Parts"
+        actions={
+          <>
+            <StarterPartsDialog trigger={starterButton} />
+            <NewPartDialog trigger={newPartButton} />
+          </>
+        }
+      />
 
       <FilterBar>
         <div className="relative w-full sm:w-56">
@@ -128,9 +144,12 @@ export function PartsPage() {
         <EmptyState
           icon={Cpu}
           title="No parts yet"
-          description="The modules you build with, and their pins: boards, sensors, displays."
+          description="The modules you build with, and their pins: boards, sensors, displays. Start with common ones, or add your own."
         >
-          <NewPartDialog trigger={newPartButton} />
+          <div className="flex flex-wrap justify-center gap-2">
+            <StarterPartsDialog trigger={starterButton} />
+            <NewPartDialog trigger={newPartButton} />
+          </div>
         </EmptyState>
       )}
     </>

@@ -320,3 +320,11 @@ def test_i2c_overvoltage_speaks_of_pull_ups(bench):
         result["message"]
         == "bme.SDA (3.3 V max) is on an I2C line pulled up to 5 V by uno.A4's side"
     )
+
+
+def test_an_input_only_pin_of_a_5v_part_drives_nothing(bench):
+    bench.part("esp", "GPIO5", "GPIO18", kind="board", logic="3v3")
+    bench.part("sonar", ("TRIG", "gpio", {"flags": ["input_only"]}), "ECHO", logic="5v")
+    bench.wire(("esp.GPIO5", "sonar.TRIG"), ("esp.GPIO18", "sonar.ECHO"))
+    [result] = bench.results("overvoltage")
+    assert result["pins"] == ["esp.GPIO18", "sonar.ECHO"]

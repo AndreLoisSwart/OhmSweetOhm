@@ -7,7 +7,14 @@ from app.modules.attachments import storage
 from app.modules.attachments.models import Attachment
 from app.modules.designs import queries as designs
 from app.modules.parts.models import Author, Part, PartKind, Pin
-from app.modules.parts.schemas import PartCreate, PartUpdate, PinIn
+from app.modules.parts.schemas import (
+    PartCreate,
+    PartUpdate,
+    PinIn,
+    StarterAdded,
+    StarterPartOut,
+)
+from app.modules.parts.starter import starter_parts
 from app.modules.tags import service as tags
 from app.modules.tags.models import Tag
 
@@ -231,3 +238,34 @@ def delete_part(session: Session, part_id: int) -> None:
     session.delete(part)
     session.commit()
     storage.remove_files(files)
+
+
+# Starter parts (build step 8)
+
+
+def _names(session: Session) -> set[str]:
+    return {name.lower() for name in session.scalars(select(Part.name))}
+
+
+def list_starter_parts(session: Session) -> list[StarterPartOut]:
+    have = _names(session)
+    return [
+        StarterPartOut(
+            name=p.name, kind=p.kind, pin_count=len(p.pins), present=p.name.lower() in have
+        )
+        for p in starter_parts()
+    ]
+
+
+def add_starter_parts(session: Session) -> StarterAdded:
+    """Adds the starter parts not already in the library (by name). They come in as
+    Claude's, so unverified: the user checks each against the real board."""
+    have = _names(session)
+    added, skipped = [], []
+    for data in starter_parts():
+        if data.name.lower() in have:
+            skipped.append(data.name)
+            continue
+        create_part(session, data, Author.CLAUDE)
+        added.append(data.name)
+    return StarterAdded(added=added, skipped=skipped)

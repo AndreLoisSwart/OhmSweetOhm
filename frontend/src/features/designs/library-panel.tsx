@@ -1,13 +1,12 @@
 import { keepPreviousData } from '@tanstack/react-query'
 import { useReactFlow } from '@xyflow/react'
-import { GripVertical, Plus, Search } from 'lucide-react'
+import { CircleAlert, GripVertical, Plus, Search } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router'
 import type { DesignDetail } from '@/api/generated/model'
 import { useListParts } from '@/api/generated/parts/parts'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { UnverifiedBadge } from '@/features/parts/badges'
 import { PART_KIND_LABELS } from '@/features/parts/labels'
 import { plural } from '@/lib/format'
 import { PART_DRAG_TYPE } from './canvas/context'
@@ -72,7 +71,16 @@ export function LibraryPanel({
               <div className="truncate text-sm font-medium">{part.name}</div>
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 {PART_KIND_LABELS[part.kind]} · {plural(part.pin_count, 'pin')}
-                {!part.verified && <UnverifiedBadge />}
+                {!part.verified && (
+                  // Compact in this narrow column; the part page has the full badge.
+                  <CircleAlert
+                    className="size-3.5 shrink-0 text-status-amber"
+                    aria-label="Unverified"
+                    role="img"
+                  >
+                    <title>Unverified: check its pinout</title>
+                  </CircleAlert>
+                )}
               </div>
             </div>
             <Button

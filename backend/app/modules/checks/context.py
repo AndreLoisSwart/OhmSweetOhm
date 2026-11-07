@@ -38,7 +38,10 @@ class CPin:
 
     @property
     def drive_v(self) -> float | None:
-        """The level a signal pin drives: its part's fixed logic level, if it has one."""
+        """The level a signal pin drives: its part's fixed logic level, if it has one.
+        An input-only pin drives nothing (a 5 V sensor's TRIG input, say)."""
+        if self.flagged(PinFlag.INPUT_ONLY):
+            return None
         return LOGIC_LEVEL.get(self.part.logic_voltage)
 
     @property
