@@ -8,6 +8,7 @@ from app.core.errors import ConflictError, NotFoundError
 from app.modules.attachments import storage
 from app.modules.attachments.models import Attachment
 from app.modules.checks.service import run_checks
+from app.modules.designs import revisions
 from app.modules.designs.models import Design, Placement, Wire, WireColor
 from app.modules.designs.nets import compute_nets
 from app.modules.designs.schemas import (
@@ -20,6 +21,7 @@ from app.modules.designs.schemas import (
     PlacementIn,
     PlacementOut,
     PlacementUpdate,
+    Snapshot,
     WireIn,
     WireOut,
     WireUpdate,
@@ -180,6 +182,7 @@ def _next_x(design: Design) -> int:
 
 def add_placements(session: Session, design_id: int, items: list[PlacementIn]) -> Design:
     design = get_design(session, design_id)
+    revisions.before_canvas_change(session, design)
     taken = {p.ref for p in design.placements}
     for item in items:
         part = parts.get_part(session, item.part_id)
@@ -215,6 +218,7 @@ def update_placement(
     session: Session, design_id: int, placement_id: int, data: PlacementUpdate
 ) -> Design:
     design = get_design(session, design_id)
+    revisions.before_canvas_change(session, design)
     placement = _get_placement(design, placement_id)
     changes = data.model_dump(exclude_unset=True)
     if "ref" in changes and changes["ref"] != placement.ref:
@@ -232,6 +236,7 @@ def update_placement(
 
 def remove_placement(session: Session, design_id: int, placement_id: int) -> Design:
     design = get_design(session, design_id)
+    revisions.before_canvas_change(session, design)
     placement = _get_placement(design, placement_id)
     # Its wires go with it.
     design.wires = [
@@ -280,6 +285,7 @@ def _resolve(design: Design, pin_ref: str) -> tuple[Placement, Pin]:
 
 def add_wires(session: Session, design_id: int, items: list[WireIn]) -> Design:
     design = get_design(session, design_id)
+    revisions.before_canvas_change(session, design)
     joined = {
         frozenset({(w.a_placement_id, w.a_pin_id), (w.b_placement_id, w.b_pin_id)})
         for w in design.wires
@@ -321,6 +327,7 @@ def _get_wire(design: Design, wire_id: int) -> Wire:
 
 def update_wire(session: Session, design_id: int, wire_id: int, data: WireUpdate) -> Design:
     design = get_design(session, design_id)
+    revisions.before_canvas_change(session, design)
     wire = _get_wire(design, wire_id)
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(wire, field, value)
@@ -331,7 +338,27 @@ def update_wire(session: Session, design_id: int, wire_id: int, data: WireUpdate
 
 def remove_wire(session: Session, design_id: int, wire_id: int) -> Design:
     design = get_design(session, design_id)
+    revisions.before_canvas_change(session, design)
     design.wires.remove(_get_wire(design, wire_id))
     _touch(design)
+    session.commit()
+    return design
+
+
+# Revisions
+
+
+def apply_layout(session: Session, design_id: int, snapshot: Snapshot) -> Design:
+    """Sets placements and wires to a snapshot: the canvas's undo and redo."""
+    design = get_design(session, design_id)
+    revisions.before_canvas_change(session, design)
+    revisions.apply_snapshot(session, design, snapshot)
+    session.commit()
+    return design
+
+
+def restore_revision(session: Session, design_id: int, revision_id: int) -> Design:
+    design = get_design(session, design_id)
+    revisions.restore_revision(session, design, revision_id)
     session.commit()
     return design

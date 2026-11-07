@@ -998,6 +998,158 @@
         }
       }
     },
+    "/api/designs/{design_id}/layout": {
+      "put": {
+        "tags": [
+          "designs"
+        ],
+        "summary": "Apply Layout",
+        "description": "Sets all placements and wires at once: the canvas's undo and redo.",
+        "operationId": "apply_layout",
+        "parameters": [
+          {
+            "name": "design_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Design Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Snapshot"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DesignDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/designs/{design_id}/revisions": {
+      "get": {
+        "tags": [
+          "designs"
+        ],
+        "summary": "List Revisions",
+        "description": "Newest first. Each holds the design as it was before the change in its summary.",
+        "operationId": "list_revisions",
+        "parameters": [
+          {
+            "name": "design_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Design Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RevisionOut"
+                  },
+                  "title": "Response List Revisions"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/designs/{design_id}/revisions/{revision_id}/restore": {
+      "post": {
+        "tags": [
+          "designs"
+        ],
+        "summary": "Restore Revision",
+        "description": "Saves the current state as a revision first, so the restore can be undone.",
+        "operationId": "restore_revision",
+        "parameters": [
+          {
+            "name": "design_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Design Id"
+            }
+          },
+          {
+            "name": "revision_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Revision Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DesignDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/tags": {
       "get": {
         "tags": [
@@ -2681,6 +2833,55 @@
         ],
         "title": "PlacementOut"
       },
+      "PlacementSnapshot": {
+        "properties": {
+          "ref": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_]{0,19}$",
+            "title": "Ref"
+          },
+          "part_id": {
+            "type": "integer",
+            "title": "Part Id"
+          },
+          "x": {
+            "type": "integer",
+            "maximum": 100000.0,
+            "minimum": -100000.0,
+            "title": "X"
+          },
+          "y": {
+            "type": "integer",
+            "maximum": 100000.0,
+            "minimum": -100000.0,
+            "title": "Y"
+          },
+          "rotation": {
+            "type": "integer",
+            "enum": [
+              0,
+              90,
+              180,
+              270
+            ],
+            "title": "Rotation",
+            "default": 0
+          },
+          "note": {
+            "type": "string",
+            "title": "Note",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "ref",
+          "part_id",
+          "x",
+          "y"
+        ],
+        "title": "PlacementSnapshot"
+      },
       "PlacementUpdate": {
         "properties": {
           "ref": {
@@ -2771,6 +2972,44 @@
         ],
         "title": "PlacementsAdd"
       },
+      "RevisionOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "author": {
+            "$ref": "#/components/schemas/Author"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          },
+          "part_count": {
+            "type": "integer",
+            "title": "Part Count"
+          },
+          "wire_count": {
+            "type": "integer",
+            "title": "Wire Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "created_at",
+          "author",
+          "summary",
+          "part_count",
+          "wire_count"
+        ],
+        "title": "RevisionOut"
+      },
       "Severity": {
         "type": "string",
         "enum": [
@@ -2779,6 +3018,33 @@
           "note"
         ],
         "title": "Severity"
+      },
+      "Snapshot": {
+        "properties": {
+          "placements": {
+            "items": {
+              "$ref": "#/components/schemas/PlacementSnapshot"
+            },
+            "type": "array",
+            "maxItems": 500,
+            "title": "Placements"
+          },
+          "wires": {
+            "items": {
+              "$ref": "#/components/schemas/WireSnapshot"
+            },
+            "type": "array",
+            "maxItems": 2000,
+            "title": "Wires"
+          }
+        },
+        "type": "object",
+        "required": [
+          "placements",
+          "wires"
+        ],
+        "title": "Snapshot",
+        "description": "A design's placements and wires: what a revision keeps, and what undo sends."
       },
       "TagCreate": {
         "properties": {
@@ -2999,6 +3265,58 @@
           "label"
         ],
         "title": "WireOut"
+      },
+      "WireSnapshot": {
+        "properties": {
+          "a": {
+            "type": "string",
+            "pattern": "^[^.\\s]+\\.[^.\\s]+$",
+            "title": "A"
+          },
+          "b": {
+            "type": "string",
+            "pattern": "^[^.\\s]+\\.[^.\\s]+$",
+            "title": "B"
+          },
+          "a_pin_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "A Pin Id"
+          },
+          "b_pin_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "B Pin Id"
+          },
+          "color": {
+            "$ref": "#/components/schemas/WireColor"
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 100,
+            "title": "Label",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "a",
+          "b",
+          "color"
+        ],
+        "title": "WireSnapshot"
       },
       "WireUpdate": {
         "properties": {

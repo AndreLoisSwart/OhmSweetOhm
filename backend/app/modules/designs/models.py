@@ -2,6 +2,7 @@ from datetime import datetime
 from enum import StrEnum
 
 from sqlalchemy import (
+    JSON,
     CheckConstraint,
     Column,
     ForeignKey,
@@ -14,7 +15,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.db import Base, UTCDateTime, str_enum, utcnow
-from app.modules.parts.models import Part, Pin
+from app.modules.parts.models import Author, Part, Pin
 from app.modules.tags.models import Tag
 
 
@@ -64,6 +65,11 @@ class Design(Base):
     )
     tags: Mapped[list[Tag]] = relationship(
         secondary=design_tags, order_by=lambda: func.lower(Tag.name), lazy="selectin"
+    )
+    revisions: Mapped[list["Revision"]] = relationship(
+        back_populates="design",
+        cascade="all, delete-orphan",
+        order_by=lambda: Revision.id.desc(),
     )
 
     @property
@@ -122,3 +128,21 @@ class Wire(Base):
     b_placement: Mapped[Placement] = relationship(foreign_keys=[b_placement_id], lazy="selectin")
     a_pin: Mapped[Pin] = relationship(foreign_keys=[a_pin_id], lazy="selectin")
     b_pin: Mapped[Pin] = relationship(foreign_keys=[b_pin_id], lazy="selectin")
+
+
+class Revision(Base):
+    """The design's placements and wires as they were before a change, to restore."""
+
+    __tablename__ = "revisions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    design_id: Mapped[int] = mapped_column(ForeignKey("designs.id", ondelete="CASCADE"), index=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+    # Who made the change that followed: the user on the canvas, or Claude over MCP.
+    author: Mapped[Author] = mapped_column(str_enum(Author, "author"))
+    # The change that followed, e.g. "Removed led1 and its 2 wires".
+    summary: Mapped[str] = mapped_column(String(200))
+    # A Snapshot (designs/schemas.py): placements and wires.
+    snapshot: Mapped[dict] = mapped_column(JSON)
+
+    design: Mapped[Design] = relationship(back_populates="revisions")

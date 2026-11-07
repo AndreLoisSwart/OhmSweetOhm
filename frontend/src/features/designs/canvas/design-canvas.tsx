@@ -135,42 +135,66 @@ export function DesignCanvas({
   const onBeforeDelete = useCallback(
     async ({ nodes: gone, edges: cut }: { nodes: PartNodeType[]; edges: WireEdgeType[] }) => {
       const removed = new Set(gone.map((n) => n.id))
-      for (const node of gone) await actions.removePlacement(Number(node.id)).catch(() => {})
-      for (const edge of cut)
-        if (!removed.has(edge.source) && !removed.has(edge.target))
-          await actions.removeWire(Number(edge.id)).catch(() => {})
+      // One undo step for the whole selection.
+      await actions
+        .together(async (raw) => {
+          for (const node of gone) await raw.removePlacement(Number(node.id))
+          for (const edge of cut)
+            if (!removed.has(edge.source) && !removed.has(edge.target))
+              await raw.removeWire(Number(edge.id))
+        })
+        .catch(() => {})
       return false
     },
     [actions],
   )
 
   const onNodeDragStop = useCallback(
-    (_: unknown, __: PartNodeType, moved: PartNodeType[]) => {
-      for (const node of moved) {
+    (_: unknown, __: PartNodeType, dragged: PartNodeType[]) => {
+      const moves = dragged.flatMap((node) => {
         const placement = node.data.placement
         const x = Math.round(node.position.x / GRID) * GRID
         const y = Math.round(node.position.y / GRID) * GRID
-        if (x !== placement.x || y !== placement.y)
-          quietly(actions.updatePlacement(placement.id, { x, y }))
-      }
+        return x !== placement.x || y !== placement.y ? [{ id: placement.id, x, y }] : []
+      })
+      if (!moves.length) return
+      // Moving a selection is one undo step.
+      quietly(
+        actions.together(async (raw) => {
+          for (const { id, x, y } of moves) await raw.updatePlacement(id, { x, y })
+        }),
+      )
     },
     [actions],
   )
 
-  // R turns the selected parts a quarter turn.
+  // Keys: undo and redo, and R to rotate.
   useEffect(() => {
     if (readOnly) return
     const onKey = (e: KeyboardEvent) => {
       if ((e.target as HTMLElement).closest('input, textarea, select, [contenteditable=true]'))
         return
-      if (e.key !== 'r' || e.ctrlKey || e.metaKey || e.altKey) return
-      for (const node of nodes.filter((n) => n.selected))
-        quietly(
-          actions.updatePlacement(
-            node.data.placement.id,
-            turned(node.data.placement, node.data.part),
-          ),
-        )
+      const mod = e.ctrlKey || e.metaKey
+      const key = e.key.toLowerCase()
+      // Undo: Ctrl+Z. Redo: Ctrl+Shift+Z or Ctrl+Y (Cmd on a Mac).
+      if (mod && (key === 'z' || key === 'y')) {
+        e.preventDefault()
+        quietly(key === 'y' || e.shiftKey ? actions.redo() : actions.undo())
+        return
+      }
+      if (key !== 'r' || mod || e.altKey) return
+      // R turns the selected parts a quarter turn, as one undo step.
+      const selected = nodes.filter((n) => n.selected)
+      if (!selected.length) return
+      quietly(
+        actions.together(async (raw) => {
+          for (const node of selected)
+            await raw.updatePlacement(
+              node.data.placement.id,
+              turned(node.data.placement, node.data.part),
+            )
+        }),
+      )
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)

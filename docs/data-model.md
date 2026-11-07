@@ -83,7 +83,9 @@ Attachment   id, original_filename, mime_type, size, stored_path, created_at,
 
 **Revisions**
 - **Changes from Claude:** before each MCP tool call that changes a design, the server saves a revision (`author = claude`) with a one-line summary, e.g. "Removed led1 and its 2 wires".
-- **Changes on the canvas:** saved as you go. A revision is taken at most once per editing session (the first change after 10 minutes of quiet), so history stays readable. The canvas also has its own in-memory undo while you edit.
+- **Changes on the canvas:** saved as you go. A revision is taken at most once per editing session (the first change to placements or wires after 10 minutes of quiet, judged by the design's `updated_at` and its latest revision), so history stays readable. A new design's first edits are one session with no revision before them. The canvas also has its own in-memory undo while you edit.
+- **What a revision holds:** the snapshot of placements (ref, part, position, rotation, note) and wires (ends as `ref.PIN` plus pin ids, colour, label), as the design was before the change in its summary. Not the name, description, tags or links.
+- **Restoring, and the canvas's undo,** set placements and wires to a snapshot (`PUT /api/designs/{id}/layout`). Placements are matched by ref, so unchanged ones keep their ids. Pins are found by id, then by name, so a renamed pin still matches. Anything that no longer exists (a deleted part, a removed pin) is left out, so an old revision always restores.
 - **Restoring a revision** first saves the current state as a revision, so a restore can be undone too.
 - **Retention:** keep the latest 50 revisions per design.
 

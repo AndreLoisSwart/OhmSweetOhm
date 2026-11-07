@@ -33,6 +33,8 @@ import type {
   ListDesignsParams,
   PlacementUpdate,
   PlacementsAdd,
+  RevisionOut,
+  Snapshot,
   WireUpdate,
   WiresAdd
 } from '../model';
@@ -1132,4 +1134,270 @@ export const useRemoveWire = <TError = ErrorType<HTTPValidationError>,
         TContext
       > => {
       return useMutation(getRemoveWireMutationOptions(options), queryClient);
+    }
+    export const getApplyLayoutUrl = (designId: number,) => {
+
+
+
+
+  return `/api/designs/${designId}/layout`
+}
+
+/**
+ * Sets all placements and wires at once: the canvas's undo and redo.
+ * @summary Apply Layout
+ */
+export const applyLayout = async (designId: number,
+    snapshot: Snapshot, options?: Parameters<typeof apiFetch>[1]): Promise<DesignDetail> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<DesignDetail>(getApplyLayoutUrl(designId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(snapshot)
+  }
+);}
+
+
+
+
+
+export const getApplyLayoutMutationKey = () => ['applyLayout'] as const;
+
+export const getApplyLayoutMutationOptions = <TError = ErrorType<HTTPValidationError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof applyLayout>>, TError,ApplyLayoutMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof applyLayout>>, TError,ApplyLayoutMutationVariables, TContext> => {
+
+const mutationKey = getApplyLayoutMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof applyLayout>>, ApplyLayoutMutationVariables> = (props) => {
+          const {designId,data} = props ?? {};
+
+          return  applyLayout(designId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ApplyLayoutMutationResult = NonNullable<Awaited<ReturnType<typeof applyLayout>>>
+    export type ApplyLayoutMutationBody = Snapshot
+    export type ApplyLayoutMutationError = ErrorType<HTTPValidationError>
+    export type ApplyLayoutMutationVariables = {designId: number;data: Snapshot}
+
+    /**
+ * @summary Apply Layout
+ */
+export const useApplyLayout = <TError = ErrorType<HTTPValidationError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof applyLayout>>, TError,ApplyLayoutMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof applyLayout>>,
+        TError,
+        ApplyLayoutMutationVariables,
+        TContext
+      > => {
+      return useMutation(getApplyLayoutMutationOptions(options), queryClient);
+    }
+    export const getListRevisionsUrl = (designId: number,) => {
+
+
+
+
+  return `/api/designs/${designId}/revisions`
+}
+
+/**
+ * Newest first. Each holds the design as it was before the change in its summary.
+ * @summary List Revisions
+ */
+export const listRevisions = async (designId: number, options?: Parameters<typeof apiFetch>[1]): Promise<RevisionOut[]> => {
+
+  return apiFetch<RevisionOut[]>(getListRevisionsUrl(designId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListRevisionsQueryKey = (designId: number,) => {
+    return [
+    `/api/designs/${designId}/revisions`
+    ] as const;
+    }
+
+
+export const getListRevisionsQueryOptions = <TData = Awaited<ReturnType<typeof listRevisions>>, TError = ErrorType<HTTPValidationError>>(designId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listRevisions>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListRevisionsQueryKey(designId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listRevisions>>> = ({ signal }) => listRevisions(designId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: designId !== null && designId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listRevisions>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListRevisionsQueryResult = NonNullable<Awaited<ReturnType<typeof listRevisions>>>
+export type ListRevisionsQueryError = ErrorType<HTTPValidationError>
+
+
+export function useListRevisions<TData = Awaited<ReturnType<typeof listRevisions>>, TError = ErrorType<HTTPValidationError>>(
+ designId: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listRevisions>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listRevisions>>,
+          TError,
+          Awaited<ReturnType<typeof listRevisions>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListRevisions<TData = Awaited<ReturnType<typeof listRevisions>>, TError = ErrorType<HTTPValidationError>>(
+ designId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listRevisions>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listRevisions>>,
+          TError,
+          Awaited<ReturnType<typeof listRevisions>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListRevisions<TData = Awaited<ReturnType<typeof listRevisions>>, TError = ErrorType<HTTPValidationError>>(
+ designId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listRevisions>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List Revisions
+ */
+
+export function useListRevisions<TData = Awaited<ReturnType<typeof listRevisions>>, TError = ErrorType<HTTPValidationError>>(
+ designId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listRevisions>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListRevisionsQueryOptions(designId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export const getRestoreRevisionUrl = (designId: number,
+    revisionId: number,) => {
+
+
+
+
+  return `/api/designs/${designId}/revisions/${revisionId}/restore`
+}
+
+/**
+ * Saves the current state as a revision first, so the restore can be undone.
+ * @summary Restore Revision
+ */
+export const restoreRevision = async (designId: number,
+    revisionId: number, options?: Parameters<typeof apiFetch>[1]): Promise<DesignDetail> => {
+
+  return apiFetch<DesignDetail>(getRestoreRevisionUrl(designId,revisionId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getRestoreRevisionMutationKey = () => ['restoreRevision'] as const;
+
+export const getRestoreRevisionMutationOptions = <TError = ErrorType<HTTPValidationError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof restoreRevision>>, TError,RestoreRevisionMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof restoreRevision>>, TError,RestoreRevisionMutationVariables, TContext> => {
+
+const mutationKey = getRestoreRevisionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof restoreRevision>>, RestoreRevisionMutationVariables> = (props) => {
+          const {designId,revisionId} = props ?? {};
+
+          return  restoreRevision(designId,revisionId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RestoreRevisionMutationResult = NonNullable<Awaited<ReturnType<typeof restoreRevision>>>
+
+    export type RestoreRevisionMutationError = ErrorType<HTTPValidationError>
+    export type RestoreRevisionMutationVariables = {designId: number;revisionId: number}
+
+    /**
+ * @summary Restore Revision
+ */
+export const useRestoreRevision = <TError = ErrorType<HTTPValidationError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof restoreRevision>>, TError,RestoreRevisionMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof restoreRevision>>,
+        TError,
+        RestoreRevisionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRestoreRevisionMutationOptions(options), queryClient);
     }

@@ -1,5 +1,16 @@
 import { ReactFlowProvider, useEdgesState, useNodesState } from '@xyflow/react'
-import { ArrowLeft, Info, Library, Lock, Workflow, X } from 'lucide-react'
+import {
+  ArrowLeft,
+  History,
+  Info,
+  Library,
+  Lock,
+  MoreHorizontal,
+  Redo2,
+  Undo2,
+  Workflow,
+  X,
+} from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { errorMessage } from '@/api/fetcher'
@@ -11,10 +22,17 @@ import { usePageWidth } from '@/components/layout/page-width'
 import { DetailSkeleton } from '@/components/loading'
 import { NotFound } from '@/components/not-found'
 import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { plural } from '@/lib/format'
 import { PHONE_QUERY, useMediaQuery } from '@/lib/use-media-query'
 import { DesignCanvas } from './canvas/design-canvas'
 import { ChecksBar } from './checks-bar'
+import { HistoryDialog } from './history-dialog'
 import { HighlightContext, HighlightStore, usePinnedNet } from './canvas/highlight'
 import { buildEdges, buildNodes, type PartNodeType, type WireEdgeType } from './canvas/model'
 import { Inspector } from './inspector'
@@ -30,6 +48,7 @@ function DesignEditor({ design }: { design: DesignDetail }) {
   const wide = useMediaQuery('(min-width: 1024px)')
   const [libraryOpen, setLibraryOpen] = useState(false)
   const [detailsOpen, setDetailsOpen] = useState(false)
+  const [historyOpen, setHistoryOpen] = useState(false)
 
   // React Flow keeps its own copy (positions while dragging, selection); it is rebuilt
   // from every answer the server gives.
@@ -94,6 +113,50 @@ function DesignEditor({ design }: { design: DesignDetail }) {
               Read-only
             </span>
           )}
+          {!readOnly && (
+            <>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Undo"
+                title="Undo (Ctrl+Z)"
+                disabled={!actions.canUndo}
+                onClick={() => quietly(actions.undo())}
+              >
+                <Undo2 />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Redo"
+                title="Redo (Ctrl+Shift+Z)"
+                disabled={!actions.canRedo}
+                onClick={() => quietly(actions.redo())}
+              >
+                <Redo2 />
+              </Button>
+            </>
+          )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon-sm" aria-label="More">
+                <MoreHorizontal />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={() => setHistoryOpen(true)}>
+                <History />
+                History
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <HistoryDialog
+            designId={design.id}
+            open={historyOpen}
+            onOpenChange={setHistoryOpen}
+            actions={actions}
+            readOnly={readOnly}
+          />
           {!wide && (
             <Button
               variant="ghost"

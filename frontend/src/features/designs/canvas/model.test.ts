@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import type { CanvasPart, DesignDetail } from '@/api/generated/model'
 import { BME280, ESP32_DEVKIT_V1 } from '@/features/parts/card/sample-parts'
-import { buildEdges, buildNodes, freeSpot, netsByPin, routeInput, turned } from './model'
+import {
+  buildEdges,
+  buildNodes,
+  freeSpot,
+  netsByPin,
+  routeInput,
+  snapshotOf,
+  turned,
+} from './model'
 
 const canvasPart = (id: number, part: typeof BME280): CanvasPart => ({
   id,
@@ -89,5 +97,20 @@ describe('freeSpot', () => {
   })
   it('moves right of a card in the way, leaving a gap', () => {
     expect(freeSpot(cards, { x: 60, y: 100 })).toEqual({ x: 240, y: 100 })
+  })
+})
+
+describe('snapshotOf', () => {
+  it('keeps what a layout needs, with pin ids', () => {
+    const snap = snapshotOf(design)
+    expect(snap.placements[1]).toEqual({
+      ref: 'bme',
+      part_id: 2,
+      x: 360,
+      y: 60,
+      rotation: 0,
+      note: '',
+    })
+    expect(snap.wires[0]).toMatchObject({ a: 'esp.GPIO21', b: 'bme.SDA', color: 'blue' })
   })
 })

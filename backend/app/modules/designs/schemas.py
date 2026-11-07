@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_vali
 from app.core.schemas import Name, reject_null
 from app.modules.checks.schemas import CheckSummary, DesignChecks
 from app.modules.designs.models import WireColor
-from app.modules.parts.models import LogicVoltage, PartKind
+from app.modules.parts.models import Author, LogicVoltage, PartKind
 from app.modules.parts.schemas import PinOut
 from app.modules.tags.schemas import TagRef
 
@@ -159,3 +159,41 @@ class WireUpdate(BaseModel):
     label: Annotated[str, StringConstraints(max_length=100)] | None = None
 
     _not_null = field_validator("color", "label")(reject_null)
+
+
+# Revisions and undo
+
+
+class PlacementSnapshot(BaseModel):
+    ref: Ref
+    part_id: int
+    x: Coordinate
+    y: Coordinate
+    rotation: Rotation = 0
+    note: str = ""
+
+
+class WireSnapshot(BaseModel):
+    a: PinRef
+    b: PinRef
+    # Pin ids, when known: they find the pin even if it was renamed since.
+    a_pin_id: int | None = None
+    b_pin_id: int | None = None
+    color: WireColor
+    label: Annotated[str, StringConstraints(max_length=100)] = ""
+
+
+class Snapshot(BaseModel):
+    """A design's placements and wires: what a revision keeps, and what undo sends."""
+
+    placements: Annotated[list[PlacementSnapshot], Field(max_length=500)]
+    wires: Annotated[list[WireSnapshot], Field(max_length=2000)]
+
+
+class RevisionOut(BaseModel):
+    id: int
+    created_at: datetime
+    author: Author
+    summary: str
+    part_count: int
+    wire_count: int

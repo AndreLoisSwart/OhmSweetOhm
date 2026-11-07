@@ -5,7 +5,7 @@ from fastapi import APIRouter, Query
 from app.core.db import SessionDep
 from app.modules.checks.schemas import DesignChecks
 from app.modules.checks.service import run_checks
-from app.modules.designs import service
+from app.modules.designs import revisions, service
 from app.modules.designs.schemas import (
     DesignCreate,
     DesignDetail,
@@ -13,6 +13,8 @@ from app.modules.designs.schemas import (
     DesignUpdate,
     PlacementsAdd,
     PlacementUpdate,
+    RevisionOut,
+    Snapshot,
     WiresAdd,
     WireUpdate,
 )
@@ -92,3 +94,21 @@ def update_wire(
 @router.delete("/{design_id}/wires/{wire_id}")
 def remove_wire(design_id: int, wire_id: int, session: SessionDep) -> DesignDetail:
     return service.detail(service.remove_wire(session, design_id, wire_id))
+
+
+@router.put("/{design_id}/layout")
+def apply_layout(design_id: int, data: Snapshot, session: SessionDep) -> DesignDetail:
+    """Sets all placements and wires at once: the canvas's undo and redo."""
+    return service.detail(service.apply_layout(session, design_id, data))
+
+
+@router.get("/{design_id}/revisions")
+def list_revisions(design_id: int, session: SessionDep) -> list[RevisionOut]:
+    """Newest first. Each holds the design as it was before the change in its summary."""
+    return revisions.list_revisions(service.get_design(session, design_id))
+
+
+@router.post("/{design_id}/revisions/{revision_id}/restore")
+def restore_revision(design_id: int, revision_id: int, session: SessionDep) -> DesignDetail:
+    """Saves the current state as a revision first, so the restore can be undone."""
+    return service.detail(service.restore_revision(session, design_id, revision_id))

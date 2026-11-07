@@ -1,6 +1,13 @@
 // From the API's design to React Flow's nodes and edges, and the router's input. Pure.
 import type { Edge, Node } from '@xyflow/react'
-import type { CanvasPart, DesignDetail, NetOut, PlacementOut, WireOut } from '@/api/generated/model'
+import type {
+  CanvasPart,
+  DesignDetail,
+  NetOut,
+  PlacementOut,
+  Snapshot,
+  WireOut,
+} from '@/api/generated/model'
 import { GRID, layoutCard, type Rotation } from '@/features/parts/card/layout'
 import type { Point, Rect, WireToRoute } from './routing'
 
@@ -118,4 +125,26 @@ export function freeSpot(
   const y = snap(at.y)
   for (let x = snap(at.x); x < snap(at.x) + 5000; x += GRID * 2) if (clear(x, y)) return { x, y }
   return { x: snap(at.x), y }
+}
+
+/** The design's placements and wires, as undo sends them back (PUT /layout). */
+export function snapshotOf(design: DesignDetail): Snapshot {
+  return {
+    placements: design.placements.map(({ ref, part_id, x, y, rotation, note }) => ({
+      ref,
+      part_id,
+      x,
+      y,
+      rotation,
+      note,
+    })),
+    wires: design.wires.map(({ a, b, a_pin_id, b_pin_id, color, label }) => ({
+      a,
+      b,
+      a_pin_id,
+      b_pin_id,
+      color,
+      label,
+    })),
+  }
 }
