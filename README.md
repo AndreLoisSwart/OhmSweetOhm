@@ -8,4 +8,4 @@ A personal electronics workbench, packaged as a Home Assistant add-on.
 
 It is a sibling of [Shelf-help](https://github.com/AndreLoisSwart/ShelfHelp), which tracks stock and projects.
 
-Status: design docs only. See `docs/mvp.md` for the plan.
+Status: build step 1 (skeleton and add-on packaging) done. See `docs/mvp.md` for the plan.

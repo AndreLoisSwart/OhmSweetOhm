@@ -1,0 +1,24 @@
+# Home Assistant add-on config. Lives at the repo root because HA uses this
+# folder as the Docker build context, and the image needs backend/ and frontend/.
+name: Ohm Sweet Ohm
+version: "0.1.0"
+slug: ohm_sweet_ohm
+description: Electronics workbench for parts and wiring designs
+url: https://github.com/AndreLoisSwart/OhmSweetOhm
+arch:
+  - amd64
+startup: application
+boot: auto
+# Stop the add-on during HA backups, so the SQLite file is never copied mid-write.
+backup: cold
+ingress: true
+ingress_port: 8097
+panel_icon: mdi:home-lightning-bolt
+panel_title: Ohm Sweet Ohm
+# Direct LAN access for Claude (MCP), disabled by default. Enable it by setting a host
+# port in the add-on's Network settings. It serves only /mcp, with the token from
+# Settings; the app itself stays behind Ingress.
+ports:
+  8097/tcp: null
+ports_description:
+  8097/tcp: Claude MCP access (token required, /mcp only)
