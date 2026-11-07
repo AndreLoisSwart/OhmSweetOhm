@@ -18,24 +18,27 @@ Checks are computed every time and never stored.
 |---|---|---|
 | `power_short` | error | A net contains both a `power_out` pin and a `ground` pin |
 | `supply_clash` | error | A net joins two `power_out` pins of different voltages (5 V and 3.3 V outputs tied together) |
-| `overvoltage` | error | A net carrying a higher voltage reaches a signal or `power_in` pin rated lower. The net's voltage comes from its `power_out` pins, or from the logic level of the parts driving it. Not raised for `five_v_tolerant` pins |
+| `overvoltage` | error | A net carrying a higher voltage reaches a signal or `power_in` pin rated lower. The net's voltage comes from its `power_out` pins, or else from the logic level of the parts on it with a fixed level (`3v3` or `5v`; `both` adapts and drives nothing). A signal pin is rated at its own `voltage`, else its part's logic level (`both` counts as 5 V); a `power_in` pin at its part's `supply_max_v`, else its own `voltage`. Not raised for `five_v_tolerant` pins up to 5 V |
 | `undervoltage_supply` | warning | A `power_in` pin is fed less than its part's `supply_min_v` |
 | `no_ground` | error | A part with power wired has no `ground` pin connected to any other part's ground |
-| `unpowered` | warning | A part with `power_in` pins has none of them connected |
-| `output_to_output` | warning | Two `uart_tx` pins, or two pins of the same push-pull kind, are joined |
+| `unpowered` | warning | A part with `power_in` pins has none of them connected. Not raised for boards (usually powered over USB) or power parts (they are the supply) |
+| `output_to_output` | warning | Two `power_out` pins of the same voltage, on different parts, are joined, so the supplies fight or back-feed (different voltages are `supply_clash`; TX to TX is `uart_crossed`) |
 | `uart_crossed` | warning | `uart_tx` is wired to `uart_tx` (or `rx` to `rx`) instead of crossed |
-| `i2c_mismatch` | error | An SDA pin is wired to an SCL pin |
-| `i2c_address_clash` | error | Two parts on the same SDA net use the same default I2C address |
-| `i2c_pullups` | note | An I2C bus has no part known to carry pull-ups (shown as a reminder; most breakouts include them) |
+| `i2c_mismatch` | error | An SDA pin is wired to an SCL pin. A pin counts by its kind or its `functions` (ESP32 GPIO21 is SDA by function), as long as one side is so by kind |
+| `i2c_address_clash` | error | Two parts on the same SDA net use the same default I2C address (the first in `i2c_addresses`) |
+| `i2c_pullups` | note | A reminder on every I2C bus (a net with an SDA pin), since parts don't yet record whether they carry pull-ups; most breakouts do |
 | `flash_pin` | error | A wire is attached to a pin flagged `flash` |
-| `input_only_driven` | warning | A pin flagged `input_only` is on a net where it would need to drive (e.g. wired to an `spi_cs` or an actuator's input) |
+| `input_only_driven` | warning | A pin flagged `input_only` is on a net with another part's pin that needs driving: SPI CS, MOSI or SCK, UART RX, I2C, `enable`, `reset`, or any signal pin of an actuator |
 | `strapping_pin` | warning | A pin flagged `strapping` (or `boot_high`/`boot_low`) is used; it can stop the board booting depending on what's attached |
-| `adc2_wifi` | warning | An `analog` use of a pin flagged `adc2` on a board with WiFi |
+| `adc2_wifi` | warning | A pin flagged `adc2` is wired to another part's `analog` pin. Only ESP32-class boards carry the flag, and they all have WiFi |
 | `nc_connected` | warning | A pin of kind `nc` has a wire |
 | `unverified_part` | warning | A placed part is not verified, so its pinout may be wrong |
 | `floating_input` | note | A `enable` or `reset` pin has no wire |
 
 ## Output shape
+
+`GET /api/designs/{id}/checks` returns this. Every design answer (`GET /api/designs/{id}` and every change) carries it as `checks`, so the checks bar is current after each change, and the designs list carries each design's `check_summary`. Results come errors first. Voltages compare with a 0.25 V tolerance.
+
 
 ```json
 {

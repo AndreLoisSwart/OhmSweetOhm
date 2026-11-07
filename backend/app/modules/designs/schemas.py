@@ -4,6 +4,7 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_validator
 
 from app.core.schemas import Name, reject_null
+from app.modules.checks.schemas import CheckSummary, DesignChecks
 from app.modules.designs.models import WireColor
 from app.modules.parts.models import LogicVoltage, PartKind
 from app.modules.parts.schemas import PinOut
@@ -75,6 +76,8 @@ class DesignSummary(BaseModel):
     tags: list[TagRef]
     part_count: int
     updated_at: datetime
+    # Error, warning and note counts from the checks (docs/checks.md).
+    check_summary: CheckSummary
 
 
 class DesignDetail(DesignSummary):
@@ -85,6 +88,8 @@ class DesignDetail(DesignSummary):
     # Each part placed, once.
     parts: list[CanvasPart]
     nets: list[NetOut]
+    # Run on every read, so every change answers with fresh results.
+    checks: DesignChecks
 
 
 class DesignRef(BaseModel):

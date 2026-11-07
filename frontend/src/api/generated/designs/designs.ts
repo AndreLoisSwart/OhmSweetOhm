@@ -24,6 +24,7 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  DesignChecks,
   DesignCreate,
   DesignDetail,
   DesignSummary,
@@ -523,7 +524,108 @@ export const useDeleteDesign = <TError = ErrorType<HTTPValidationError>,
       > => {
       return useMutation(getDeleteDesignMutationOptions(options), queryClient);
     }
-    export const getAddPlacementsUrl = (designId: number,) => {
+    export const getCheckDesignUrl = (designId: number,) => {
+
+
+
+
+  return `/api/designs/${designId}/checks`
+}
+
+/**
+ * Every rule in docs/checks.md, errors first. Also part of every design answer.
+ * @summary Check Design
+ */
+export const checkDesign = async (designId: number, options?: Parameters<typeof apiFetch>[1]): Promise<DesignChecks> => {
+
+  return apiFetch<DesignChecks>(getCheckDesignUrl(designId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getCheckDesignQueryKey = (designId: number,) => {
+    return [
+    `/api/designs/${designId}/checks`
+    ] as const;
+    }
+
+
+export const getCheckDesignQueryOptions = <TData = Awaited<ReturnType<typeof checkDesign>>, TError = ErrorType<HTTPValidationError>>(designId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof checkDesign>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getCheckDesignQueryKey(designId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof checkDesign>>> = ({ signal }) => checkDesign(designId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: designId !== null && designId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof checkDesign>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type CheckDesignQueryResult = NonNullable<Awaited<ReturnType<typeof checkDesign>>>
+export type CheckDesignQueryError = ErrorType<HTTPValidationError>
+
+
+export function useCheckDesign<TData = Awaited<ReturnType<typeof checkDesign>>, TError = ErrorType<HTTPValidationError>>(
+ designId: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof checkDesign>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof checkDesign>>,
+          TError,
+          Awaited<ReturnType<typeof checkDesign>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useCheckDesign<TData = Awaited<ReturnType<typeof checkDesign>>, TError = ErrorType<HTTPValidationError>>(
+ designId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof checkDesign>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof checkDesign>>,
+          TError,
+          Awaited<ReturnType<typeof checkDesign>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useCheckDesign<TData = Awaited<ReturnType<typeof checkDesign>>, TError = ErrorType<HTTPValidationError>>(
+ designId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof checkDesign>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Check Design
+ */
+
+export function useCheckDesign<TData = Awaited<ReturnType<typeof checkDesign>>, TError = ErrorType<HTTPValidationError>>(
+ designId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof checkDesign>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getCheckDesignQueryOptions(designId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export const getAddPlacementsUrl = (designId: number,) => {
 
 
 

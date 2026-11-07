@@ -629,6 +629,49 @@
         }
       }
     },
+    "/api/designs/{design_id}/checks": {
+      "get": {
+        "tags": [
+          "designs"
+        ],
+        "summary": "Check Design",
+        "description": "Every rule in docs/checks.md, errors first. Also part of every design answer.",
+        "operationId": "check_design",
+        "parameters": [
+          {
+            "name": "design_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Design Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DesignChecks"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/designs/{design_id}/placements": {
       "post": {
         "tags": [
@@ -1383,6 +1426,93 @@
         "title": "CanvasPart",
         "description": "What the canvas needs to draw a placed part."
       },
+      "CheckResult": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "severity": {
+            "$ref": "#/components/schemas/Severity"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "pins": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Pins"
+          },
+          "net": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Net"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "severity",
+          "message",
+          "pins"
+        ],
+        "title": "CheckResult"
+      },
+      "CheckSummary": {
+        "properties": {
+          "error": {
+            "type": "integer",
+            "title": "Error",
+            "default": 0
+          },
+          "warning": {
+            "type": "integer",
+            "title": "Warning",
+            "default": 0
+          },
+          "note": {
+            "type": "integer",
+            "title": "Note",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "title": "CheckSummary"
+      },
+      "DesignChecks": {
+        "properties": {
+          "design_id": {
+            "type": "integer",
+            "title": "Design Id"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/CheckSummary"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/CheckResult"
+            },
+            "type": "array",
+            "title": "Results"
+          }
+        },
+        "type": "object",
+        "required": [
+          "design_id",
+          "summary",
+          "results"
+        ],
+        "title": "DesignChecks"
+      },
       "DesignCreate": {
         "properties": {
           "name": {
@@ -1459,6 +1589,9 @@
             "format": "date-time",
             "title": "Updated At"
           },
+          "check_summary": {
+            "$ref": "#/components/schemas/CheckSummary"
+          },
           "description_md": {
             "type": "string",
             "title": "Description Md"
@@ -1495,6 +1628,9 @@
             },
             "type": "array",
             "title": "Nets"
+          },
+          "checks": {
+            "$ref": "#/components/schemas/DesignChecks"
           }
         },
         "type": "object",
@@ -1505,12 +1641,14 @@
           "tags",
           "part_count",
           "updated_at",
+          "check_summary",
           "description_md",
           "created_at",
           "placements",
           "wires",
           "parts",
-          "nets"
+          "nets",
+          "checks"
         ],
         "title": "DesignDetail"
       },
@@ -1568,6 +1706,9 @@
             "type": "string",
             "format": "date-time",
             "title": "Updated At"
+          },
+          "check_summary": {
+            "$ref": "#/components/schemas/CheckSummary"
           }
         },
         "type": "object",
@@ -1577,7 +1718,8 @@
           "shelf_project_id",
           "tags",
           "part_count",
-          "updated_at"
+          "updated_at",
+          "check_summary"
         ],
         "title": "DesignSummary"
       },
@@ -2628,6 +2770,15 @@
           "parts"
         ],
         "title": "PlacementsAdd"
+      },
+      "Severity": {
+        "type": "string",
+        "enum": [
+          "error",
+          "warning",
+          "note"
+        ],
+        "title": "Severity"
       },
       "TagCreate": {
         "properties": {

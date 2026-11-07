@@ -5,6 +5,8 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { CanvasPart } from './canvasPart';
+import type { CheckSummary } from './checkSummary';
+import type { DesignChecks } from './designChecks';
 import type { NetOut } from './netOut';
 import type { PlacementOut } from './placementOut';
 import type { TagRef } from './tagRef';
@@ -17,10 +19,12 @@ export interface DesignDetail {
   tags: TagRef[];
   part_count: number;
   updated_at: string;
+  check_summary: CheckSummary;
   description_md: string;
   created_at: string;
   placements: PlacementOut[];
   wires: WireOut[];
   parts: CanvasPart[];
   nets: NetOut[];
+  checks: DesignChecks;
 }

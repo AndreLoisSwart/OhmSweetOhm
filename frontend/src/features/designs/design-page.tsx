@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button'
 import { plural } from '@/lib/format'
 import { PHONE_QUERY, useMediaQuery } from '@/lib/use-media-query'
 import { DesignCanvas } from './canvas/design-canvas'
+import { ChecksBar } from './checks-bar'
 import { HighlightContext, HighlightStore, usePinnedNet } from './canvas/highlight'
 import { buildEdges, buildNodes, type PartNodeType, type WireEdgeType } from './canvas/model'
 import { Inspector } from './inspector'
@@ -111,67 +112,70 @@ function DesignEditor({ design }: { design: DesignDetail }) {
               <LibraryPanel design={design} actions={actions} />
             </aside>
           )}
-          <div className="relative min-w-0 flex-1">
-            <DesignCanvas
-              design={design}
-              nodes={nodes}
-              edges={edges}
-              onNodesChange={onNodesChange}
-              onEdgesChange={onEdgesChange}
-              actions={actions}
-              readOnly={readOnly}
-            />
-            {design.placements.length === 0 && (
-              <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-6">
-                <EmptyState
-                  icon={Workflow}
-                  title="An empty design"
-                  description={
-                    readOnly
-                      ? 'Parts are placed on a tablet or computer.'
-                      : wide
-                        ? 'Drag parts from the library, then wire pin to pin.'
-                        : 'Add parts from the library, then wire pin to pin.'
-                  }
-                />
-              </div>
-            )}
-            {!wide && !readOnly && (
-              <>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="absolute top-2 left-2 z-10 bg-card"
-                  onClick={() => setLibraryOpen((open) => !open)}
-                  aria-pressed={libraryOpen}
+          <div className="flex min-w-0 flex-1 flex-col">
+            <div className="relative min-h-0 flex-1">
+              <DesignCanvas
+                design={design}
+                nodes={nodes}
+                edges={edges}
+                onNodesChange={onNodesChange}
+                onEdgesChange={onEdgesChange}
+                actions={actions}
+                readOnly={readOnly}
+              />
+              {design.placements.length === 0 && (
+                <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-6">
+                  <EmptyState
+                    icon={Workflow}
+                    title="An empty design"
+                    description={
+                      readOnly
+                        ? 'Parts are placed on a tablet or computer.'
+                        : wide
+                          ? 'Drag parts from the library, then wire pin to pin.'
+                          : 'Add parts from the library, then wire pin to pin.'
+                    }
+                  />
+                </div>
+              )}
+              {!wide && !readOnly && (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="absolute top-2 left-2 z-10 bg-card"
+                    onClick={() => setLibraryOpen((open) => !open)}
+                    aria-pressed={libraryOpen}
+                  >
+                    <Library />
+                    Parts
+                  </Button>
+                  {libraryOpen && (
+                    <aside className="absolute top-12 bottom-2 left-2 z-10 w-64 rounded-lg border bg-card shadow-lg">
+                      <LibraryPanel
+                        design={design}
+                        actions={actions}
+                        onAdded={() => setLibraryOpen(false)}
+                      />
+                    </aside>
+                  )}
+                </>
+              )}
+              {!wide && (
+                <BottomSheet
+                  open={Boolean(placement || wire || detailsOpen)}
+                  onClose={() => {
+                    setDetailsOpen(false)
+                    setNodes((ns) => ns.map((n) => (n.selected ? { ...n, selected: false } : n)))
+                    setEdges((es) => es.map((e) => (e.selected ? { ...e, selected: false } : e)))
+                    store.clear()
+                  }}
                 >
-                  <Library />
-                  Parts
-                </Button>
-                {libraryOpen && (
-                  <aside className="absolute top-12 bottom-2 left-2 z-10 w-64 rounded-lg border bg-card shadow-lg">
-                    <LibraryPanel
-                      design={design}
-                      actions={actions}
-                      onAdded={() => setLibraryOpen(false)}
-                    />
-                  </aside>
-                )}
-              </>
-            )}
-            {!wide && (
-              <BottomSheet
-                open={Boolean(placement || wire || detailsOpen)}
-                onClose={() => {
-                  setDetailsOpen(false)
-                  setNodes((ns) => ns.map((n) => (n.selected ? { ...n, selected: false } : n)))
-                  setEdges((es) => es.map((e) => (e.selected ? { ...e, selected: false } : e)))
-                  store.clear()
-                }}
-              >
-                {inspector}
-              </BottomSheet>
-            )}
+                  {inspector}
+                </BottomSheet>
+              )}
+            </div>
+            <ChecksBar design={design} />
           </div>
           {wide && (
             <aside className="w-80 shrink-0 overflow-y-auto border-l p-4">{inspector}</aside>

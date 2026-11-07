@@ -40,6 +40,8 @@ const design: DesignDetail = {
     },
   ],
   nets: [{ name: 'bme.SDA', pins: ['bme.SDA', 'esp.GPIO21'] }],
+  check_summary: { error: 0, warning: 0, note: 0 },
+  checks: { design_id: 1, summary: { error: 0, warning: 0, note: 0 }, results: [] },
 }
 
 describe('canvas model', () => {

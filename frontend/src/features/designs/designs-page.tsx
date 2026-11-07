@@ -12,6 +12,7 @@ import { PageHeader } from '@/components/page-header'
 import { TagChips } from '@/components/tag-chips'
 import { Button } from '@/components/ui/button'
 import { plural, timeAgo } from '@/lib/format'
+import { CheckCounts } from './checks-bar'
 import { NewDesignDialog } from './new-design-dialog'
 
 const newDesignButton = (
@@ -45,6 +46,7 @@ function DesignRow({ design }: { design: DesignSummary }) {
           <TagChips tags={design.tags} />
         </div>
       </div>
+      <CheckCounts summary={design.check_summary} className="shrink-0 text-xs" />
     </Link>
   )
 }

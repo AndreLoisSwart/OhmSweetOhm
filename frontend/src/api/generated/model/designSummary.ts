@@ -4,6 +4,7 @@
  * Ohm Sweet Ohm
  * OpenAPI spec version: 0.1.0
  */
+import type { CheckSummary } from './checkSummary';
 import type { TagRef } from './tagRef';
 
 export interface DesignSummary {
@@ -13,4 +14,5 @@ export interface DesignSummary {
   tags: TagRef[];
   part_count: number;
   updated_at: string;
+  check_summary: CheckSummary;
 }

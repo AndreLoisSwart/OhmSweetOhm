@@ -7,12 +7,14 @@ from app.core.db import utcnow
 from app.core.errors import ConflictError, NotFoundError
 from app.modules.attachments import storage
 from app.modules.attachments.models import Attachment
+from app.modules.checks.service import run_checks
 from app.modules.designs.models import Design, Placement, Wire, WireColor
 from app.modules.designs.nets import compute_nets
 from app.modules.designs.schemas import (
     CanvasPart,
     DesignCreate,
     DesignDetail,
+    DesignSummary,
     DesignUpdate,
     NetOut,
     PlacementIn,
@@ -49,9 +51,22 @@ def list_designs(
     return list(session.scalars(query))
 
 
+def summary(design: Design) -> DesignSummary:
+    return DesignSummary(
+        id=design.id,
+        name=design.name,
+        shelf_project_id=design.shelf_project_id,
+        tags=design.tags,
+        part_count=design.part_count,
+        updated_at=design.updated_at,
+        check_summary=run_checks(design).summary,
+    )
+
+
 def detail(design: Design) -> DesignDetail:
-    """The design with its parts, wires as `ref.PIN` and computed nets."""
+    """The design with its parts, wires as `ref.PIN`, computed nets and check results."""
     parts_used = {p.part.id: p.part for p in design.placements}
+    checks = run_checks(design)
     return DesignDetail(
         id=design.id,
         name=design.name,
@@ -59,6 +74,8 @@ def detail(design: Design) -> DesignDetail:
         tags=design.tags,
         part_count=design.part_count,
         updated_at=design.updated_at,
+        check_summary=checks.summary,
+        checks=checks,
         description_md=design.description_md,
         created_at=design.created_at,
         placements=[PlacementOut.model_validate(p) for p in design.placements],

@@ -3,6 +3,8 @@ from typing import Annotated
 from fastapi import APIRouter, Query
 
 from app.core.db import SessionDep
+from app.modules.checks.schemas import DesignChecks
+from app.modules.checks.service import run_checks
 from app.modules.designs import service
 from app.modules.designs.schemas import (
     DesignCreate,
@@ -27,7 +29,7 @@ def list_designs(
     tag_id: Annotated[list[int] | None, Query()] = None,
 ) -> list[DesignSummary]:
     """Most recently changed first. Several tag_id values match any of them."""
-    return [DesignSummary.model_validate(d) for d in service.list_designs(session, q, tag_id)]
+    return [service.summary(d) for d in service.list_designs(session, q, tag_id)]
 
 
 @router.post("", status_code=201)
@@ -43,6 +45,12 @@ def get_design(design_id: int, session: SessionDep) -> DesignDetail:
 @router.patch("/{design_id}")
 def update_design(design_id: int, data: DesignUpdate, session: SessionDep) -> DesignDetail:
     return service.detail(service.update_design(session, design_id, data))
+
+
+@router.get("/{design_id}/checks")
+def check_design(design_id: int, session: SessionDep) -> DesignChecks:
+    """Every rule in docs/checks.md, errors first. Also part of every design answer."""
+    return run_checks(service.get_design(session, design_id))
 
 
 @router.delete("/{design_id}", status_code=204)
