@@ -4808,6 +4808,19 @@
               }
             ],
             "title": "Holes"
+          },
+          "pitch_mm": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 10.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pitch Mm"
           }
         },
         "type": "object",
@@ -4840,6 +4853,10 @@
           "holes": {
             "type": "integer",
             "title": "Holes"
+          },
+          "pitch_mm": {
+            "type": "number",
+            "title": "Pitch Mm"
           },
           "updated_at": {
             "type": "string",
@@ -4933,6 +4950,7 @@
           "board_type",
           "strips",
           "holes",
+          "pitch_mm",
           "updated_at",
           "check_summary",
           "stats",
@@ -5196,6 +5214,10 @@
             "type": "integer",
             "title": "Holes"
           },
+          "pitch_mm": {
+            "type": "number",
+            "title": "Pitch Mm"
+          },
           "updated_at": {
             "type": "string",
             "format": "date-time",
@@ -5223,6 +5245,7 @@
           "board_type",
           "strips",
           "holes",
+          "pitch_mm",
           "updated_at",
           "check_summary",
           "stats",
@@ -5255,6 +5278,19 @@
               }
             ],
             "title": "Notes"
+          },
+          "pitch_mm": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 10.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pitch Mm"
           }
         },
         "type": "object",

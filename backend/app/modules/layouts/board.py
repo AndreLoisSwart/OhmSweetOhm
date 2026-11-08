@@ -29,15 +29,19 @@ from app.modules.layouts.models import (
 )
 from app.modules.parts.models import Part, Pin, PinKind
 
+# The usual distance between protoboard holes; a layout sets its own (Layout.pitch_mm).
 PITCH_MM = 2.54
+# Pitches offered for a new board, and the one a breadboard pattern always has.
+PITCHES_MM = (2.54, 2.0, 1.27)
 # How far a footprint's hole may be from the grid and still count as on it.
 GRID_TOLERANCE_MM = 0.1
-# Holes along the pin row for each connector type: 2.54 mm, or 5.08 mm for terminals.
-CONNECTOR_STEP = {
-    ConnectorType.HEADER_MALE: 1,
-    ConnectorType.HEADER_FEMALE: 1,
-    ConnectorType.JST_XH: 1,
-    ConnectorType.SCREW_508: 2,
+# Each connector type's distance between pins, in mm. JST-XH's 2.5 mm is within the
+# tolerance of 2.54, so it fits a standard board.
+CONNECTOR_PITCH_MM = {
+    ConnectorType.HEADER_MALE: 2.54,
+    ConnectorType.HEADER_FEMALE: 2.54,
+    ConnectorType.JST_XH: 2.5,
+    ConnectorType.SCREW_508: 5.08,
 }
 # The breadboard pattern: 14 rows. Rows 1–2 and 13–14 are power rails along the whole
 # board; rows 3–7 and 8–12 are joined in columns of five, each side of the gap.
@@ -92,10 +96,16 @@ def rotate(x: float, y: float, rotation: int) -> tuple[float, float]:
     return x, y
 
 
-def to_steps(mm: float) -> int | None:
+def to_steps(mm: float, pitch: float = PITCH_MM) -> int | None:
     """mm along the board as whole holes, or None when it's off the grid."""
-    steps = round(mm / PITCH_MM)
-    return steps if abs(mm - steps * PITCH_MM) <= GRID_TOLERANCE_MM else None
+    steps = round(mm / pitch)
+    return steps if abs(mm - steps * pitch) <= GRID_TOLERANCE_MM else None
+
+
+def connector_step(connector: Connector, pitch: float) -> int | None:
+    """Holes between a connector's pins on a board, or None when they don't fit it."""
+    step = to_steps(CONNECTOR_PITCH_MM[connector.type], pitch)
+    return step if step else None
 
 
 def footprint_sig(part: Part) -> str:
@@ -135,7 +145,7 @@ class PartOnBoard:
         return s0 + margin < cell[0] < s1 - margin and h0 + margin < cell[1] < h1 - margin
 
 
-def place_part(layout_part: LayoutPart) -> PartOnBoard:
+def place_part(layout_part: LayoutPart, pitch: float = PITCH_MM) -> PartOnBoard:
     placement = layout_part.placement
     part = placement.part
     out = PartOnBoard(layout_part)
@@ -146,7 +156,7 @@ def place_part(layout_part: LayoutPart) -> PartOnBoard:
                 out.missing.append(pin.name)
             continue
         x, y = rotate(pin.x_mm, pin.y_mm, layout_part.rotation)
-        along, across = to_steps(x), to_steps(y)
+        along, across = to_steps(x, pitch), to_steps(y, pitch)
         if along is None or across is None:
             out.off_grid.append(pin.name)
             continue
@@ -159,7 +169,7 @@ def place_part(layout_part: LayoutPart) -> PartOnBoard:
             for x in (b["x"], b["x"] + b["w"])
             for y in (b["y"], b["y"] + b["h"])
         ]
-        xs, ys = [c[0] / PITCH_MM for c in corners], [c[1] / PITCH_MM for c in corners]
+        xs, ys = [c[0] / pitch for c in corners], [c[1] / pitch for c in corners]
         out.body = (
             origin[0] + min(ys),
             origin[1] + min(xs),
@@ -169,11 +179,12 @@ def place_part(layout_part: LayoutPart) -> PartOnBoard:
     return out
 
 
-def connector_cells(connector: Connector) -> list[Cell]:
-    """Each pin's hole, pin 1 first; empty while the connector is off the board."""
-    if connector.strip is None or connector.hole is None:
+def connector_cells(connector: Connector, pitch: float = PITCH_MM) -> list[Cell]:
+    """Each pin's hole, pin 1 first; empty while the connector is off the board, or when
+    its pins don't fit the board's holes."""
+    step = connector_step(connector, pitch)
+    if connector.strip is None or connector.hole is None or step is None:
         return []
-    step = CONNECTOR_STEP[connector.type]
     cells = []
     for i in range(connector.pin_count):
         x, y = rotate(i * step, 0, connector.rotation)
@@ -318,7 +329,8 @@ def build(layout: Layout) -> Board:
             uf.join(node, cell)
 
     placed = {lp.placement_id: lp for lp in layout.parts}
-    parts = [place_part(lp) for lp in layout.parts if lp.on_board and lp.strip is not None]
+    pitch = layout.pitch_mm
+    parts = [place_part(lp, pitch) for lp in layout.parts if lp.on_board and lp.strip is not None]
     off_board = [lp for lp in layout.parts if not lp.on_board or lp.strip is None]
     not_placed = [p for p in design.placements if p.id not in placed]
     present: dict[str, Cell] = {}
@@ -327,7 +339,7 @@ def build(layout: Layout) -> Board:
             present[pin.key] = pin.cell
             uf.join(pin.key, pin.cell)
     for connector in layout.connectors:
-        cells = connector_cells(connector)
+        cells = connector_cells(connector, pitch)
         for cpin in connector.pins:
             if cpin.index > len(cells):
                 continue

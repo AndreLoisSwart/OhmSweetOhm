@@ -1,7 +1,7 @@
 // The board's tools (build step 17): what a pointer on the board means for each.
 // Pure, so it can be tested without React.
 import type { ConnectorType, LayoutDetail } from '@/api/generated/model'
-import { type BoardView, type Cell, cellAt, cellLabel, holeX, STEP } from './geometry'
+import { type BoardView, type Cell, cellAt, cellLabel, holeX, STEP, toSteps } from './geometry'
 
 export type Tool = 'select' | 'cut' | 'jumper' | 'connector'
 
@@ -54,12 +54,19 @@ export function takenHoles(layout: LayoutDetail): Map<string, string> {
 export const inside = (cell: Cell, layout: LayoutDetail) =>
   cell.strip >= 1 && cell.strip <= layout.strips && cell.hole >= 1 && cell.hole <= layout.holes
 
-export const CONNECTOR_TYPES: { type: ConnectorType; label: string; step: number }[] = [
-  { type: 'header_female', label: 'Female header', step: 1 },
-  { type: 'header_male', label: 'Male header', step: 1 },
-  { type: 'jst_xh', label: 'JST-XH', step: 1 },
-  { type: 'screw_508', label: 'Screw terminal 5.08', step: 2 },
+/** Each connector type and the distance between its pins in mm (layouts/board.py). */
+export const CONNECTOR_TYPES: { type: ConnectorType; label: string; pitchMm: number }[] = [
+  { type: 'header_female', label: 'Female header', pitchMm: 2.54 },
+  { type: 'header_male', label: 'Male header', pitchMm: 2.54 },
+  { type: 'jst_xh', label: 'JST-XH', pitchMm: 2.5 },
+  { type: 'screw_508', label: 'Screw terminal 5.08', pitchMm: 5.08 },
 ]
+
+/** Holes between a connector's pins on a board of this pitch, or null if it doesn't fit. */
+export function connectorStep(type: ConnectorType, pitch: number): number | null {
+  const step = toSteps(CONNECTOR_TYPES.find((c) => c.type === type)!.pitchMm, pitch)
+  return step ? step : null
+}
 
 export interface ConnectorDraft {
   type: ConnectorType

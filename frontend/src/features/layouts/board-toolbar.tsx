@@ -5,7 +5,7 @@ import { NativeSelect } from '@/components/native-select'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { nextRotation } from './board/geometry'
-import { CONNECTOR_TYPES, type ConnectorDraft, type Tool } from './board/tools'
+import { CONNECTOR_TYPES, type ConnectorDraft, connectorStep, type Tool } from './board/tools'
 
 const TOOLS: { tool: Tool; label: string; key: string; Icon: typeof Scissors }[] = [
   { tool: 'select', label: 'Select and move', key: 'V', Icon: MousePointer2 },
@@ -23,6 +23,7 @@ export function BoardToolbar({
   jumperStarted,
   connector,
   onConnector,
+  pitch,
 }: {
   tool: Tool
   onTool: (tool: Tool) => void
@@ -31,7 +32,10 @@ export function BoardToolbar({
   jumperStarted: boolean
   connector: ConnectorDraft
   onConnector: (draft: ConnectorDraft) => void
+  /** The board's hole spacing in mm: connectors that don't fit it are marked. */
+  pitch: number
 }) {
+  const fits = connectorStep(connector.type, pitch) !== null
   const hint =
     tool === 'cut'
       ? 'Click a hole to cut the strip there, or the gap between two holes to cut between them. Click a cut to remove it.'
@@ -40,9 +44,11 @@ export function BoardToolbar({
           ? 'Now click the other end. Esc cancels.'
           : `Click one end, then the other. It goes on the ${flipped ? 'copper side (a bottom link)' : 'component side'}: turn the board over for the other.`
         : tool === 'connector'
-          ? connector.pins.some(Boolean)
-            ? `Click where pin 1 goes (the darker one): ${connector.pins.filter(Boolean).join(', ')}. R turns it.`
-            : 'Click where pin 1 goes (the darker one). R turns it. Assign its pins in the Inspector.'
+          ? !fits
+            ? `This type's pins don't fit the board's ${pitch} mm holes: pick another.`
+            : connector.pins.some(Boolean)
+              ? `Click where pin 1 goes (the darker one): ${connector.pins.filter(Boolean).join(', ')}. R turns it.`
+              : 'Click where pin 1 goes (the darker one). R turns it. Assign its pins in the Inspector.'
           : null
   return (
     <div className="pointer-events-none absolute inset-x-2 top-2 z-10 flex flex-col items-center gap-1.5">
@@ -79,6 +85,7 @@ export function BoardToolbar({
               {CONNECTOR_TYPES.map((c) => (
                 <option key={c.type} value={c.type}>
                   {c.label}
+                  {connectorStep(c.type, pitch) === null ? ' (doesn’t fit)' : ''}
                 </option>
               ))}
             </NativeSelect>

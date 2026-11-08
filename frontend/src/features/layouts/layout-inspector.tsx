@@ -14,6 +14,7 @@ import { EditableText } from '@/components/editable-text'
 import { Button } from '@/components/ui/button'
 import { quietly } from '@/features/designs/use-design-actions'
 import { nextRotation } from './board/geometry'
+import { PitchPicker } from './pitch-picker'
 import { CONNECTOR_TYPES, type Selection } from './board/tools'
 import type { LayoutActions } from './use-layout-actions'
 
@@ -189,6 +190,17 @@ function LayoutDetails({
     [
       'Board',
       `${layout.board_type === 'stripboard' ? 'Stripboard' : 'Breadboard pattern'}, ${layout.strips} × ${layout.holes}`,
+    ],
+    [
+      'Hole spacing',
+      layout.board_type === 'stripboard' && !readOnly ? (
+        <PitchPicker
+          value={layout.pitch_mm}
+          onChange={(pitch_mm) => quietly(actions.update({ pitch_mm }))}
+        />
+      ) : (
+        `${layout.pitch_mm} mm`
+      ),
     ],
     ['Parts', `${s.on_board} on, ${s.off_board} off, ${s.not_placed} not placed`],
     ['Still to join', s.missing],

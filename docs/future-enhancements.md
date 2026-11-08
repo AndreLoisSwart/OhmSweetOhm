@@ -208,7 +208,8 @@ Then it's compared with the design's nets:
 | `off_board_unconnected` | warning | an off-board part's connection with no connector pin |
 | `layout_out_of_date` | warning | a part's footprint changed after it was placed |
 | `no_footprint` | error | a part on the board has a pin (not NC) with no hole (added in step 15) |
-| `off_grid` | error | a part's holes aren't on the 2.54 mm grid (added in step 15) |
+| `off_grid` | error | a part's holes aren't on the board's grid (added in step 15) |
+| `connector_off_grid` | error | a connector's pins don't fit the board's hole spacing (added with `pitch_mm`) |
 | `connector_not_placed` | warning | a connector that isn't on the board yet (added in step 15) |
 
 A summary gives jumper count, total jumper length, cuts and board area used, as the score to improve.
@@ -326,6 +327,12 @@ It isn't drawn on the schematic, because physical and logical drawings make each
 - **A snapshot part without a footprint fingerprint** takes the current one, rather than being flagged out of date.
 - **Not done:** previewing a cut's new strip tints before clicking. The dashed mark shows where it will go, and the tints update as soon as it's made.
 
+**Hole spacing per layout (2026-11-08, before step 18):**
+- **`Layout.pitch_mm`**, defaulting to 2.54, with a migration that gives existing layouts 2.54. A breadboard pattern refuses anything else. It's set on New layout and editable in the Inspector.
+- **The engine reads it:** footprints in mm land on holes `pitch_mm` apart (within 0.1 mm), and bodies scale with it.
+- **Connector types have real pitches** (headers 2.54, JST-XH 2.5, terminals 5.08), and a connector's step in holes is worked out per board. One that doesn't fit, such as a 2.54 mm header on 2.0 mm holes, gets the new check `connector_off_grid` (error) and isn't drawn on the board.
+- **The `off_grid` message** names the board's pitch.
+
 ### Claude over MCP (step 18)
 
 | Tool | What it does |
@@ -356,6 +363,13 @@ C  ··E··|··E···························  (two s
 …
 jumpers: 1 B20→F20 (top)   connectors: J1 at T2 (bme)
 ```
+
+**Built in step 18 (2026-11-08):** the tools above, in `mcp/layout_tools.py`, with the text picture in `layouts/picture.py` and the instructions for Claude in the server's instructions. mcp.md lists them.
+- **One revision per call,** with a summary of the change. A call adding several connectors saves one, before the first.
+- **Off-board pins** in proposals and checks follow the part's own pin order.
+- **The footprint editor** now also flags holes outside the outline (ringed in red). Generate replaces a kept outline that doesn't contain the new holes; `set_footprint` with `from_sides` does the same.
+- **Tested end to end** in `tests/test_mcp.py`: Claude lays out a Nano, LED and off-board BME280 on the 24 × 37 board through the tools alone, from shorts to no checks and nothing missing, then cuts, uncuts, moves a connector and restores a revision.
+- **Still to do:** a run with Claude Desktop on a real design (the plan's end-to-end test).
 
 ### Export (step 19)
 

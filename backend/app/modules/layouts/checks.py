@@ -8,9 +8,11 @@ from itertools import combinations
 
 from app.modules.checks.schemas import Severity
 from app.modules.layouts.board import (
+    CONNECTOR_PITCH_MM,
     Board,
     Cell,
     connector_cells,
+    connector_step,
     footprint_sig,
     is_diagonal,
     jumper_length,
@@ -69,7 +71,7 @@ def _users(board: Board) -> dict[Cell, list[tuple[str, str]]]:
         for pin in part.pins:
             users.setdefault(pin.cell, []).append(("pin", pin.key))
     for connector in board.layout.connectors:
-        for i, cell in enumerate(connector_cells(connector), start=1):
+        for i, cell in enumerate(connector_cells(connector, board.layout.pitch_mm), start=1):
             users.setdefault(cell, []).append(("connector", f"{connector.ref} pin {i}"))
     for n, jumper in enumerate(board.layout.jumpers, start=1):
         if jumper.side == JumperSide.TOP:
@@ -96,8 +98,8 @@ def _footprints(board: Board) -> list[Result]:
                 Result(
                     "off_grid",
                     Severity.ERROR,
-                    f"{part.ref}'s holes for {', '.join(part.off_grid)} aren't on the 2.54 mm "
-                    "grid, so it can't sit on this board as it is",
+                    f"{part.ref}'s holes for {', '.join(part.off_grid)} aren't on this board's "
+                    f"{board.layout.pitch_mm:g} mm grid, so it can't sit on it as it is",
                     pins=[f"{part.ref}.{name}" for name in part.off_grid],
                 )
             )
@@ -218,6 +220,15 @@ def _physical(board: Board, users: dict[Cell, list[tuple[str, str]]]) -> list[Re
 def _connectors(board: Board) -> list[Result]:
     out = []
     for connector in board.layout.connectors:
+        if connector_step(connector, board.layout.pitch_mm) is None:
+            out.append(
+                Result(
+                    "connector_off_grid",
+                    Severity.ERROR,
+                    f"{connector.ref}'s pins are {CONNECTOR_PITCH_MM[connector.type]:g} mm apart, "
+                    f"which doesn't fit this board's {board.layout.pitch_mm:g} mm holes",
+                )
+            )
         if connector.strip is None:
             out.append(
                 Result(

@@ -16,6 +16,7 @@ from app.modules.layouts.models import (
     BoardType,
     Connector,
     ConnectorPin,
+    ConnectorType,
     Cut,
     Jumper,
     JumperSide,
@@ -83,6 +84,7 @@ def _summary_fields(layout: Layout, checked: checks.Checked) -> dict:
         "board_type": layout.board_type,
         "strips": layout.strips,
         "holes": layout.holes,
+        "pitch_mm": layout.pitch_mm,
         "updated_at": layout.updated_at,
         "check_summary": counts,
         "stats": LayoutStats(
@@ -150,7 +152,7 @@ def detail(layout: Layout) -> LayoutDetail:
         )
     connectors = []
     for c in layout.connectors:
-        cells = connector_cells(c)
+        cells = connector_cells(c, layout.pitch_mm)
         assigned = {p.index: p for p in c.pins}
         connectors.append(
             ConnectorOut(
@@ -255,9 +257,15 @@ def detail(layout: Layout) -> LayoutDetail:
 # The layout itself ---------------------------------------------------------------------
 
 
+def _check_pitch(board_type: BoardType, pitch: float | None) -> None:
+    if board_type == BoardType.BREADBOARD and pitch not in (None, boards.PITCH_MM):
+        raise ConflictError(f"A breadboard pattern's holes are always {boards.PITCH_MM} mm apart")
+
+
 def create_layout(session: Session, design_id: int, data: LayoutCreate) -> Layout:
     design = designs.get_design(session, design_id)
     strips, holes = DEFAULT_SIZE[data.board_type]
+    _check_pitch(data.board_type, data.pitch_mm)
     if data.board_type == BoardType.BREADBOARD:
         if data.strips not in (None, boards.BREADBOARD_STRIPS):
             raise ConflictError(
@@ -272,6 +280,7 @@ def create_layout(session: Session, design_id: int, data: LayoutCreate) -> Layou
         board_type=data.board_type,
         strips=strips,
         holes=data.holes or holes,
+        pitch_mm=round(data.pitch_mm or boards.PITCH_MM, 2),
     )
     session.add(layout)
     session.commit()
@@ -284,7 +293,11 @@ def _touch(layout: Layout) -> None:
 
 def update_layout(session: Session, layout_id: int, data: LayoutUpdate) -> Layout:
     layout = get_layout(session, layout_id)
-    for field, value in data.model_dump(exclude_unset=True).items():
+    changes = data.model_dump(exclude_unset=True)
+    if "pitch_mm" in changes:
+        _check_pitch(layout.board_type, changes["pitch_mm"])
+        changes["pitch_mm"] = round(changes["pitch_mm"], 2)
+    for field, value in changes.items():
         setattr(layout, field, value)
     _touch(layout)
     session.commit()
@@ -628,7 +641,7 @@ def _hole_users(board: boards.Board) -> set[tuple[int, int]]:
     """Holes with a leg, a connector pin or a jumper end in them."""
     used = {pin.cell for part in board.parts for pin in part.pins}
     for connector in board.layout.connectors:
-        used.update(connector_cells(connector))
+        used.update(connector_cells(connector, board.layout.pitch_mm))
     for j in board.layout.jumpers:
         used.update({(j.a_strip, j.a_hole), (j.b_strip, j.b_hole)})
     return used
@@ -698,3 +711,74 @@ def trim_dead_copper(session: Session, layout_id: int, claude: str | None = None
     if not cuts:
         raise ConflictError("There's no dead copper to trim")
     return add_cuts(session, layout_id, cuts, claude)
+
+
+# For Claude (step 18) ------------------------------------------------------------------
+
+
+def parse_cut(text: str) -> CutIn:
+    """`C9` is a cut at hole C9; `C9-10` a cut between C9 and C10."""
+    head, _, tail = text.strip().partition("-")
+    try:
+        strip, hole = boards.parse_label(head)
+    except ValueError as e:
+        raise ConflictError(str(e)) from e
+    if not tail:
+        return CutIn(strip=strip, hole=hole)
+    if not tail.isdigit() or int(tail) != hole + 1:
+        raise ConflictError(
+            f'"{text}" isn\'t a cut: between two neighbouring holes is written like C9-10'
+        )
+    return CutIn(strip=strip, hole=hole, between=True)
+
+
+def cut_label(cut: Cut | CutIn) -> str:
+    where = label((cut.strip, cut.hole))
+    return f"{where}-{cut.hole + 1}" if cut.between else where
+
+
+def remove_cuts(
+    session: Session, layout_id: int, cut_ids: list[int], claude: str | None = None
+) -> Layout:
+    """Several cuts in one change (one revision)."""
+    layout = get_layout(session, layout_id)
+    by_id = {c.id: c for c in layout.cuts}
+    if missing := [i for i in cut_ids if i not in by_id]:
+        raise NotFoundError(f"Cut {missing[0]} isn't in this layout")
+    revisions.before_change(layout, claude)
+    for cut_id in cut_ids:
+        layout.cuts.remove(by_id[cut_id])
+    _touch(layout)
+    session.commit()
+    return layout
+
+
+def propose_connectors(layout: Layout) -> list[dict]:
+    """One connector per off-board part whose connections reach the board: its pins in
+    the part's own order (a straight cable), a screw terminal for a power part where it
+    fits the board, else a female header. Nothing is changed."""
+    board = boards.build(layout)
+    checked = checks.check(board)
+    by_ref = {p.ref: p for p in layout.design.placements}
+    proposals = []
+    for result in checked.results:
+        if result.id != "off_board_unconnected" or not result.pins:
+            continue
+        placement = by_ref[result.pins[0].split(".")[0]]
+        screw = placement.part.kind == PartKind.POWER and boards.to_steps(
+            boards.CONNECTOR_PITCH_MM[ConnectorType.SCREW_508], layout.pitch_mm
+        )
+        kind = ConnectorType.SCREW_508 if screw else ConnectorType.HEADER_FEMALE
+        proposals.append(
+            {
+                "for_part": placement.ref,
+                "type": kind,
+                "pins": result.pins,
+                "why": (
+                    "a power input: screw terminals take the current and a bare wire"
+                    if screw
+                    else "a header for a cable, in the part's own pin order"
+                ),
+            }
+        )
+    return proposals

@@ -15,4 +15,5 @@ export interface LayoutCreate {
   board_type?: BoardType;
   strips?: number | null;
   holes?: number | null;
+  pitch_mm?: number | null;
 }

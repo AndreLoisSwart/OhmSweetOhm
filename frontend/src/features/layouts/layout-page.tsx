@@ -36,8 +36,8 @@ import { BoardCanvas } from './board/board-canvas'
 import { type BoardHighlight, NO_HIGHLIGHT } from './board/highlight'
 import { type Cell, cellLabel, nextRotation, type Turn } from './board/geometry'
 import {
-  CONNECTOR_TYPES,
   type ConnectorDraft,
+  connectorStep,
   type CutTarget,
   inside,
   type Selection,
@@ -117,6 +117,8 @@ function LayoutEditor({ layout, design }: { layout: LayoutDetail; design: Design
   }
 
   const taken = useMemo(() => takenHoles(layout), [layout])
+  // Holes between the connector tool's pins on this board; null when they don't fit it.
+  const connectorFits = connectorStep(connector.type, layout.pitch_mm)
 
   const cut = (target: CutTarget) => {
     const existing = layout.cuts.find(
@@ -161,6 +163,10 @@ function LayoutEditor({ layout, design }: { layout: LayoutDetail; design: Design
 
   const placeConnector = (cell: Cell) => {
     if (!inside(cell, layout)) return
+    if (!connectorFits) {
+      toast.error(`Its pins don't fit this board's ${layout.pitch_mm} mm holes: pick another type`)
+      return
+    }
     quietly(
       actions
         .addConnector({
@@ -435,10 +441,10 @@ function LayoutEditor({ layout, design }: { layout: LayoutDetail; design: Design
               jumperStart={jumperStart}
               onJumperPoint={jumperPoint}
               connectorPreview={
-                tool === 'connector'
+                tool === 'connector' && connectorFits
                   ? {
                       pins: Math.max(connector.pinCount, connector.pins.length),
-                      step: CONNECTOR_TYPES.find((c) => c.type === connector.type)!.step,
+                      step: connectorFits,
                       rotation: connector.rotation,
                     }
                   : null
@@ -456,6 +462,7 @@ function LayoutEditor({ layout, design }: { layout: LayoutDetail; design: Design
                 jumperStarted={jumperStart !== null}
                 connector={connector}
                 onConnector={setConnector}
+                pitch={layout.pitch_mm}
               />
             )}
             {!wide && (

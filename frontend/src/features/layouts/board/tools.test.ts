@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import type { LayoutDetail } from '@/api/generated/model'
-import { type BoardView, holeX, STEP, stripY } from './geometry'
-import { cutTarget, takenHoles } from './tools'
+import type { LayoutDetail, PinOut } from '@/api/generated/model'
+import { type BoardView, footprintOffsets, holeX, STEP, stripY } from './geometry'
+import { connectorStep, cutTarget, takenHoles } from './tools'
 
 const top: BoardView = { strips: 24, holes: 37, flipped: false }
 const bottom: BoardView = { ...top, flipped: true }
@@ -43,5 +43,25 @@ describe('board tools', () => {
     expect(taken.get('D2')).toBe('J1 pin 1')
     expect(taken.has('A9')).toBe(true)
     expect(taken.has('B1')).toBe(false)
+  })
+})
+
+describe('hole pitch', () => {
+  it('fits connectors to the board', () => {
+    expect(connectorStep('header_female', 2.54)).toBe(1)
+    expect(connectorStep('jst_xh', 2.54)).toBe(1)
+    expect(connectorStep('screw_508', 2.54)).toBe(2)
+    expect(connectorStep('header_male', 2.0)).toBeNull()
+    expect(connectorStep('header_male', 1.27)).toBe(2)
+  })
+
+  it('lays footprints on the board’s own grid', () => {
+    const pins = [
+      { name: 'A', x_mm: 0, y_mm: 0 },
+      { name: 'B', x_mm: 4, y_mm: 0 },
+      { name: 'C', x_mm: 2.54, y_mm: 0 },
+    ] as PinOut[]
+    expect(footprintOffsets(pins, 0, 2).map((p) => p.name)).toEqual(['A', 'B'])
+    expect(footprintOffsets(pins, 0).map((p) => p.name)).toEqual(['A', 'C'])
   })
 })

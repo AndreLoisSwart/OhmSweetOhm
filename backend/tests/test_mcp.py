@@ -90,6 +90,23 @@ def test_tool_list(mcp):
         "suggest_wiring",
         "list_revisions",
         "restore_revision",
+        "list_layouts",
+        "create_layout",
+        "get_layout",
+        "check_layout",
+        "place_on_board",
+        "cut",
+        "uncut",
+        "add_jumpers",
+        "remove_jumper",
+        "propose_connectors",
+        "add_connectors",
+        "update_connector",
+        "remove_connector",
+        "cut_between_rows",
+        "trim_dead_copper",
+        "list_layout_revisions",
+        "restore_layout_revision",
     }
     # Nothing in the library can be deleted.
     assert not [name for name in tools if name.startswith("delete")]
@@ -405,3 +422,120 @@ def test_claude_sets_a_footprint(api, mcp):
 
 def holes(part) -> dict:
     return {p["name"]: (p["x_mm"], p["y_mm"]) for p in part["pins"]}
+
+
+def test_claude_lays_out_a_board(api, mcp):
+    """Step 18 end to end: the Nano + LED + BME280 build on the user's stripboard."""
+    assert api.post("/api/parts/starter").status_code == 200
+    lib = {p["name"]: p["id"] for p in api.get("/api/parts").json()}
+    design = api.post("/api/designs", json={"name": "Bench"}).json()
+    did = design["id"]
+    api.post(
+        f"/api/designs/{did}/placements",
+        json={
+            "parts": [
+                {"part_id": lib["Arduino Nano"], "ref": "nano"},
+                {"part_id": lib["LED (5 mm)"], "ref": "led"},
+                {"part_id": lib["BME280 breakout (4-pin)"], "ref": "bme"},
+            ]
+        },
+    )
+    wires = [
+        ("led.A", "nano.D2"),
+        ("led.K", "nano.GND"),
+        ("bme.VIN", "nano.3V3"),
+        ("bme.GND", "nano.GND2"),
+        ("bme.SCL", "nano.A5"),
+        ("bme.SDA", "nano.A4"),
+    ]
+    api.post(f"/api/designs/{did}/wires", json={"wires": [{"a": a, "b": b} for a, b in wires]})
+
+    layout = mcp("create_layout", design_id=did, name="Stripboard v1")
+    lid = layout["id"]
+    assert (layout["strips"], layout["holes"], layout["pitch_mm"]) == (24, 37, 2.54)
+    assert [p["ref"] for p in layout["not_placed"]] == ["bme", "led", "nano"]
+
+    layout = mcp(
+        "place_on_board",
+        layout_id=lid,
+        parts=[
+            {"ref": "nano", "at": "A1"},
+            {"ref": "led", "at": "P10", "rotation": 90},
+            {"ref": "bme", "off_board": True},
+        ],
+    )
+    nano = next(p for p in layout["parts"] if p["ref"] == "nano")
+    assert nano["pins"]["D13"] == "A1" and nano["mount"] == "socketed"
+    assert any(c["id"] == "layout_short" for c in layout["checks"])
+    # The picture: a ruler, a line per strip with its marks, and the legend.
+    lines = layout["picture"].splitlines()
+    assert lines[0].split()[:3] == ["1", "5", "10"]
+    assert lines[1].startswith("A N n n") and "SHORT" in lines[1]
+    assert "N = nano (socketed)" in layout["picture"]
+
+    layout = mcp("cut_between_rows", layout_id=lid, ref="nano")
+    assert not any(c["id"] == "layout_short" for c in layout["checks"])
+    assert "x" in lines_of(layout)[1]
+
+    layout = mcp(
+        "add_jumpers",
+        layout_id=lid,
+        jumpers=[{"a": "K8", "b": "P8"}, {"a": "L12", "b": "Q12"}],
+    )
+    assert not any("led" in m for m in layout["missing"])
+
+    proposals = mcp("propose_connectors", layout_id=lid)["connectors"]
+    assert proposals == [
+        {
+            "for_part": "bme",
+            "type": "header_female",
+            "pins": ["bme.VIN", "bme.GND", "bme.SCL", "bme.SDA"],
+            "why": "a header for a cable, in the part's own pin order",
+        }
+    ]
+    layout = mcp(
+        "add_connectors",
+        layout_id=lid,
+        connectors=[{"pins": proposals[0]["pins"], "at": "S2", "rotation": 90}],
+    )
+    assert layout["connectors"][0]["ref"] == "J1" and "1 = J1 at S2" in layout["picture"]
+    layout = mcp(
+        "add_jumpers",
+        layout_id=lid,
+        jumpers=[
+            {"a": "B3", "b": "S3"},
+            {"a": "N3", "b": "T3"},
+            {"a": "I3", "b": "U3"},
+            {"a": "H3", "b": "V3"},
+        ],
+    )
+    check = mcp("check_layout", layout_id=lid)
+    assert check["checks"] == [] and check["missing"] == []
+    assert check["stats"]["jumpers"] == 6
+
+    # Undoing and changing through the tools.
+    layout = mcp("uncut", layout_id=lid, at=["A4"])
+    assert "A4" not in layout["cuts"]
+    layout = mcp("cut", layout_id=lid, at=["A4", "W5-6"])
+    assert {"A4", "W5-6"} <= set(layout["cuts"])
+    layout = mcp("remove_jumper", layout_id=lid, a="V3", b="H3")
+    assert len(layout["jumpers"]) == 5
+    layout = mcp("update_connector", layout_id=lid, ref="j1", at="S4")
+    assert layout["connectors"][0]["at"] == "S4"
+    revisions = mcp("list_layout_revisions", layout_id=lid)["revisions"]
+    assert revisions[0]["summary"] == "Changed J1" and revisions[0]["author"] == "claude"
+    assert any(r["summary"].startswith("Placed nano at A1") for r in revisions)
+    restored = mcp("restore_layout_revision", layout_id=lid, revision_id=revisions[0]["id"])
+    assert restored["connectors"][0]["at"] == "S2"
+
+    with pytest.raises(ToolError, match="isn't a hole"):
+        mcp("cut", layout_id=lid, at=["14C"])
+    with pytest.raises(ToolError, match="neighbouring"):
+        mcp("cut", layout_id=lid, at=["C9-12"])
+    with pytest.raises(ToolError, match="Say where"):
+        mcp("place_on_board", layout_id=lid, parts=[{"ref": "led"}])
+    assert mcp("list_layouts", design_id=did)["layouts"][0]["name"] == "Stripboard v1"
+
+
+def lines_of(layout) -> list[str]:
+    return layout["picture"].splitlines()

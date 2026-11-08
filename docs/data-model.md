@@ -118,7 +118,8 @@ Attachment   id, original_filename, mime_type, size, stored_path, created_at,
 
 ```
 Layout         id, design_id → Design, name, board_type (stripboard | breadboard),
-               strips, holes, notes, created_at, updated_at
+               strips, holes, pitch_mm (hole spacing, 2.54 unless set),
+               notes, created_at, updated_at
 LayoutPart     id, layout_id → Layout, placement_id → Placement (unique per layout),
                on_board, strip, hole (the footprint's origin; null off board),
                rotation, mount (socketed | soldered), footprint_sig
@@ -134,5 +135,6 @@ LayoutRevision id, layout_id, created_at, author, summary, snapshot (JSON)
 
 - **A layout holds only physical facts.** Nets come from its design; board connectivity and layout checks are computed, never stored.
 - **Positions are 1-based** and read as the board's labels: strip 3, hole 14 is C14.
+- **A layout's `pitch_mm` sets its grid:** footprints (in mm) land on holes that far apart, within 0.1 mm. A breadboard pattern is always 2.54.
 - **A placement with no `LayoutPart` isn't placed yet.** Removing a placement from the design removes it from its layouts, and deleting a design deletes its layouts.
 

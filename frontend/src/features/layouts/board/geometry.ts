@@ -83,17 +83,28 @@ export function rotate(x: number, y: number, rotation: number): [number, number]
  * mm: for previews before the server answers. Pins off the grid or without a hole are
  * left out.
  */
-export function footprintOffsets(pins: PinOut[], rotation: number): (Cell & { name: string })[] {
+export function footprintOffsets(
+  pins: PinOut[],
+  rotation: number,
+  pitch: number = PITCH_MM,
+): (Cell & { name: string })[] {
   const out: (Cell & { name: string })[] = []
   for (const pin of pins) {
     if (pin.x_mm == null || pin.y_mm == null) continue
     const [x, y] = rotate(pin.x_mm, pin.y_mm, rotation)
-    const along = Math.round(x / PITCH_MM)
-    const across = Math.round(y / PITCH_MM)
-    if (Math.abs(x - along * PITCH_MM) > 0.1 || Math.abs(y - across * PITCH_MM) > 0.1) continue
+    const along = toSteps(x, pitch)
+    const across = toSteps(y, pitch)
+    if (along === null || across === null) continue
     out.push({ name: pin.name, strip: across, hole: along })
   }
   return out
+}
+
+/** mm along the board as whole holes, or null off the grid (within 0.1 mm, as the
+ * backend's layouts/board.py). */
+export function toSteps(mm: number, pitch: number = PITCH_MM): number | null {
+  const steps = Math.round(mm / pitch)
+  return Math.abs(mm - steps * pitch) <= 0.1 ? steps : null
 }
 
 export type Turn = 0 | 90 | 180 | 270

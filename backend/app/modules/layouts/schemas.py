@@ -17,6 +17,9 @@ ConnectorRef = Annotated[
     str, StringConstraints(strip_whitespace=True, pattern=r"^[A-Za-z][A-Za-z0-9_]{0,19}$")
 ]
 
+# A board's hole spacing in mm, to 0.01 mm.
+Pitch = Annotated[float, Field(ge=1, le=10)]
+
 # Board sizes: the user's stripboard and full-size breadboard-pattern board.
 DEFAULT_SIZE = {BoardType.STRIPBOARD: (24, 37), BoardType.BREADBOARD: (14, 62)}
 
@@ -27,13 +30,17 @@ class LayoutCreate(BaseModel):
     # Strips (rows, lettered) and holes along each. A breadboard pattern has 14 rows.
     strips: Annotated[int, Field(ge=2, le=100)] | None = None
     holes: Annotated[int, Field(ge=2, le=200)] | None = None
+    # The distance between holes in mm; 2.54 unless given. Always 2.54 on a breadboard.
+    pitch_mm: Pitch | None = None
 
 
 class LayoutUpdate(BaseModel):
     name: Name | None = None
     notes: str | None = None
+    # Changing it re-reads every footprint on the new grid: parts may come off it.
+    pitch_mm: Pitch | None = None
 
-    _not_null = field_validator("name", "notes")(reject_null)
+    _not_null = field_validator("name", "notes", "pitch_mm")(reject_null)
 
 
 class PartPlace(BaseModel):
@@ -319,6 +326,7 @@ class LayoutSummary(BaseModel):
     board_type: BoardType
     strips: int
     holes: int
+    pitch_mm: float
     updated_at: datetime
     check_summary: CheckSummary
     stats: LayoutStats

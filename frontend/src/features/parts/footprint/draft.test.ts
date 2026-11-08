@@ -52,6 +52,18 @@ describe('footprint draft', () => {
       },
     )
     expect(kept.body.w).toBe('9')
+    // …unless the new holes fall outside it: then it's replaced.
+    const tooSmall = withGenerated(
+      { ...draft, body: { x: '-1', y: '-1', w: '2', h: '2' } },
+      {
+        body_mm: { x: -1.27, y: -1.27, w: 2.54, h: 5.08 },
+        holes: [
+          { pin_id: 1, pin: 'A', x_mm: 0, y_mm: 0 },
+          { pin_id: 2, pin: 'B', x_mm: 0, y_mm: 2.54 },
+        ],
+      },
+    )
+    expect(tooSmall.body.h).toBe('5.08')
   })
 
   it('knows the 2.54 mm grid', () => {

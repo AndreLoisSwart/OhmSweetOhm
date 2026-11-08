@@ -21,6 +21,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
+import { PitchPicker } from './pitch-picker'
 
 /** "2 to join · 1 error", or "Matches" — a layout's state at a glance. */
 function layoutState(layout: LayoutSummary): string {
@@ -51,12 +52,20 @@ function NewLayoutDialog({
   const navigate = useNavigate()
   const [type, setType] = useState<BoardType>('stripboard')
   const [name, setName] = useState('')
+  const [pitch, setPitch] = useState(2.54)
   const create = useCreateLayout()
   const fallback = `${BOARDS.find((b) => b.type === type)!.label} v${count + 1}`
   const submit = (event: FormEvent) => {
     event.preventDefault()
     create.mutate(
-      { designId, data: { name: name.trim() || fallback, board_type: type } },
+      {
+        designId,
+        data: {
+          name: name.trim() || fallback,
+          board_type: type,
+          ...(type === 'stripboard' && { pitch_mm: pitch }),
+        },
+      },
       {
         onSuccess: (layout) => {
           onOpenChange(false)
@@ -87,6 +96,17 @@ function NewLayoutDialog({
               ))}
             </NativeSelect>
           </label>
+          {type === 'stripboard' && (
+            <div className="grid gap-1 text-sm">
+              Hole spacing
+              <PitchPicker value={pitch} onChange={setPitch} />
+              {pitch !== 2.54 && (
+                <span className="text-xs text-muted-foreground">
+                  Modules with 2.54 mm headers won&apos;t sit on this board as they are.
+                </span>
+              )}
+            </div>
+          )}
           <label className="grid gap-1 text-sm">
             Name
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={fallback} />

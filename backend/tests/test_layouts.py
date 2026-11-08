@@ -482,3 +482,61 @@ def test_cut_between_rows_and_trim(api, library):
     assert api.post(f"/api/layouts/{lid}/trim").status_code == 409
     bb = new_layout(api, design, board_type="breadboard")
     assert api.post(f"/api/layouts/{bb['id']}/trim").status_code == 409
+
+
+# Hole pitch ---------------------------------------------------------------------------------
+
+
+def test_other_pitches(api, library):
+    design = design_with(api, library, {"nano": "Arduino Nano", "led": "LED (5 mm)"})
+    assert new_layout(api, design)["pitch_mm"] == 2.54
+    fine = new_layout(api, design, pitch_mm=2.0)
+    lid = fine["id"]
+    # The Nano's 2.54 mm headers don't land on 2.0 mm holes.
+    layout = place(api, fine, design, nano=(1, 1))
+    off = next(c for c in layout["checks"] if c["id"] == "off_grid")
+    assert "2 mm grid" in off["message"]
+    # Only pins that happen to fall within 0.1 mm of a hole land: D13 at 0, 5V at 27.94.
+    assert {p["key"] for p in layout["parts"][0]["pins"]} == {"nano.D13", "nano.5V"}
+    # A header doesn't fit either; a part made for this pitch does.
+    layout = ok(
+        api.post(f"/api/layouts/{lid}/connectors", json={"pin_count": 2, "strip": 5, "hole": 5})
+    )
+    assert "connector_off_grid" in check_ids(layout)
+    assert layout["connectors"][0]["pins"][0]["strip"] is None
+    part = api.post(
+        "/api/parts",
+        json={
+            "name": "Fine pitch",
+            "kind": "module",
+            "pins": [
+                {"name": "A", "kind": "gpio", "side": "left", "x_mm": 0, "y_mm": 0},
+                {"name": "B", "kind": "gpio", "side": "left", "x_mm": 0, "y_mm": 4.0},
+            ],
+        },
+    ).json()
+    d2 = design_with(api, {"Fine pitch": part}, {"m": "Fine pitch"})
+    l2 = new_layout(api, d2, pitch_mm=2.0)
+    l2 = place(api, l2, d2, m=(1, 1))
+    assert pins_at(l2) == {"m.A": "A1", "m.B": "C1"}
+    # Changing a board's pitch re-reads its parts: on 2.54 the 4 mm spacing is off grid.
+    l2 = ok(api.patch(f"/api/layouts/{l2['id']}", json={"pitch_mm": 2.54}))
+    assert "off_grid" in check_ids(l2)
+    # Screw terminals are two holes apart on a standard board.
+    std = new_layout(api, design)
+    std = ok(
+        api.post(
+            f"/api/layouts/{std['id']}/connectors",
+            json={"pin_count": 2, "type": "screw_508", "strip": 3, "hole": 3},
+        )
+    )
+    assert [p["hole"] for p in std["connectors"][0]["pins"]] == [3, 5]
+    # A breadboard pattern is always 2.54 mm.
+    bad = api.post(
+        f"/api/designs/{design['id']}/layouts",
+        json={"name": "x", "board_type": "breadboard", "pitch_mm": 2.0},
+    )
+    assert bad.status_code == 409
+    bb = new_layout(api, design, board_type="breadboard")
+    assert api.patch(f"/api/layouts/{bb['id']}", json={"pitch_mm": 2.0}).status_code == 409
+    assert api.patch(f"/api/layouts/{lid}", json={"pitch_mm": 0.5}).status_code == 422

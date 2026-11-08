@@ -90,7 +90,7 @@ A board layout of a design, from the view switcher in the design header: `Schema
 **The view switcher:**
 - Each layout shows its state ("2 to join · 1 error", "Matches the design", "Empty").
 - On the schematic, an amber dot marks that some layout needs attention.
-- New layout asks for the board (stripboard 24 × 37, or breadboard pattern 14 × 62) and a name, then opens it.
+- New layout asks for the board (stripboard 24 × 37, or breadboard pattern 14 × 62), a stripboard's hole spacing (2.54 mm standard, 2.0, 1.27, or another 1–10 mm, with a note that 2.54 mm modules won't fit a finer board) and a name, then opens it.
 
 **The page uses the design page's shell:**
 - left: the parts tray;
@@ -129,7 +129,7 @@ The board stays fitted to its space until you pan (drag empty board) or zoom (wh
 | Select | V | Click a part, jumper or connector to select it; drag parts and connectors to move them by whole holes |
 | Cut | C | Click a hole to cut the strip there, or near the gap between two holes to cut between them; click a cut to remove it. A dashed ring or bar shows where it would cut. Cutting a hole with a leg, connector pin or jumper end in it is refused, with the reason. Stripboard only |
 | Jumper | J | Click one end, then the other; a line follows the pointer. It goes on the side you're looking at: component side for a top jumper, copper side (turned over) for a bottom link. A top jumper's end in a taken hole is refused. Esc drops the first end. New jumpers aren't selected, so on a tablet the Inspector doesn't cover the board between jumpers |
-| Connector | K | Pick the type (female or male header, JST-XH, 5.08 mm screw terminal) and pin count in the toolbar, then click where pin 1 goes; ghost pins show where it lands, pin 1 darker. R (or the toolbar's rotate button) turns it before it's put down. The new connector is selected, to assign its pins |
+| Connector | K | Pick the type (female or male header, JST-XH, 5.08 mm screw terminal; a type whose pins don't fit the board's hole spacing is marked and can't be put down) and pin count in the toolbar, then click where pin 1 goes; ghost pins show where it lands, pin 1 darker. R (or the toolbar's rotate button) turns it before it's put down. The new connector is selected, to assign its pins |
 
 - **Keys:** R turns the selected part or connector. Delete removes the selected jumper or connector, or unplaces a part. Esc steps back: it drops a jumper's first end, then goes back to Select, then clears the selection. Each tool shows a one-line hint under the toolbar.
 - **The middle button** pans with any tool; the left button pans the empty board with Select.
@@ -143,7 +143,7 @@ The board stays fitted to its space until you pan (drag empty board) or zoom (wh
 - **A selected part:** its first pin's hole and rotation, Rotate, Off board, Unplace, **Cut between rows** (stripboard), Socketed / Soldered, its pins (hole and net), and Show in schematic.
 - **A selected jumper:** its ends and length, component or copper side, insulated (bottom links), colour, and Remove.
 - **A selected connector:** its type, pin count and pin 1's hole; Rotate and Remove; a picker per pin for what it carries (the off-board parts' pins, or nothing); Add a pin and Remove the last pin.
-- **Nothing selected:** the layout's name (editable), board, part counts, connections still to join, cuts, jumpers, area used, notes, **Trim dead copper** (stripboard) and Delete layout.
+- **Nothing selected:** the layout's name (editable), board, hole spacing (editable on a stripboard; changing it re-reads every footprint, so parts may come off the grid), part counts, connections still to join, cuts, jumpers, area used, notes, **Trim dead copper** (stripboard) and Delete layout.
 
 **The checks bar:**
 - It shows the counts and "N to join", "Nothing on the board yet", or "The board matches the design".

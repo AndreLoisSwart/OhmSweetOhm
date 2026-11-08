@@ -16,6 +16,7 @@ export interface LayoutSummary {
   board_type: BoardType;
   strips: number;
   holes: number;
+  pitch_mm: number;
   updated_at: string;
   check_summary: CheckSummary;
   stats: LayoutStats;

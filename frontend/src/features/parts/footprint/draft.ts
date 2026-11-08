@@ -27,18 +27,29 @@ export function fromPart(pins: PinOut[], body: BodyMm | null): FootprintDraft {
   }
 }
 
+/** Whether a hole is within an outline (on its edge counts). */
+export const within = (hole: { x: number; y: number }, body: BodyMm) =>
+  hole.x >= body.x - 0.01 &&
+  hole.x <= body.x + body.w + 0.01 &&
+  hole.y >= body.y - 0.01 &&
+  hole.y <= body.y + body.h + 0.01
+
 /**
  * A generated footprint over the draft: every pin gets its hole. An outline already
- * entered is kept (it's usually the real one); otherwise the one around the pins is used.
+ * entered is kept when the new holes fit inside it (it's usually the real one);
+ * otherwise, or with none, the one around the pins is used.
  */
 export function withGenerated(draft: FootprintDraft, made: FootprintOut): FootprintDraft {
   const holes = new Map(made.holes.map((h) => [h.pin_id, h]))
+  const entered = parse({ holes: [], body: draft.body }).body
+  const keep =
+    entered !== null && made.holes.every((h) => within({ x: h.x_mm, y: h.y_mm }, entered))
   return {
     holes: draft.holes.map((h) => {
       const made = holes.get(h.pinId)
       return made ? { ...h, x: String(made.x_mm), y: String(made.y_mm) } : h
     }),
-    body: Object.values(draft.body).some((v) => v.trim())
+    body: keep
       ? draft.body
       : made.body_mm
         ? {

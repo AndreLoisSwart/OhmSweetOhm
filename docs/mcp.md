@@ -54,6 +54,36 @@ These are the same as Shelf-help's:
 | `suggest_wiring(design_id, ref, board?)` | Proposed wires for a placed part's unwired pins, as `{placement, board, wires: [{a, b, reason, warning}], unassigned: [{pin, reason}]}`. Read-only: Claude shows them and `connect`s the ones the user agrees to |
 | `get_pin_map(design_id, lang?, board?)` | From step 10. The design's pins as firmware constants: `pins.h` (`lang` "c", the default) or `pins.py` ("py"), as `{lang, filename, board, boards, text}`. `board` is needed only with more than one board |
 
+### Protoboard layout tools (step 18)
+
+Positions are the board's labels: `C14` is strip C, hole 14; `C9-10` is a cut between holes 9 and 10. Each tool that changes a layout saves one layout revision first (`author = claude`) with a summary ("Placed nano at A1, led at P10", "Cut A4, W5-6", "Added jumpers K8→P8, L12→Q12", "Added connectors for bme", "Changed J1"). Layouts aren't deleted here.
+
+| Tool | Notes |
+|---|---|
+| `list_layouts(design_id)` | Each layout with its check counts and stats |
+| `create_layout(design_id, name, board_type?, strips?, holes?, pitch_mm?)` | Stripboard 24 × 37 unless sized; breadboard pattern 14 × 62; pitch 2.54 unless set |
+| `get_layout(layout_id)` | `{…, picture, parts, not_placed, cuts, jumpers, connectors, checks, missing, stats}`. Each part's pins by hole, the connections still missing ("GND: led.K (Q10) to nano.GND (N1)"), and a **text picture** (below) |
+| `check_layout(layout_id)` | Only the checks, missing connections and stats: for checking after each change |
+| `place_on_board(layout_id, parts: [{ref, at?, rotation?, mount?, off_board?}])` | Place, move, turn or take parts off the board; a part keeps its rotation when none is given |
+| `cut(layout_id, at: [...])`, `uncut(layout_id, at: [...])` | `"B4"` at a hole, `"C9-10"` between holes. `uncut` is destructive (undoable) |
+| `add_jumpers(layout_id, jumpers: [{a, b, side?, insulated?, color?}])`, `remove_jumper(layout_id, a, b)` | Top jumpers by default |
+| `propose_connectors(layout_id)` | Read-only. One per off-board part whose connections reach the board: `{for_part, type, pins, why}`, pins in the part's own order, a screw terminal for a power part where it fits |
+| `add_connectors(layout_id, connectors: [{pins, type?, at?, rotation?, pin_count?, ref?}])`, `update_connector(layout_id, ref, at?, rotation?, type?, pin_count?, pins?)`, `remove_connector(layout_id, ref)` | Named J1, J2… unless given a ref |
+| `cut_between_rows(layout_id, ref)`, `trim_dead_copper(layout_id)` | The canvas's helpers |
+| `list_layout_revisions(layout_id)`, `restore_layout_revision(layout_id, revision_id)` | History and undo |
+
+**The text picture** (`layouts/picture.py`):
+- One line per strip in the top view, two characters per hole: the hole's mark, then `|` if a cut separates it from the next hole.
+- Marks, strongest first:
+  - a part's pin: a capital letter per part;
+  - a connector pin: a digit per connector;
+  - `*` a top jumper end, `+` a bottom link end;
+  - `x` a cut at the hole;
+  - lower case: a hole under that part's body;
+  - `.` a hole.
+- A ruler of hole numbers heads it. Each line ends with the copper runs on that strip and their nets, or `SHORT`.
+- A legend names the parts (and which are socketed) and connectors.
+
 Tools that change a design take batches (`add_parts`, `connect`), so that building a circuit is a few calls rather than dozens. Each call that changes placements or wires saves one revision first (`author = claude`), summarising the change: "Added esp, BME280", "Connected esp.3V3 to bme.VIN, … and 1 more", "Moved and rotated esp", "Removed led1 and its 2 wires", "Disconnected esp.GND from bme.GND". Renaming a design, its tags and its description aren't in revisions (they aren't in a snapshot).
 
 **After the first test with Claude Desktop (2026-11-07):**

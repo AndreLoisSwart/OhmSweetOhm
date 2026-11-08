@@ -20,6 +20,7 @@ import {
   PITCH_MM,
   type Parsed,
   parse,
+  within,
   toFootprintIn,
   withGenerated,
 } from './draft'
@@ -76,6 +77,7 @@ function FootprintPreview({ part, parsed }: { part: PartDetail; parsed: Parsed }
   for (let x = startX; x <= minX + w; x += PITCH_MM)
     for (let y = startY; y <= minY + h; y += PITCH_MM) grid.push([x, y])
   const offGrid = holes.filter((hole) => !onGrid(hole.x, hole.y, origin))
+  const outside = body ? holes.filter((hole) => !within(hole, body)) : []
 
   return (
     <figure className="grid gap-2">
@@ -108,8 +110,19 @@ function FootprintPreview({ part, parsed }: { part: PartDetail; parsed: Parsed }
         )}
         {holes.map((hole) => {
           const off = !onGrid(hole.x, hole.y, origin)
+          const out = body !== null && !within(hole, body)
           return (
             <g key={hole.pinId}>
+              {out && (
+                <circle
+                  cx={hole.x * PX}
+                  cy={hole.y * PX}
+                  r={1.3 * PX}
+                  fill="none"
+                  className="stroke-destructive"
+                  strokeWidth={2}
+                />
+              )}
               <circle
                 cx={hole.x * PX}
                 cy={hole.y * PX}
@@ -135,7 +148,13 @@ function FootprintPreview({ part, parsed }: { part: PartDetail; parsed: Parsed }
         {offGrid.length > 0 && (
           <span className="text-amber-700 dark:text-amber-400">
             Off the grid: {offGrid.map((h) => h.name).join(', ')}. It won&apos;t sit on a protoboard
-            as it is.
+            as it is.{' '}
+          </span>
+        )}
+        {outside.length > 0 && (
+          <span className="text-destructive">
+            Outside the outline (ringed): {outside.map((h) => h.name).join(', ')}. Make the outline
+            the board&apos;s real size, or clear it and generate again.
           </span>
         )}
       </figcaption>

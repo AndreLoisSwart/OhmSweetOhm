@@ -299,6 +299,7 @@ export function BoardCanvas({
       ? footprintOffsets(
           design.parts.find((p) => p.id === armedPart.part_id)?.pins ?? [],
           armedRotation,
+          layout.pitch_mm,
         ).map((o) => ({ strip: hoverCell.strip + o.strip, hole: hoverCell.hole + o.hole }))
       : []
   const copperOpacity = flipped ? 0.85 : 0.35

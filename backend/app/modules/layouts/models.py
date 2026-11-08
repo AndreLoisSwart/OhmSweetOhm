@@ -58,6 +58,9 @@ class Layout(Base):
     # Rows (lettered) and holes along each (numbered).
     strips: Mapped[int]
     holes: Mapped[int]
+    # The distance between holes, in mm: 2.54 for nearly every protoboard and always
+    # for a breadboard pattern; 2.0 or 1.27 for finer boards.
+    pitch_mm: Mapped[float] = mapped_column(default=2.54, server_default="2.54")
     notes: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)

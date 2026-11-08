@@ -52,6 +52,7 @@ from app.modules.firmware.schemas import (
     PinMapOut,
     WokwiExport,
 )
+from app.modules.mcp.layout_tools import register_layout_tools
 from app.modules.parts import service as part_service
 from app.modules.parts.models import Author, LogicVoltage, PartKind, Platform
 from app.modules.parts.router import part_detail
@@ -111,7 +112,19 @@ designs carry Shelf-help ids (shelf_item_id, shelf_project_id).
   switches are inputs, never actuators (the bring-up sketch drives actuator pins).
 - "Do I have what this design needs?": look up each part's Shelf-help item. Offer to mark
   missing ones as need.
-- Every change you make to a design saves a revision first, so the user can undo it from
+- Protoboard layouts lay a design's parts out on a physical board (stripboard or the
+  breadboard pattern). The design owns the connections; a layout only places parts and
+  adds cuts, jumpers and connectors, and its checks say where the board and the design
+  disagree. Positions are the board's labels: strip letter and hole number (C14).
+- Laying out a board: get_layout and read its picture and legend. Place the board
+  (ESP32, Nano) first, then cut_between_rows for it. Put each part near the pins it
+  joins, turning it so different nets land on different strips. Decide with the user
+  which parts stay off the board, then propose_connectors and add the agreed ones.
+  Join what's missing with cuts and jumpers, running check_layout after each step:
+  first no errors, then fewer and shorter jumpers and a smaller area. Show the user the
+  picture as you go. If a different GPIO would save jumpers, suggest the schematic
+  change; make it only with their OK. Offer trim_dead_copper at the end.
+- Every change you make to a design or layout saves a revision first, so the user can undo it from
   History in the app. Nothing can be deleted through these tools (parts, pins, designs,
   tags); ask the user to do that in the app. Notes and descriptions can only be added to.
 """
@@ -458,7 +471,8 @@ def build_server(open_session: SessionOpener) -> MCPServer:
         down). Give either holes (every pin that goes through the board; pins left out
         get none) or from_sides (header modules: holes laid out from the pins' sides).
         body_mm is the outline the part covers; without it, from_sides keeps the body the
-        part has, or makes one just around the pins. Sets the part unverified."""
+        part has if the holes fit inside it, else makes one just around the pins. Sets the
+        part unverified."""
         if (holes is None) == (from_sides is None):
             raise ConflictError("Give either holes or from_sides")
         with open_session() as session:
@@ -468,7 +482,13 @@ def build_server(open_session: SessionOpener) -> MCPServer:
                     session, part_id, from_sides.span_mm, from_sides.pitch_mm
                 )
                 given = [Hole(pin_id=h.pin_id, x_mm=h.x_mm, y_mm=h.y_mm) for h in made.holes]
-                body = body_mm or part.body_mm or made.body_mm
+                kept = BodyMm(**part.body_mm) if part.body_mm else None
+                fits = kept is not None and all(
+                    kept.x - 0.01 <= h.x_mm <= kept.x + kept.w + 0.01
+                    and kept.y - 0.01 <= h.y_mm <= kept.y + kept.h + 0.01
+                    for h in made.holes
+                )
+                body = body_mm or (kept if fits else made.body_mm)
             else:
                 by_name = {pin.name.lower(): pin for pin in part.pins}
                 given = []
@@ -746,6 +766,8 @@ def build_server(open_session: SessionOpener) -> MCPServer:
         state is saved as a revision first, so this can be undone too."""
         with open_session() as session:
             return _view(designs.restore_revision(session, design_id, revision_id, Author.CLAUDE))
+
+    register_layout_tools(tool, open_session, READ, WRITE, REMOVE)
 
     # Every tool's arguments, written out in full (see inline_schema).
     for registered in server._tool_manager.list_tools():

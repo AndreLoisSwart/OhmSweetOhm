@@ -8,4 +8,5 @@
 export interface LayoutUpdate {
   name?: string | null;
   notes?: string | null;
+  pitch_mm?: number | null;
 }
