@@ -8,7 +8,7 @@ from app.core.errors import ConflictError, NotFoundError
 from app.modules.attachments import storage
 from app.modules.attachments.models import Attachment
 from app.modules.checks.service import run_checks
-from app.modules.designs import revisions
+from app.modules.designs import revisions, suggest
 from app.modules.designs.models import Design, Placement, Wire, WireColor
 from app.modules.designs.nets import compute_nets
 from app.modules.designs.schemas import (
@@ -22,6 +22,9 @@ from app.modules.designs.schemas import (
     PlacementOut,
     PlacementUpdate,
     Snapshot,
+    SuggestedWire,
+    SuggestedWiring,
+    UnassignedPin,
     WireIn,
     WireOut,
     WireUpdate,
@@ -409,3 +412,15 @@ def wire_between(design: Design, a: str, b: str) -> Wire:
         if {(wire.a_placement, wire.a_pin), (wire.b_placement, wire.b_pin)} == ends:
             return wire
     raise NotFoundError(f"{a} and {b} aren't wired together")
+
+
+def suggest_wiring(design: Design, ref: str, board: str | None = None) -> SuggestedWiring:
+    found = suggest.suggest(design, ref, board)
+    return SuggestedWiring(
+        placement=found.placement,
+        board=found.board,
+        wires=[
+            SuggestedWire(a=w.a, b=w.b, reason=w.reason, warning=w.warning) for w in found.wires
+        ],
+        unassigned=[UnassignedPin(pin=u.pin, reason=u.reason) for u in found.unassigned],
+    )

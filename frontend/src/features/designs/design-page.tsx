@@ -6,6 +6,7 @@ import {
   History,
   ListChecks,
   Package,
+  Play,
   Info,
   Library,
   Lock,
@@ -177,10 +178,14 @@ function DesignEditor({ design }: { design: DesignDetail }) {
                 <Package />
                 PlatformIO project
               </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setFilesOpen('wokwi')}>
+                <Play />
+                Simulate in Wokwi
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
           <PinMapDialog design={design} open={pinMapOpen} onOpenChange={setPinMapOpen} />
-          {(['bringup', 'platformio'] as const).map((kind) => (
+          {(['bringup', 'platformio', 'wokwi'] as const).map((kind) => (
             <FirmwareFilesDialog
               key={kind}
               kind={kind}

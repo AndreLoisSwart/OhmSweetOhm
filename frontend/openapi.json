@@ -1044,6 +1044,74 @@
         }
       }
     },
+    "/api/designs/{design_id}/suggest-wiring": {
+      "get": {
+        "tags": [
+          "designs"
+        ],
+        "summary": "Suggest Wiring",
+        "description": "Wires for the unwired pins of the part `ref`, to free pins of the board that suit\nthem: shared buses, a matching supply, GPIOs away from flash, strapping and\ninput-only pins. Read-only: send the ones wanted to add wires.",
+        "operationId": "suggest_wiring",
+        "parameters": [
+          {
+            "name": "design_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Design Id"
+            }
+          },
+          {
+            "name": "ref",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Ref"
+            }
+          },
+          {
+            "name": "board",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Board"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuggestedWiring"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/designs/{design_id}/layout": {
       "put": {
         "tags": [
@@ -1365,6 +1433,65 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/FirmwareFiles"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/designs/{design_id}/wokwi": {
+      "get": {
+        "tags": [
+          "firmware"
+        ],
+        "summary": "Get Wokwi Export",
+        "description": "The design as Wokwi's diagram.json, with a wokwi.toml for the board's PlatformIO\nbuild. Parts without a Wokwi type are left out with their wires, and listed.",
+        "operationId": "get_wokwi_export",
+        "parameters": [
+          {
+            "name": "design_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Design Id"
+            }
+          },
+          {
+            "name": "board",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Board"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WokwiExport"
                 }
               }
             }
@@ -3907,6 +4034,70 @@
         ],
         "title": "StarterPartOut"
       },
+      "SuggestedWire": {
+        "properties": {
+          "a": {
+            "type": "string",
+            "title": "A"
+          },
+          "b": {
+            "type": "string",
+            "title": "B"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          },
+          "warning": {
+            "type": "string",
+            "title": "Warning",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "a",
+          "b",
+          "reason"
+        ],
+        "title": "SuggestedWire",
+        "description": "A proposed wire from the part's pin (a) to a board or supply pin (b)."
+      },
+      "SuggestedWiring": {
+        "properties": {
+          "placement": {
+            "type": "string",
+            "title": "Placement"
+          },
+          "board": {
+            "type": "string",
+            "title": "Board"
+          },
+          "wires": {
+            "items": {
+              "$ref": "#/components/schemas/SuggestedWire"
+            },
+            "type": "array",
+            "title": "Wires"
+          },
+          "unassigned": {
+            "items": {
+              "$ref": "#/components/schemas/UnassignedPin"
+            },
+            "type": "array",
+            "title": "Unassigned"
+          }
+        },
+        "type": "object",
+        "required": [
+          "placement",
+          "board",
+          "wires",
+          "unassigned"
+        ],
+        "title": "SuggestedWiring",
+        "description": "Wires for a placed part's unwired pins. Nothing is added until they're sent to\nadd wires."
+      },
       "TagCreate": {
         "properties": {
           "name": {
@@ -3982,6 +4173,24 @@
           "name"
         ],
         "title": "TagUpdate"
+      },
+      "UnassignedPin": {
+        "properties": {
+          "pin": {
+            "type": "string",
+            "title": "Pin"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "pin",
+          "reason"
+        ],
+        "title": "UnassignedPin"
       },
       "ValidationError": {
         "properties": {
@@ -4224,6 +4433,75 @@
           "wires"
         ],
         "title": "WiresAdd"
+      },
+      "WokwiExport": {
+        "properties": {
+          "board": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Board"
+          },
+          "boards": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Boards"
+          },
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/FirmwareFile"
+            },
+            "type": "array",
+            "title": "Files"
+          },
+          "skipped": {
+            "items": {
+              "$ref": "#/components/schemas/WokwiSkipped"
+            },
+            "type": "array",
+            "title": "Skipped"
+          }
+        },
+        "type": "object",
+        "required": [
+          "board",
+          "boards",
+          "files",
+          "skipped"
+        ],
+        "title": "WokwiExport",
+        "description": "diagram.json, and wokwi.toml when the board is known and simulatable."
+      },
+      "WokwiSkipped": {
+        "properties": {
+          "ref": {
+            "type": "string",
+            "title": "Ref"
+          },
+          "part": {
+            "type": "string",
+            "title": "Part"
+          },
+          "wires": {
+            "type": "integer",
+            "title": "Wires"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ref",
+          "part",
+          "wires"
+        ],
+        "title": "WokwiSkipped",
+        "description": "A placement left out of the Wokwi export: its part has no Wokwi type."
       }
     }
   }

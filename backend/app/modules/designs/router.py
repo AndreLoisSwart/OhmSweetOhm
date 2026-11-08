@@ -15,6 +15,7 @@ from app.modules.designs.schemas import (
     PlacementUpdate,
     RevisionOut,
     Snapshot,
+    SuggestedWiring,
     WiresAdd,
     WireUpdate,
 )
@@ -94,6 +95,16 @@ def update_wire(
 @router.delete("/{design_id}/wires/{wire_id}")
 def remove_wire(design_id: int, wire_id: int, session: SessionDep) -> DesignDetail:
     return service.detail(service.remove_wire(session, design_id, wire_id))
+
+
+@router.get("/{design_id}/suggest-wiring")
+def suggest_wiring(
+    design_id: int, ref: str, session: SessionDep, board: str | None = None
+) -> SuggestedWiring:
+    """Wires for the unwired pins of the part `ref`, to free pins of the board that suit
+    them: shared buses, a matching supply, GPIOs away from flash, strapping and
+    input-only pins. Read-only: send the ones wanted to add wires."""
+    return service.suggest_wiring(service.get_design(session, design_id), ref, board)
 
 
 @router.put("/{design_id}/layout")

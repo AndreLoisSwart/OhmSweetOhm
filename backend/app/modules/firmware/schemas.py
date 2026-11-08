@@ -60,3 +60,22 @@ class PinMapDrift(BaseModel):
     removed: list[ConstantOut]
     # The pin map as the design is now, to replace the file with.
     pin_map: PinMapOut
+
+
+class WokwiSkipped(BaseModel):
+    """A placement left out of the Wokwi export: its part has no Wokwi type."""
+
+    ref: str
+    part: str
+    # Its wires, left out with it.
+    wires: int
+
+
+class WokwiExport(BaseModel):
+    """diagram.json, and wokwi.toml when the board is known and simulatable."""
+
+    # The board wokwi.toml runs: chosen, or the design's only board.
+    board: str | None
+    boards: list[str]
+    files: list[FirmwareFile]
+    skipped: list[WokwiSkipped]

@@ -291,8 +291,9 @@ def add_starter_parts(session: Session) -> StarterAdded:
 
 
 def _fill_firmware_fields(session: Session, data: PartCreate) -> bool:
-    """Fills a library part's empty platform, PlatformIO board and libraries from the
-    starter data (added in build step 12). Never overwrites what's there."""
+    """Fills a library part's empty platform, PlatformIO board and libraries (added in
+    build step 12), and its Wokwi type and pin names (the Wokwi export), from the starter
+    data. Never overwrites what's there."""
     part = session.scalar(select(Part).where(Part.name == data.name))
     filled = False
     if part.platform is None and data.platform is not None:
@@ -304,6 +305,14 @@ def _fill_firmware_fields(session: Session, data: PartCreate) -> bool:
     if not part.libraries and data.libraries:
         part.libraries = [library.model_dump() for library in data.libraries]
         filled = True
+    if part.wokwi_type is None and data.wokwi_type is not None:
+        part.wokwi_type = data.wokwi_type
+        filled = True
+    wokwi_names = {p.name.lower(): p.wokwi_name for p in data.pins if p.wokwi_name}
+    for pin in part.pins:
+        if pin.wokwi_name is None and (name := wokwi_names.get(pin.name.lower())):
+            pin.wokwi_name = name
+            filled = True
     if filled:
         part.updated_at = utcnow()
     return filled

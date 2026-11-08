@@ -35,6 +35,8 @@ import type {
   PlacementsAdd,
   RevisionOut,
   Snapshot,
+  SuggestWiringParams,
+  SuggestedWiring,
   WireUpdate,
   WiresAdd
 } from '../model';
@@ -1135,7 +1137,125 @@ export const useRemoveWire = <TError = ErrorType<HTTPValidationError>,
       > => {
       return useMutation(getRemoveWireMutationOptions(options), queryClient);
     }
-    export const getApplyLayoutUrl = (designId: number,) => {
+    export const getSuggestWiringUrl = (designId: number,
+    params: SuggestWiringParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/designs/${designId}/suggest-wiring?${stringifiedParams}` : `/api/designs/${designId}/suggest-wiring`
+}
+
+/**
+ * Wires for the unwired pins of the part `ref`, to free pins of the board that suit
+ * them: shared buses, a matching supply, GPIOs away from flash, strapping and
+ * input-only pins. Read-only: send the ones wanted to add wires.
+ * @summary Suggest Wiring
+ */
+export const suggestWiring = async (designId: number,
+    params: SuggestWiringParams, options?: Parameters<typeof apiFetch>[1]): Promise<SuggestedWiring> => {
+
+  return apiFetch<SuggestedWiring>(getSuggestWiringUrl(designId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getSuggestWiringQueryKey = (designId: number,
+    params?: SuggestWiringParams,) => {
+    return [
+    `/api/designs/${designId}/suggest-wiring`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getSuggestWiringQueryOptions = <TData = Awaited<ReturnType<typeof suggestWiring>>, TError = ErrorType<HTTPValidationError>>(designId: number,
+    params: SuggestWiringParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof suggestWiring>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getSuggestWiringQueryKey(designId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof suggestWiring>>> = ({ signal }) => suggestWiring(designId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: designId !== null && designId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof suggestWiring>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type SuggestWiringQueryResult = NonNullable<Awaited<ReturnType<typeof suggestWiring>>>
+export type SuggestWiringQueryError = ErrorType<HTTPValidationError>
+
+
+export function useSuggestWiring<TData = Awaited<ReturnType<typeof suggestWiring>>, TError = ErrorType<HTTPValidationError>>(
+ designId: number,
+    params: SuggestWiringParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof suggestWiring>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof suggestWiring>>,
+          TError,
+          Awaited<ReturnType<typeof suggestWiring>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useSuggestWiring<TData = Awaited<ReturnType<typeof suggestWiring>>, TError = ErrorType<HTTPValidationError>>(
+ designId: number,
+    params: SuggestWiringParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof suggestWiring>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof suggestWiring>>,
+          TError,
+          Awaited<ReturnType<typeof suggestWiring>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useSuggestWiring<TData = Awaited<ReturnType<typeof suggestWiring>>, TError = ErrorType<HTTPValidationError>>(
+ designId: number,
+    params: SuggestWiringParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof suggestWiring>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Suggest Wiring
+ */
+
+export function useSuggestWiring<TData = Awaited<ReturnType<typeof suggestWiring>>, TError = ErrorType<HTTPValidationError>>(
+ designId: number,
+    params: SuggestWiringParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof suggestWiring>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getSuggestWiringQueryOptions(designId,params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export const getApplyLayoutUrl = (designId: number,) => {
 
 
 

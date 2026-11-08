@@ -214,3 +214,28 @@ class RevisionOut(BaseModel):
     summary: str
     part_count: int
     wire_count: int
+
+
+class SuggestedWire(BaseModel):
+    """A proposed wire from the part's pin (a) to a board or supply pin (b)."""
+
+    a: str
+    b: str
+    reason: str
+    # Something to sort out before trusting the wire (a 5 V signal into a 3.3 V pin).
+    warning: str = ""
+
+
+class UnassignedPin(BaseModel):
+    pin: str
+    reason: str
+
+
+class SuggestedWiring(BaseModel):
+    """Wires for a placed part's unwired pins. Nothing is added until they're sent to
+    add wires."""
+
+    placement: str
+    board: str
+    wires: list[SuggestedWire]
+    unassigned: list[UnassignedPin]

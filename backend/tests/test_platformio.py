@@ -141,7 +141,12 @@ def test_starter_fills_empty_firmware_fields_only(api):
     api.post("/api/parts", json={"name": "Arduino Uno R3", "kind": "board"})
     api.post(
         "/api/parts",
-        json={"name": "DHT22", "kind": "sensor", "libraries": [{"spec": "my/DHT@1.0"}]},
+        json={
+            "name": "DHT22",
+            "kind": "sensor",
+            "libraries": [{"spec": "my/DHT@1.0"}],
+            "wokwi_type": "my-dht",
+        },
     )
     out = api.post("/api/parts/starter").json()
     assert "Arduino Uno R3" in out["updated"]

@@ -1,6 +1,6 @@
 import { cn } from 'cn'
-import { ExternalLink, RotateCw, Trash2 } from 'lucide-react'
-import { useContext, type ReactNode } from 'react'
+import { Cable, ExternalLink, RotateCw, Trash2 } from 'lucide-react'
+import { useContext, useState, type ReactNode } from 'react'
 import { Link } from 'react-router'
 import { toast } from 'sonner'
 import type {
@@ -22,6 +22,7 @@ import { parseOptionalId } from '@/features/parts/fields'
 import { TagEditor } from '@/features/tags/tag-editor'
 import { HighlightContext, usePinnedNet } from './canvas/highlight'
 import { describeNet, netsByPin, powerNote, turned } from './canvas/model'
+import { SuggestWiringDialog } from './suggest-wiring-dialog'
 import { type DesignActions, quietly } from './use-design-actions'
 
 const WIRE_COLORS: WireColor[] = [
@@ -77,8 +78,19 @@ function PartInspector({
 }) {
   const store = useContext(HighlightContext)
   const nets = netsByPin(design)
+  const [suggesting, setSuggesting] = useState(false)
   const save = (data: Parameters<DesignActions['updatePlacement']>[1]) =>
     quietly(actions.updatePlacement(placement.id, data))
+  // The pin assignment helper: for parts with unwired pins, in a design with a board.
+  const hasBoard = design.parts.some(
+    (p) =>
+      p.kind === 'board' &&
+      design.placements.some((pl) => pl.part_id === p.id && pl.id !== placement.id),
+  )
+  const unwired = part.pins.some(
+    (pin) => pin.kind !== 'nc' && !nets.has(`${placement.ref}.${pin.name}`),
+  )
+  const canSuggest = !readOnly && part.kind !== 'board' && hasBoard && unwired
   return (
     <div className="grid gap-4">
       <div>
@@ -120,6 +132,26 @@ function PartInspector({
             Remove
           </Button>
         </div>
+      )}
+      {canSuggest && (
+        <>
+          <Button
+            variant="outline"
+            size="sm"
+            className="justify-self-start"
+            onClick={() => setSuggesting(true)}
+          >
+            <Cable />
+            Suggest wiring
+          </Button>
+          <SuggestWiringDialog
+            design={design}
+            placementRef={placement.ref}
+            actions={actions}
+            open={suggesting}
+            onOpenChange={setSuggesting}
+          />
+        </>
       )}
       <Section title="Note">
         {readOnly ? (

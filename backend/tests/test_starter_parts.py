@@ -24,7 +24,8 @@ def test_all_load_unverified_and_once(api, library):
 def test_only_missing_ones_are_added(api):
     api.post("/api/parts", json={"name": "led (5 mm)", "kind": "actuator"})
     res = api.post("/api/parts/starter").json()
-    assert res["skipped"] == ["LED (5 mm)"] and len(res["added"]) == 21
+    # Already there: only its empty fields (its Wokwi type here) are filled in.
+    assert res["updated"] == ["LED (5 mm)"] and len(res["added"]) == 21
 
 
 def test_each_says_to_check_it(api, library):

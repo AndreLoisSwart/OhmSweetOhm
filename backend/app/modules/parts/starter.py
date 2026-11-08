@@ -37,6 +37,7 @@ IN_ONLY = {"flags": ["input_only"]}
 # ESP32 DevKit V1 (DOIT, 30 pins), top view with the antenna at the top.
 ESP32_DEVKIT_V1 = {
     "name": "ESP32 DevKit V1 (30-pin)",
+    "wokwi_type": "wokwi-esp32-devkit-v1",
     "platform": "espressif32",
     "platformio_board": "esp32dev",
     "kind": "board",
@@ -54,45 +55,69 @@ ESP32_DEVKIT_V1 = {
         *side(
             "left",
             ("EN", "enable"),
-            ("GPIO36", "analog", IN_ONLY),
-            ("GPIO39", "analog", IN_ONLY),
-            ("GPIO34", "analog", IN_ONLY),
-            ("GPIO35", "analog", IN_ONLY),
-            ("GPIO32", "gpio", {"functions": ["analog"]}),
-            ("GPIO33", "gpio", {"functions": ["analog"]}),
-            ("GPIO25", "gpio", {"functions": ["analog"], "flags": ["adc2"]}),
-            ("GPIO26", "gpio", {"functions": ["analog"], "flags": ["adc2"]}),
-            ("GPIO27", "gpio", {"functions": ["analog"], "flags": ["adc2"]}),
-            ("GPIO14", "gpio", {"functions": ["analog", "spi_sck"], "flags": ["adc2"]}),
+            ("GPIO36", "analog", {**IN_ONLY, "wokwi_name": "VP"}),
+            ("GPIO39", "analog", {**IN_ONLY, "wokwi_name": "VN"}),
+            ("GPIO34", "analog", {**IN_ONLY, "wokwi_name": "D34"}),
+            ("GPIO35", "analog", {**IN_ONLY, "wokwi_name": "D35"}),
+            ("GPIO32", "gpio", {"functions": ["analog"], "wokwi_name": "D32"}),
+            ("GPIO33", "gpio", {"functions": ["analog"], "wokwi_name": "D33"}),
+            ("GPIO25", "gpio", {"functions": ["analog"], "flags": ["adc2"], "wokwi_name": "D25"}),
+            ("GPIO26", "gpio", {"functions": ["analog"], "flags": ["adc2"], "wokwi_name": "D26"}),
+            ("GPIO27", "gpio", {"functions": ["analog"], "flags": ["adc2"], "wokwi_name": "D27"}),
+            (
+                "GPIO14",
+                "gpio",
+                {"functions": ["analog", "spi_sck"], "flags": ["adc2"], "wokwi_name": "D14"},
+            ),
             (
                 "GPIO12",
                 "gpio",
-                {"functions": ["analog", "spi_miso"], "flags": ["adc2", "strapping"]},
+                {
+                    "functions": ["analog", "spi_miso"],
+                    "flags": ["adc2", "strapping"],
+                    "wokwi_name": "D12",
+                },
             ),
-            ("GPIO13", "gpio", {"functions": ["analog", "spi_mosi"], "flags": ["adc2"]}),
-            ("GND", "ground"),
+            (
+                "GPIO13",
+                "gpio",
+                {"functions": ["analog", "spi_mosi"], "flags": ["adc2"], "wokwi_name": "D13"},
+            ),
+            ("GND", "ground", {"wokwi_name": "GND.2"}),
             ("VIN", "power_in", {"voltage": 5}),
         ),
         *side(
             "right",
-            ("GPIO23", "gpio", {"functions": ["spi_mosi"]}),
-            ("GPIO22", "gpio", {"functions": ["i2c_scl"]}),
-            ("GPIO1", "uart_tx"),
-            ("GPIO3", "uart_rx"),
-            ("GPIO21", "gpio", {"functions": ["i2c_sda"]}),
-            ("GPIO19", "gpio", {"functions": ["spi_miso"]}),
-            ("GPIO18", "gpio", {"functions": ["spi_sck"]}),
-            ("GPIO5", "gpio", {"functions": ["spi_cs"], "flags": ["strapping"]}),
-            ("GPIO17", "gpio", {"functions": ["uart_tx"]}),
-            ("GPIO16", "gpio", {"functions": ["uart_rx"]}),
-            ("GPIO4", "gpio", {"functions": ["analog"], "flags": ["adc2"]}),
-            ("GPIO2", "gpio", {"functions": ["analog"], "flags": ["adc2", "strapping"]}),
+            ("GPIO23", "gpio", {"functions": ["spi_mosi"], "wokwi_name": "D23"}),
+            ("GPIO22", "gpio", {"functions": ["i2c_scl"], "wokwi_name": "D22"}),
+            ("GPIO1", "uart_tx", {"wokwi_name": "TX0"}),
+            ("GPIO3", "uart_rx", {"wokwi_name": "RX0"}),
+            ("GPIO21", "gpio", {"functions": ["i2c_sda"], "wokwi_name": "D21"}),
+            ("GPIO19", "gpio", {"functions": ["spi_miso"], "wokwi_name": "D19"}),
+            ("GPIO18", "gpio", {"functions": ["spi_sck"], "wokwi_name": "D18"}),
+            (
+                "GPIO5",
+                "gpio",
+                {"functions": ["spi_cs"], "flags": ["strapping"], "wokwi_name": "D5"},
+            ),
+            ("GPIO17", "gpio", {"functions": ["uart_tx"], "wokwi_name": "TX2"}),
+            ("GPIO16", "gpio", {"functions": ["uart_rx"], "wokwi_name": "RX2"}),
+            ("GPIO4", "gpio", {"functions": ["analog"], "flags": ["adc2"], "wokwi_name": "D4"}),
+            (
+                "GPIO2",
+                "gpio",
+                {"functions": ["analog"], "flags": ["adc2", "strapping"], "wokwi_name": "D2"},
+            ),
             (
                 "GPIO15",
                 "gpio",
-                {"functions": ["analog", "spi_cs"], "flags": ["adc2", "strapping"]},
+                {
+                    "functions": ["analog", "spi_cs"],
+                    "flags": ["adc2", "strapping"],
+                    "wokwi_name": "D15",
+                },
             ),
-            ("GND2", "ground"),
+            ("GND2", "ground", {"wokwi_name": "GND.1"}),
             ("3V3", "power_out", {"voltage": 3.3}),
         ),
     ],
@@ -101,6 +126,7 @@ ESP32_DEVKIT_V1 = {
 # ESP32-C3 SuperMini, top view with the USB-C socket at the top.
 ESP32_C3_SUPERMINI = {
     "name": "ESP32-C3 SuperMini",
+    "wokwi_type": "board-aitewinrobot-esp32c3-supermini",
     "platform": "espressif32",
     # No board of its own in PlatformIO; Espressif's C3 DevKitM is the usual stand-in.
     "platformio_board": "esp32-c3-devkitm-1",
@@ -133,8 +159,8 @@ ESP32_C3_SUPERMINI = {
             ("GPIO8", "gpio", {"functions": ["i2c_sda"], "flags": ["strapping"]}),
             ("GPIO9", "gpio", {"functions": ["i2c_scl"], "flags": ["strapping"]}),
             ("GPIO10", "gpio"),
-            ("GPIO20", "uart_rx"),
-            ("GPIO21", "uart_tx"),
+            ("GPIO20", "uart_rx", {"wokwi_name": "RX"}),
+            ("GPIO21", "uart_tx", {"wokwi_name": "TX"}),
         ),
     ],
 }
@@ -146,6 +172,7 @@ ALSO_GPIO = {"functions": ["gpio"]}
 # top edge, the power and analog headers along the bottom.
 ARDUINO_UNO_R3 = {
     "name": "Arduino Uno R3",
+    "wokwi_type": "wokwi-arduino-uno",
     "platform": "atmelavr",
     "platformio_board": "uno",
     "kind": "board",
@@ -162,10 +189,10 @@ ARDUINO_UNO_R3 = {
     "pins": [
         *side(
             "top",
-            ("SCL", "i2c_scl", {"tie": "A5"}),
-            ("SDA", "i2c_sda", {"tie": "A4"}),
+            ("SCL", "i2c_scl", {"tie": "A5", "wokwi_name": "A5.2"}),
+            ("SDA", "i2c_sda", {"tie": "A4", "wokwi_name": "A4.2"}),
             ("AREF", "other"),
-            ("GND", "ground"),
+            ("GND", "ground", {"wokwi_name": "GND.1"}),
             ("D13", "gpio", {"functions": ["spi_sck"]}),
             ("D12", "gpio", {"functions": ["spi_miso"]}),
             ("D11", "gpio", {"functions": ["spi_mosi"]}),
@@ -186,10 +213,10 @@ ARDUINO_UNO_R3 = {
             ("NC", "nc"),
             ("IOREF", "other", {"voltage": 5}),
             ("RESET", "reset"),
-            ("3V3", "power_out", {"voltage": 3.3}),
+            ("3V3", "power_out", {"voltage": 3.3, "wokwi_name": "3.3V"}),
             ("5V", "power_out", {"voltage": 5}),
-            ("GND2", "ground"),
-            ("GND3", "ground"),
+            ("GND2", "ground", {"wokwi_name": "GND.2"}),
+            ("GND3", "ground", {"wokwi_name": "GND.3"}),
             ("VIN", "power_in", {"voltage": 9}),
             ("A0", "analog", ALSO_GPIO),
             ("A1", "analog", ALSO_GPIO),
@@ -204,6 +231,7 @@ ARDUINO_UNO_R3 = {
 # Arduino Nano (ATmega328P), top view with the USB socket at the top.
 ARDUINO_NANO = {
     "name": "Arduino Nano",
+    "wokwi_type": "wokwi-arduino-nano",
     "platform": "atmelavr",
     # Old bootloader, as most clones have; genuine boards since 2018 use nanoatmega328new.
     "platformio_board": "nanoatmega328",
@@ -222,7 +250,7 @@ ARDUINO_NANO = {
         *side(
             "left",
             ("D13", "gpio", {"functions": ["spi_sck"]}),
-            ("3V3", "power_out", {"voltage": 3.3}),
+            ("3V3", "power_out", {"voltage": 3.3, "wokwi_name": "3.3V"}),
             ("AREF", "other"),
             ("A0", "analog", ALSO_GPIO),
             ("A1", "analog", ALSO_GPIO),
@@ -233,8 +261,8 @@ ARDUINO_NANO = {
             ("A6", "analog", IN_ONLY),
             ("A7", "analog", IN_ONLY),
             ("5V", "power_out", {"voltage": 5}),
-            ("RST", "reset", {"tie": "RST"}),
-            ("GND", "ground"),
+            ("RST", "reset", {"tie": "RST", "wokwi_name": "RESET"}),
+            ("GND", "ground", {"wokwi_name": "GND.1"}),
             ("VIN", "power_in", {"voltage": 9}),
         ),
         *side(
@@ -250,8 +278,8 @@ ARDUINO_NANO = {
             ("D4", "gpio"),
             ("D3", "gpio"),
             ("D2", "gpio"),
-            ("GND2", "ground"),
-            ("RST2", "reset", {"tie": "RST"}),
+            ("GND2", "ground", {"wokwi_name": "GND.2"}),
+            ("RST2", "reset", {"tie": "RST", "wokwi_name": "RESET.2"}),
             ("D0", "uart_rx"),
             ("D1", "uart_tx"),
         ),
@@ -377,6 +405,7 @@ BME280 = {
 
 DHT22 = {
     "name": "DHT22",
+    "wokwi_type": "wokwi-dht22",
     "libraries": [{"spec": "adafruit/DHT sensor library@^1.4"}],
     "kind": "sensor",
     "logic_voltage": "both",
@@ -390,7 +419,7 @@ DHT22 = {
     "pins": side(
         "bottom",
         ("VCC", "power_in", {"voltage": 3.3}),
-        ("DATA", "gpio", {"flags": ["open_drain"]}),
+        ("DATA", "gpio", {"flags": ["open_drain"], "wokwi_name": "SDA"}),
         ("NC", "nc"),
         ("GND", "ground"),
     ),
@@ -398,6 +427,7 @@ DHT22 = {
 
 DS18B20 = {
     "name": "DS18B20 (TO-92)",
+    "wokwi_type": "wokwi-ds18b20",
     "libraries": [
         {"spec": "paulstoffregen/OneWire@^2.3"},
         {"spec": "milesburton/DallasTemperature@^3.11"},
@@ -415,12 +445,13 @@ DS18B20 = {
         "bottom",
         ("GND", "ground"),
         ("DQ", "gpio", {"flags": ["open_drain"]}),
-        ("VDD", "power_in", {"voltage": 3.3}),
+        ("VDD", "power_in", {"voltage": 3.3, "wokwi_name": "VCC"}),
     ),
 }
 
 HC_SR04 = {
     "name": "HC-SR04",
+    "wokwi_type": "wokwi-hc-sr04",
     "kind": "sensor",
     "logic_voltage": "5v",
     "supply_min_v": 4.5,
@@ -442,6 +473,7 @@ HC_SR04 = {
 
 PIR_HC_SR501 = {
     "name": "PIR HC-SR501",
+    "wokwi_type": "wokwi-pir-motion-sensor",
     "kind": "sensor",
     "logic_voltage": "3v3",
     "supply_min_v": 4.5,
@@ -506,6 +538,7 @@ INA219 = {
 
 SSD1306 = {
     "name": "SSD1306 128×64 OLED (I2C)",
+    "wokwi_type": "board-ssd1306",
     "libraries": [
         {"spec": "adafruit/Adafruit SSD1306@^2.5"},
         {"spec": "adafruit/Adafruit GFX Library@^1.11"},
@@ -531,6 +564,7 @@ SSD1306 = {
 
 RELAY_1CH = {
     "name": "Relay module (1-channel, 5 V)",
+    "wokwi_type": "wokwi-relay-module",
     "kind": "actuator",
     "logic_voltage": "5v",
     "supply_min_v": 4.5,
@@ -554,6 +588,7 @@ RELAY_1CH = {
 
 SG90 = {
     "name": "SG90 micro servo",
+    "wokwi_type": "wokwi-servo",
     # ESP8266 cores include their own Servo library.
     "libraries": [
         {"spec": "arduino-libraries/Servo@^1.2", "platforms": ["atmelavr"]},
@@ -578,6 +613,7 @@ SG90 = {
 
 LED = {
     "name": "LED (5 mm)",
+    "wokwi_type": "wokwi-led",
     "kind": "actuator",
     "logic_voltage": "none",
     "description": "A plain through-hole LED.",
@@ -585,11 +621,12 @@ LED = {
         "The anode (A) is the longer leg; the cathode (K) is on the flat side. It needs a "
         "series resistor: about 220 Ω from 3.3 V or 5 V for a red LED at ~10 mA.",
     ),
-    "pins": side("bottom", ("A", "other"), ("K", "other")),
+    "pins": side("bottom", ("A", "other"), ("K", "other", {"wokwi_name": "C"})),
 }
 
 PUSH_BUTTON = {
     "name": "Push button (4-leg tactile)",
+    "wokwi_type": "wokwi-pushbutton-6mm",
     "kind": "other",
     "logic_voltage": "none",
     "description": "6 mm tactile switch.",
@@ -598,13 +635,22 @@ PUSH_BUTTON = {
         "board's internal pull-up, wire A to the input and B to GND.",
     ),
     "pins": [
-        *side("left", ("A1", "other", {"tie": "A"}), ("B1", "other", {"tie": "B"})),
-        *side("right", ("A2", "other", {"tie": "A"}), ("B2", "other", {"tie": "B"})),
+        *side(
+            "left",
+            ("A1", "other", {"tie": "A", "wokwi_name": "1.l"}),
+            ("B1", "other", {"tie": "B", "wokwi_name": "2.l"}),
+        ),
+        *side(
+            "right",
+            ("A2", "other", {"tie": "A", "wokwi_name": "1.r"}),
+            ("B2", "other", {"tie": "B", "wokwi_name": "2.r"}),
+        ),
     ],
 }
 
 WS2812B = {
     "name": "WS2812B LED strip",
+    "wokwi_type": "wokwi-led-strip",
     "libraries": [{"spec": "fastled/FastLED@^3.6"}],
     "kind": "actuator",
     "logic_voltage": "5v",
@@ -619,9 +665,9 @@ WS2812B = {
     ),
     "pins": side(
         "left",
-        ("5V", "power_in", {"voltage": 5}),
+        ("5V", "power_in", {"voltage": 5, "wokwi_name": "VDD"}),
         ("DIN", "gpio", IN_ONLY),
-        ("GND", "ground"),
+        ("GND", "ground", {"wokwi_name": "VSS"}),
     ),
 }
 

@@ -85,6 +85,8 @@ def test_tool_list(mcp):
         "get_bringup_sketch",
         "get_platformio_project",
         "compare_pin_map",
+        "get_wokwi_export",
+        "suggest_wiring",
         "list_revisions",
         "restore_revision",
     }

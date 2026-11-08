@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 
 from app.modules.designs import service as designs
-from app.modules.firmware import bringup, pinmap, platformio
+from app.modules.firmware import bringup, pinmap, platformio, wokwi
 from app.modules.firmware.pinmap import FILENAMES, Lang
 from app.modules.firmware.schemas import (
     ConstantChange,
@@ -11,6 +11,8 @@ from app.modules.firmware.schemas import (
     PinMapCompare,
     PinMapDrift,
     PinMapOut,
+    WokwiExport,
+    WokwiSkipped,
 )
 
 
@@ -48,6 +50,22 @@ def platformio_project(session: Session, design_id: int, board: str | None = Non
         board=chosen.ref,
         boards=[b.ref for b in pinmap.boards_of(design)],
         files=[FirmwareFile(filename=platformio.FILENAME, text=text)],
+    )
+
+
+def wokwi_export(session: Session, design_id: int, board: str | None = None) -> WokwiExport:
+    design = designs.get_design(session, design_id)
+    boards = pinmap.boards_of(design)
+    chosen = pinmap.choose_board(design, board) if board or len(boards) == 1 else None
+    built = wokwi.export(design, chosen)
+    files = [FirmwareFile(filename=wokwi.DIAGRAM, text=built.diagram)]
+    if built.toml:
+        files.append(FirmwareFile(filename=wokwi.TOML, text=built.toml))
+    return WokwiExport(
+        board=chosen.ref if chosen else None,
+        boards=[b.ref for b in boards],
+        files=files,
+        skipped=[WokwiSkipped(ref=s.ref, part=s.part, wires=s.wires) for s in built.skipped],
     )
 
 

@@ -97,3 +97,5 @@ Decided for firmware support (2026-11-07):
 - **The app generates the pin map, bring-up sketch and library list; Claude writes the firmware.** Generated files are deterministic, so they can be regenerated and compared.
 - **Target boards:** ESP32 variants, Arduino Uno, Nano and Pro Micro. No Raspberry Pi or Pico for now.
 - **No REST access from outside Ingress for this either.** Files come from the app's download buttons, or reach a firmware repo through Claude over MCP.
+
+Decided after step 13 (2026-11-08): the **Wokwi export** and the **pin assignment helper** are built (future-enhancements.md). No schema change: `wokwi_type` and `wokwi_name` were there from the start. The starter parts carry their Wokwi types and pin names, and Starter parts fills them into parts already in the library when empty.

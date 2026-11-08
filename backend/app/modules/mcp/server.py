@@ -39,12 +39,19 @@ from app.modules.designs.schemas import (
     Ref,
     RevisionOut,
     Rotation,
+    SuggestedWiring,
     WireIn,
     WireUpdate,
 )
 from app.modules.firmware import service as firmware
 from app.modules.firmware.pinmap import Lang
-from app.modules.firmware.schemas import FirmwareFiles, PinMapCompare, PinMapDrift, PinMapOut
+from app.modules.firmware.schemas import (
+    FirmwareFiles,
+    PinMapCompare,
+    PinMapDrift,
+    PinMapOut,
+    WokwiExport,
+)
 from app.modules.parts import service as part_service
 from app.modules.parts.models import Author, LogicVoltage, PartKind, Platform
 from app.modules.parts.router import part_detail
@@ -83,6 +90,11 @@ designs carry Shelf-help ids (shelf_item_id, shelf_project_id).
   before writing the real firmware. Start a PlatformIO project from
   get_platformio_project. When a part needs a library it doesn't list, add it to the
   part (update_part libraries) so the next design gets it too.
+- Adding a part to a design: place it, run suggest_wiring for it, show the user the
+  proposed wires (with any warnings), then connect the ones they agree to.
+- To simulate a design, use get_wokwi_export: save diagram.json and wokwi.toml next to
+  platformio.ini. A part with no wokwi_type is left out; if Wokwi has that part, set
+  wokwi_type (and wokwi_name on pins Wokwi names differently) with update_part.
 - Before changing pin-related code in a firmware with a generated pins.h or pins.py
   (its header names the design id), run compare_pin_map with the file's text. If the
   design has moved on, tell the user what changed, replace the file with the new one,
@@ -634,6 +646,27 @@ def build_server(open_session: SessionOpener) -> MCPServer:
             return firmware.compare_pin_map(
                 session, design_id, PinMapCompare(text=text, lang=lang, board=board)
             )
+
+    @tool(READ)
+    def get_wokwi_export(design_id: int, board: str | None = None) -> WokwiExport:
+        """The design as Wokwi's diagram.json, for simulation in the Wokwi web editor, VS
+        Code extension or wokwi-cli, plus wokwi.toml pointing at the PlatformIO build of
+        the board's firmware (from get_platformio_project, same env name). skipped lists
+        parts with no Wokwi type, left out with their wires: tell the user what the
+        simulation lacks. board: needed for wokwi.toml when the design has several."""
+        with open_session() as session:
+            return firmware.wokwi_export(session, design_id, board)
+
+    @tool(READ)
+    def suggest_wiring(design_id: int, ref: str, board: str | None = None) -> SuggestedWiring:
+        """Proposed wires for the unwired pins of the placed part `ref`: buses shared with
+        parts already on them, a supply within the part's range, signals on free GPIOs
+        away from flash, strapping and input-only pins. Each has a reason, and a warning
+        where something needs sorting out (a 5 V signal into a 3.3 V pin). unassigned
+        lists pins it left alone and why. Read-only: show the user, then connect the
+        ones they want. board: needed when the design has more than one."""
+        with open_session() as session:
+            return designs.suggest_wiring(designs.get_design(session, design_id), ref, board)
 
     @tool(READ)
     def list_revisions(design_id: int) -> Revisions:

@@ -28,10 +28,12 @@ import type {
   GetBringupSketchParams,
   GetPinMapParams,
   GetPlatformioProjectParams,
+  GetWokwiExportParams,
   HTTPValidationError,
   PinMapCompare,
   PinMapDrift,
-  PinMapOut
+  PinMapOut,
+  WokwiExport
 } from '../model';
 
 import { apiFetch } from '../../fetcher';
@@ -397,6 +399,123 @@ export function useGetPlatformioProject<TData = Awaited<ReturnType<typeof getPla
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getGetPlatformioProjectQueryOptions(designId,params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export const getGetWokwiExportUrl = (designId: number,
+    params?: GetWokwiExportParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/designs/${designId}/wokwi?${stringifiedParams}` : `/api/designs/${designId}/wokwi`
+}
+
+/**
+ * The design as Wokwi's diagram.json, with a wokwi.toml for the board's PlatformIO
+ * build. Parts without a Wokwi type are left out with their wires, and listed.
+ * @summary Get Wokwi Export
+ */
+export const getWokwiExport = async (designId: number,
+    params?: GetWokwiExportParams, options?: Parameters<typeof apiFetch>[1]): Promise<WokwiExport> => {
+
+  return apiFetch<WokwiExport>(getGetWokwiExportUrl(designId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetWokwiExportQueryKey = (designId: number,
+    params?: GetWokwiExportParams,) => {
+    return [
+    `/api/designs/${designId}/wokwi`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetWokwiExportQueryOptions = <TData = Awaited<ReturnType<typeof getWokwiExport>>, TError = ErrorType<HTTPValidationError>>(designId: number,
+    params?: GetWokwiExportParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getWokwiExport>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetWokwiExportQueryKey(designId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getWokwiExport>>> = ({ signal }) => getWokwiExport(designId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: designId !== null && designId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getWokwiExport>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetWokwiExportQueryResult = NonNullable<Awaited<ReturnType<typeof getWokwiExport>>>
+export type GetWokwiExportQueryError = ErrorType<HTTPValidationError>
+
+
+export function useGetWokwiExport<TData = Awaited<ReturnType<typeof getWokwiExport>>, TError = ErrorType<HTTPValidationError>>(
+ designId: number,
+    params: undefined |  GetWokwiExportParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getWokwiExport>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getWokwiExport>>,
+          TError,
+          Awaited<ReturnType<typeof getWokwiExport>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetWokwiExport<TData = Awaited<ReturnType<typeof getWokwiExport>>, TError = ErrorType<HTTPValidationError>>(
+ designId: number,
+    params?: GetWokwiExportParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getWokwiExport>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getWokwiExport>>,
+          TError,
+          Awaited<ReturnType<typeof getWokwiExport>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetWokwiExport<TData = Awaited<ReturnType<typeof getWokwiExport>>, TError = ErrorType<HTTPValidationError>>(
+ designId: number,
+    params?: GetWokwiExportParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getWokwiExport>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get Wokwi Export
+ */
+
+export function useGetWokwiExport<TData = Awaited<ReturnType<typeof getWokwiExport>>, TError = ErrorType<HTTPValidationError>>(
+ designId: number,
+    params?: GetWokwiExportParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getWokwiExport>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetWokwiExportQueryOptions(designId,params,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

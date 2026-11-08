@@ -3,7 +3,13 @@ from fastapi import APIRouter
 from app.core.db import SessionDep
 from app.modules.firmware import service
 from app.modules.firmware.pinmap import Lang
-from app.modules.firmware.schemas import FirmwareFiles, PinMapCompare, PinMapDrift, PinMapOut
+from app.modules.firmware.schemas import (
+    FirmwareFiles,
+    PinMapCompare,
+    PinMapDrift,
+    PinMapOut,
+    WokwiExport,
+)
 
 router = APIRouter(prefix="/designs/{design_id}", tags=["firmware"])
 
@@ -33,6 +39,13 @@ def get_platformio_project(
     """platformio.ini for the board: its platform and board id, and the libraries the
     design's parts need on that platform. With more than one board, `board` is its ref."""
     return service.platformio_project(session, design_id, board)
+
+
+@router.get("/wokwi")
+def get_wokwi_export(design_id: int, session: SessionDep, board: str | None = None) -> WokwiExport:
+    """The design as Wokwi's diagram.json, with a wokwi.toml for the board's PlatformIO
+    build. Parts without a Wokwi type are left out with their wires, and listed."""
+    return service.wokwi_export(session, design_id, board)
 
 
 @router.post("/pinmap/compare")

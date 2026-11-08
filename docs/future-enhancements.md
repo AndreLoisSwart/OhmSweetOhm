@@ -4,6 +4,17 @@
 
 ### Simulation through Wokwi
 
+**Built (2026-11-08):** export only; running `wokwi-cli` from the app is still to come.
+- **Files:** `GET /designs/{id}/wokwi`, the ⋯ menu's Simulate in Wokwi, and the MCP tool `get_wokwi_export`. `diagram.json`, plus `wokwi.toml` pointing at `.pio/build/<board ref>/firmware.bin` (or `.hex` on AVR), the env the generated `platformio.ini` names. With several boards, the toml needs one chosen.
+- **Pin names:** a pin's `wokwi_name`, else on a board its code name (`GPIO4` → `4`, `D13` → `13`), else its own name.
+- **Positions** are halved, since Wokwi's parts are about real size and far smaller than the cards. Rotation carries over.
+- **ESP32 boards** get their UART pins wired to `$serialMonitor`, which Wokwi needs to show Serial.
+- **Starter parts with a Wokwi type:**
+  - ESP32 DevKit V1 (`wokwi-esp32-devkit-v1`: `D21`, `TX0`, `GND.1`…), ESP32-C3 SuperMini (`board-aitewinrobot-esp32c3-supermini`), Uno and Nano.
+  - DHT22, DS18B20, HC-SR04, PIR, SSD1306 (`board-ssd1306`), relay, servo, LED, push button (6 mm), WS2812B (`wokwi-led-strip`).
+  - Checked against Wokwi's element sources and part docs.
+- **No Wokwi part:** Pro Micro, D1 Mini (ESP8266), BME280, BH1750, INA219, and the power parts. These are left out.
+
 Wokwi simulates ESP32, Arduino and many sensors in the browser: your firmware runs on a virtual board, and the sensors, LEDs, displays and serial output respond.
 
 - **Export** a design as Wokwi's `diagram.json`:
@@ -97,6 +108,15 @@ Built: focus, and same-net wires sharing tracks with junction dots (pages.md, De
 - **Breadboard view:** a realistic breadboard layout as a second view of the same connection list.
 - **Passive values:** resistors and capacitors with values, voltage dividers checked by the rules (e.g. a 5 V echo pin divided down to 3.3 V).
 - **Power budget:** current draw per part, summed per supply, checked against the regulator's limit.
-- **Pin assignment helper:** given parts to connect, suggest free board pins that avoid strapping, flash and ADC2 pins.
+- **Pin assignment helper (built 2026-11-08):** for a placed part, `GET /designs/{id}/suggest-wiring?ref=`, the Inspector's Suggest wiring, and the MCP tool `suggest_wiring`.
+  - **Shared buses:** I2C and SPI lines join the board pin already carrying them to another part; otherwise they take the board's pin with that role.
+  - **Supply:** taken from any power_out pin in the design within the part's supply range, the board's own first.
+  - **Ground:** the board's least-used ground pin.
+  - **UART:** crossed, on a spare UART before the USB serial.
+  - **Signals:** go to free GPIOs, never flash, input-only or the main UART pins. Strapping and boot pins come last, then pins with bus roles, then analog pins (kept free for analog parts).
+  - **Analog:** prefers input-only pins and avoids ADC2 on ESP32.
+  - **Warnings:** a 5 V signal into a lower-rated pin gets one.
+  - **Left to the user:** kind other, enable, reset and supply pins.
+  - Later: "add a BME280" picking the part too, and placing it near its pins.
 - **Part import:** from Fritzing `.fzpz` or Wokwi element definitions, licence permitting.
 - **Bill of materials:** a design's parts as a list, with one tap to add the missing ones to Shelf-help as `need`.
