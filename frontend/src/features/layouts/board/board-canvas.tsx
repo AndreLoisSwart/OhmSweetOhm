@@ -22,6 +22,7 @@ import {
   holeX,
   MARGIN,
   netColor,
+  rotate,
   STEP,
   stripLabel,
   stripY,
@@ -80,6 +81,7 @@ export function BoardCanvas({
   jumperStart,
   onJumperPoint,
   connectorPreview,
+  armedRotation,
   onConnectorAt,
   readOnly,
 }: {
@@ -100,7 +102,9 @@ export function BoardCanvas({
   jumperStart: Cell | null
   onJumperPoint: (cell: Cell) => void
   /** The connector tool's pins, for the preview: how many, and holes between them. */
-  connectorPreview: { pins: number; step: number } | null
+  connectorPreview: { pins: number; step: number; rotation: number } | null
+  /** How a part armed from the tray will be turned when it's put down. */
+  armedRotation: number
   onConnectorAt: (cell: Cell) => void
   readOnly: boolean
 }) {
@@ -247,11 +251,12 @@ export function BoardCanvas({
       return
     }
     if (pan.current) {
-      setViewport((v) => ({
-        ...v,
-        x: pan.current!.vx + event.clientX - pan.current!.x,
-        y: pan.current!.vy + event.clientY - pan.current!.y,
-      }))
+      // Worked out now: React runs an update function later, by which time the button
+      // may be up and the pan gone.
+      const start = pan.current
+      const x = start.vx + event.clientX - start.x
+      const y = start.vy + event.clientY - start.y
+      setViewport((v) => ({ ...v, x, y }))
       return
     }
     if (armed !== null || tool !== 'select') setHover(toBoard(event.clientX, event.clientY))
@@ -291,9 +296,10 @@ export function BoardCanvas({
   const armedPart = armed !== null ? design.placements.find((p) => p.id === armed) : undefined
   const armedPins =
     armedPart && hoverCell
-      ? footprintOffsets(design.parts.find((p) => p.id === armedPart.part_id)?.pins ?? [], 0).map(
-          (o) => ({ strip: hoverCell.strip + o.strip, hole: hoverCell.hole + o.hole }),
-        )
+      ? footprintOffsets(
+          design.parts.find((p) => p.id === armedPart.part_id)?.pins ?? [],
+          armedRotation,
+        ).map((o) => ({ strip: hoverCell.strip + o.strip, hole: hoverCell.hole + o.hole }))
       : []
   const copperOpacity = flipped ? 0.85 : 0.35
   const strips = Array.from({ length: layout.strips }, (_, i) => i + 1)
@@ -652,17 +658,27 @@ export function BoardCanvas({
           {tool === 'connector' &&
             connectorPreview &&
             hoverCell &&
-            Array.from({ length: connectorPreview.pins }, (_, i) => (
-              <rect
-                key={i}
-                x={holeX(hoverCell.hole + i * connectorPreview.step, view) - STEP * 0.45}
-                y={stripY(hoverCell.strip) - STEP * 0.45}
-                width={STEP * 0.9}
-                height={STEP * 0.9}
-                rx={2}
-                className="pointer-events-none fill-primary/30 stroke-primary"
-              />
-            ))}
+            Array.from({ length: connectorPreview.pins }, (_, i) => {
+              const [along, across] = rotate(
+                i * connectorPreview.step,
+                0,
+                connectorPreview.rotation,
+              )
+              return (
+                <rect
+                  key={i}
+                  x={holeX(hoverCell.hole + Math.round(along), view) - STEP * 0.45}
+                  y={stripY(hoverCell.strip + Math.round(across)) - STEP * 0.45}
+                  width={STEP * 0.9}
+                  height={STEP * 0.9}
+                  rx={2}
+                  className={cn(
+                    'pointer-events-none stroke-primary',
+                    i === 0 ? 'fill-primary/60' : 'fill-primary/30',
+                  )}
+                />
+              )
+            })}
           {/* Where an armed part would land. */}
           {armedPins.map((cell, i) => (
             <circle

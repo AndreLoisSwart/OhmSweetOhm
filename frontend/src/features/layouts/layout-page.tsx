@@ -34,7 +34,7 @@ import { quietly } from '@/features/designs/use-design-actions'
 import { PHONE_QUERY, useMediaQuery } from '@/lib/use-media-query'
 import { BoardCanvas } from './board/board-canvas'
 import { type BoardHighlight, NO_HIGHLIGHT } from './board/highlight'
-import { type Cell, cellLabel, nextRotation } from './board/geometry'
+import { type Cell, cellLabel, nextRotation, type Turn } from './board/geometry'
 import {
   CONNECTOR_TYPES,
   type ConnectorDraft,
@@ -86,7 +86,10 @@ function LayoutEditor({ layout, design }: { layout: LayoutDetail; design: Design
     type: 'header_female',
     pinCount: 4,
     pins: [],
+    rotation: 0,
   })
+  // A part armed from the tray is put down turned this much (R while it's armed).
+  const [armedRotation, setArmedRotation] = useState<Turn>(0)
   const [armed, setArmed] = useState<number | null>(null)
   const [flipped, setFlipped] = useState(false)
   const [checksOpen, setChecksOpen] = useState(false)
@@ -165,6 +168,7 @@ function LayoutEditor({ layout, design }: { layout: LayoutDetail; design: Design
           pin_count: Math.max(connector.pinCount, connector.pins.length),
           strip: cell.strip,
           hole: cell.hole,
+          rotation: connector.rotation,
           pins: connector.pins,
         })
         .then((out) => {
@@ -180,7 +184,12 @@ function LayoutEditor({ layout, design }: { layout: LayoutDetail; design: Design
     setArmed(null)
     setTrayOpen(false)
     setSelected({ kind: 'part', id: placementId })
-    quietly(actions.place([{ placement_id: placementId, strip: at.strip, hole: at.hole }]))
+    quietly(
+      actions.place([
+        { placement_id: placementId, strip: at.strip, hole: at.hole, rotation: armedRotation },
+      ]),
+    )
+    setArmedRotation(0)
   }
 
   // Keys: V C J K pick a tool, R turns the selection, Delete removes it, F flips,
@@ -224,6 +233,10 @@ function LayoutEditor({ layout, design }: { layout: LayoutDetail; design: Design
           setSelected(null)
           setPicked(null)
         }
+      } else if (key === 'r' && armed !== null) {
+        setArmedRotation(nextRotation(armedRotation))
+      } else if (key === 'r' && tool === 'connector') {
+        setConnector((c) => ({ ...c, rotation: nextRotation(c.rotation) }))
       } else if (key === 'r' && part?.on_board) {
         quietly(
           actions.place([
@@ -271,14 +284,17 @@ function LayoutEditor({ layout, design }: { layout: LayoutDetail; design: Design
       layout={layout}
       actions={actions}
       armed={armed}
-      onArm={setArmed}
+      onArm={(id) => {
+        setArmed(id)
+        setArmedRotation(0)
+      }}
       selected={selected?.kind === 'part' ? selected.id : null}
       onSelect={(id) => {
         setSelected({ kind: 'part', id })
         setTrayOpen(false)
       }}
       onAddConnector={(pins) => {
-        setConnector({ type: 'header_female', pinCount: pins.length, pins })
+        setConnector((c) => ({ ...c, type: 'header_female', pinCount: pins.length, pins }))
         setTool('connector')
         setArmed(null)
         setTrayOpen(false)
@@ -423,10 +439,12 @@ function LayoutEditor({ layout, design }: { layout: LayoutDetail; design: Design
                   ? {
                       pins: Math.max(connector.pinCount, connector.pins.length),
                       step: CONNECTOR_TYPES.find((c) => c.type === connector.type)!.step,
+                      rotation: connector.rotation,
                     }
                   : null
               }
               onConnectorAt={placeConnector}
+              armedRotation={armedRotation}
               readOnly={readOnly}
             />
             {!readOnly && (

@@ -66,4 +66,6 @@ export interface ConnectorDraft {
   pinCount: number
   /** What each pin carries, when made for an off-board part from the tray. */
   pins: (string | null)[]
+  /** Turned before it's put down (R): 0, 90, 180 or 270. */
+  rotation: 0 | 90 | 180 | 270
 }

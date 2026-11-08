@@ -1,9 +1,10 @@
 import { cn } from 'cn'
-import { Cable, MousePointer2, Plug, Scissors } from 'lucide-react'
+import { Cable, MousePointer2, Plug, RotateCw, Scissors } from 'lucide-react'
 import type { ConnectorType } from '@/api/generated/model'
 import { NativeSelect } from '@/components/native-select'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { nextRotation } from './board/geometry'
 import { CONNECTOR_TYPES, type ConnectorDraft, type Tool } from './board/tools'
 
 const TOOLS: { tool: Tool; label: string; key: string; Icon: typeof Scissors }[] = [
@@ -40,8 +41,8 @@ export function BoardToolbar({
           : `Click one end, then the other. It goes on the ${flipped ? 'copper side (a bottom link)' : 'component side'}: turn the board over for the other.`
         : tool === 'connector'
           ? connector.pins.some(Boolean)
-            ? `Click where pin 1 goes: ${connector.pins.filter(Boolean).join(', ')}.`
-            : 'Click where pin 1 goes. Assign its pins in the Inspector.'
+            ? `Click where pin 1 goes (the darker one): ${connector.pins.filter(Boolean).join(', ')}. R turns it.`
+            : 'Click where pin 1 goes (the darker one). R turns it. Assign its pins in the Inspector.'
           : null
   return (
     <div className="pointer-events-none absolute inset-x-2 top-2 z-10 flex flex-col items-center gap-1.5">
@@ -96,6 +97,17 @@ export function BoardToolbar({
               }
             />
             <span className="text-xs text-muted-foreground">pins</span>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label={`Rotate (R), now ${connector.rotation}°`}
+              title={`Rotate before placing (R): now ${connector.rotation}°`}
+              onClick={() =>
+                onConnector({ ...connector, rotation: nextRotation(connector.rotation) })
+              }
+            >
+              <RotateCw />
+            </Button>
           </div>
         )}
       </div>

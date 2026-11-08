@@ -189,8 +189,8 @@ export function PartsTray({
       {!readOnly && (
         <p className="flex gap-1.5 px-2 text-xs text-muted-foreground">
           <Hand className="mt-px size-3.5 shrink-0" />
-          Drag a part onto the board, or press Place and click where its first pin goes. Drag parts
-          to move them; R turns the selected one.
+          Drag a part onto the board, or press Place and click where its first pin goes (R turns it
+          first). Drag parts to move them; R turns the selected one.
         </p>
       )}
     </div>
