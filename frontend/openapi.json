@@ -1688,6 +1688,1007 @@
         }
       }
     },
+    "/api/designs/{design_id}/layouts": {
+      "get": {
+        "tags": [
+          "layouts"
+        ],
+        "summary": "List Layouts",
+        "operationId": "list_layouts",
+        "parameters": [
+          {
+            "name": "design_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Design Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LayoutSummary"
+                  },
+                  "title": "Response List Layouts"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "layouts"
+        ],
+        "summary": "Create Layout",
+        "description": "A stripboard is 24 strips of 37 holes unless sized; a breadboard pattern is 14 rows\n(rails, two blocks of five, rails) of 62 holes unless sized.",
+        "operationId": "create_layout",
+        "parameters": [
+          {
+            "name": "design_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Design Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LayoutCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LayoutDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/layouts/{layout_id}": {
+      "get": {
+        "tags": [
+          "layouts"
+        ],
+        "summary": "Get Layout",
+        "operationId": "get_layout",
+        "parameters": [
+          {
+            "name": "layout_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Layout Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LayoutDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "layouts"
+        ],
+        "summary": "Update Layout",
+        "operationId": "update_layout",
+        "parameters": [
+          {
+            "name": "layout_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Layout Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LayoutUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LayoutDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "layouts"
+        ],
+        "summary": "Delete Layout",
+        "operationId": "delete_layout",
+        "parameters": [
+          {
+            "name": "layout_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Layout Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/layouts/{layout_id}/parts": {
+      "put": {
+        "tags": [
+          "layouts"
+        ],
+        "summary": "Place Parts",
+        "description": "Puts design placements on the board (their footprint's origin at strip and hole),\nmoves them, or marks them off the board.",
+        "operationId": "place_parts",
+        "parameters": [
+          {
+            "name": "layout_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Layout Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PartsPlace"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LayoutDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/layouts/{layout_id}/parts/{placement_id}": {
+      "delete": {
+        "tags": [
+          "layouts"
+        ],
+        "summary": "Unplace Part",
+        "description": "Back to not placed.",
+        "operationId": "unplace_part",
+        "parameters": [
+          {
+            "name": "layout_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Layout Id"
+            }
+          },
+          {
+            "name": "placement_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Placement Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LayoutDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/layouts/{layout_id}/cuts": {
+      "post": {
+        "tags": [
+          "layouts"
+        ],
+        "summary": "Add Cuts",
+        "operationId": "add_cuts",
+        "parameters": [
+          {
+            "name": "layout_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Layout Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CutsIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LayoutDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/layouts/{layout_id}/cuts/{cut_id}": {
+      "delete": {
+        "tags": [
+          "layouts"
+        ],
+        "summary": "Remove Cut",
+        "operationId": "remove_cut",
+        "parameters": [
+          {
+            "name": "layout_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Layout Id"
+            }
+          },
+          {
+            "name": "cut_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Cut Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LayoutDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/layouts/{layout_id}/parts/{placement_id}/cut-between-rows": {
+      "post": {
+        "tags": [
+          "layouts"
+        ],
+        "summary": "Cut Between Rows",
+        "description": "Cuts the strips a part spans between pins that mustn't be joined (a module's two\nheader rows): at a free hole midway, or between holes when none is free.",
+        "operationId": "cut_between_rows",
+        "parameters": [
+          {
+            "name": "layout_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Layout Id"
+            }
+          },
+          {
+            "name": "placement_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Placement Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LayoutDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/layouts/{layout_id}/trim": {
+      "post": {
+        "tags": [
+          "layouts"
+        ],
+        "summary": "Trim Dead Copper",
+        "description": "Cuts each strip just past its outermost connection (between holes).",
+        "operationId": "trim_dead_copper",
+        "parameters": [
+          {
+            "name": "layout_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Layout Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LayoutDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/layouts/{layout_id}/jumpers": {
+      "post": {
+        "tags": [
+          "layouts"
+        ],
+        "summary": "Add Jumper",
+        "operationId": "add_jumper",
+        "parameters": [
+          {
+            "name": "layout_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Layout Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JumperIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LayoutDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/layouts/{layout_id}/jumpers/{jumper_id}": {
+      "patch": {
+        "tags": [
+          "layouts"
+        ],
+        "summary": "Update Jumper",
+        "operationId": "update_jumper",
+        "parameters": [
+          {
+            "name": "layout_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Layout Id"
+            }
+          },
+          {
+            "name": "jumper_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Jumper Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JumperUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LayoutDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "layouts"
+        ],
+        "summary": "Remove Jumper",
+        "operationId": "remove_jumper",
+        "parameters": [
+          {
+            "name": "layout_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Layout Id"
+            }
+          },
+          {
+            "name": "jumper_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Jumper Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LayoutDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/layouts/{layout_id}/connectors": {
+      "post": {
+        "tags": [
+          "layouts"
+        ],
+        "summary": "Add Connector",
+        "description": "A generic connector named J1, J2\u2026 unless a ref is given; pins lists the off-board\npin each carries, `ref.PIN` or null.",
+        "operationId": "add_connector",
+        "parameters": [
+          {
+            "name": "layout_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Layout Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectorIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LayoutDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/layouts/{layout_id}/connectors/{connector_id}": {
+      "patch": {
+        "tags": [
+          "layouts"
+        ],
+        "summary": "Update Connector",
+        "operationId": "update_connector",
+        "parameters": [
+          {
+            "name": "layout_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Layout Id"
+            }
+          },
+          {
+            "name": "connector_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Connector Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectorUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LayoutDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "layouts"
+        ],
+        "summary": "Remove Connector",
+        "operationId": "remove_connector",
+        "parameters": [
+          {
+            "name": "layout_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Layout Id"
+            }
+          },
+          {
+            "name": "connector_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Connector Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LayoutDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/layouts/{layout_id}/snapshot": {
+      "put": {
+        "tags": [
+          "layouts"
+        ],
+        "summary": "Apply Layout Snapshot",
+        "description": "Sets the whole layout at once: the board canvas's undo and redo.",
+        "operationId": "apply_layout_snapshot",
+        "parameters": [
+          {
+            "name": "layout_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Layout Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LayoutSnapshot"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LayoutDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/layouts/{layout_id}/revisions": {
+      "get": {
+        "tags": [
+          "layouts"
+        ],
+        "summary": "List Layout Revisions",
+        "description": "Newest first: the layout as it was before the change in each summary.",
+        "operationId": "list_layout_revisions",
+        "parameters": [
+          {
+            "name": "layout_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Layout Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LayoutRevisionOut"
+                  },
+                  "title": "Response List Layout Revisions"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/layouts/{layout_id}/revisions/{revision_id}/restore": {
+      "post": {
+        "tags": [
+          "layouts"
+        ],
+        "summary": "Restore Layout Revision",
+        "operationId": "restore_layout_revision",
+        "parameters": [
+          {
+            "name": "layout_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Layout Id"
+            }
+          },
+          {
+            "name": "revision_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Revision Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LayoutDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/tags": {
       "get": {
         "tags": [
@@ -2094,6 +3095,42 @@
         ],
         "title": "Author"
       },
+      "BoardPinOut": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "strip": {
+            "type": "integer",
+            "title": "Strip"
+          },
+          "hole": {
+            "type": "integer",
+            "title": "Hole"
+          },
+          "at": {
+            "type": "string",
+            "title": "At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "strip",
+          "hole",
+          "at"
+        ],
+        "title": "BoardPinOut"
+      },
+      "BoardType": {
+        "type": "string",
+        "enum": [
+          "stripboard",
+          "breadboard"
+        ],
+        "title": "BoardType"
+      },
       "BodyMm": {
         "properties": {
           "x": {
@@ -2130,6 +3167,35 @@
         ],
         "title": "BodyMm",
         "description": "The outline a part covers on a board, in mm from its origin (top view)."
+      },
+      "BodyOut": {
+        "properties": {
+          "strip0": {
+            "type": "number",
+            "title": "Strip0"
+          },
+          "hole0": {
+            "type": "number",
+            "title": "Hole0"
+          },
+          "strip1": {
+            "type": "number",
+            "title": "Strip1"
+          },
+          "hole1": {
+            "type": "number",
+            "title": "Hole1"
+          }
+        },
+        "type": "object",
+        "required": [
+          "strip0",
+          "hole0",
+          "strip1",
+          "hole1"
+        ],
+        "title": "BodyOut",
+        "description": "The outline in board steps (fractional): strips and holes it spans."
       },
       "Body_upload_attachment": {
         "properties": {
@@ -2256,6 +3322,453 @@
         "type": "object",
         "title": "CheckSummary"
       },
+      "ConnectorIn": {
+        "properties": {
+          "type": {
+            "$ref": "#/components/schemas/ConnectorType",
+            "default": "header_female"
+          },
+          "pin_count": {
+            "type": "integer",
+            "maximum": 40.0,
+            "minimum": 1.0,
+            "title": "Pin Count"
+          },
+          "ref": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Za-z][A-Za-z0-9_]{0,19}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ref"
+          },
+          "strip": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 300.0,
+                "minimum": -100.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Strip"
+          },
+          "hole": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 300.0,
+                "minimum": -100.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hole"
+          },
+          "rotation": {
+            "type": "integer",
+            "enum": [
+              0,
+              90,
+              180,
+              270
+            ],
+            "title": "Rotation",
+            "default": 0
+          },
+          "pins": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[^.\\s]+\\.[^.\\s]+$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Pins",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "pin_count"
+        ],
+        "title": "ConnectorIn",
+        "description": "Pins are what each connector pin carries, in order: an off-board part's pin as\n`ref.PIN`, or null for none."
+      },
+      "ConnectorOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "ref": {
+            "type": "string",
+            "title": "Ref"
+          },
+          "type": {
+            "$ref": "#/components/schemas/ConnectorType"
+          },
+          "pin_count": {
+            "type": "integer",
+            "title": "Pin Count"
+          },
+          "strip": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Strip"
+          },
+          "hole": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hole"
+          },
+          "at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "At"
+          },
+          "rotation": {
+            "type": "integer",
+            "title": "Rotation"
+          },
+          "pins": {
+            "items": {
+              "$ref": "#/components/schemas/ConnectorPinOut"
+            },
+            "type": "array",
+            "title": "Pins"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "ref",
+          "type",
+          "pin_count",
+          "strip",
+          "hole",
+          "at",
+          "rotation",
+          "pins"
+        ],
+        "title": "ConnectorOut"
+      },
+      "ConnectorPinOut": {
+        "properties": {
+          "index": {
+            "type": "integer",
+            "title": "Index"
+          },
+          "pin": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pin"
+          },
+          "placement_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Placement Id"
+          },
+          "pin_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pin Id"
+          },
+          "strip": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Strip"
+          },
+          "hole": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hole"
+          }
+        },
+        "type": "object",
+        "required": [
+          "index",
+          "pin",
+          "placement_id",
+          "pin_id",
+          "strip",
+          "hole"
+        ],
+        "title": "ConnectorPinOut"
+      },
+      "ConnectorPinSnapshot": {
+        "properties": {
+          "index": {
+            "type": "integer",
+            "title": "Index"
+          },
+          "placement_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Placement Id"
+          },
+          "pin_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pin Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "index",
+          "placement_id",
+          "pin_id"
+        ],
+        "title": "ConnectorPinSnapshot"
+      },
+      "ConnectorSnapshot": {
+        "properties": {
+          "ref": {
+            "type": "string",
+            "title": "Ref"
+          },
+          "type": {
+            "$ref": "#/components/schemas/ConnectorType"
+          },
+          "pin_count": {
+            "type": "integer",
+            "title": "Pin Count"
+          },
+          "strip": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Strip"
+          },
+          "hole": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hole"
+          },
+          "rotation": {
+            "type": "integer",
+            "title": "Rotation"
+          },
+          "pins": {
+            "items": {
+              "$ref": "#/components/schemas/ConnectorPinSnapshot"
+            },
+            "type": "array",
+            "title": "Pins"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ref",
+          "type",
+          "pin_count",
+          "strip",
+          "hole",
+          "rotation",
+          "pins"
+        ],
+        "title": "ConnectorSnapshot"
+      },
+      "ConnectorType": {
+        "type": "string",
+        "enum": [
+          "header_male",
+          "header_female",
+          "jst_xh",
+          "screw_508"
+        ],
+        "title": "ConnectorType"
+      },
+      "ConnectorUpdate": {
+        "properties": {
+          "type": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConnectorType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pin_count": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 40.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pin Count"
+          },
+          "ref": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Za-z][A-Za-z0-9_]{0,19}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ref"
+          },
+          "strip": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 300.0,
+                "minimum": -100.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Strip"
+          },
+          "hole": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 300.0,
+                "minimum": -100.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hole"
+          },
+          "rotation": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "enum": [
+                  0,
+                  90,
+                  180,
+                  270
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rotation"
+          },
+          "pins": {
+            "anyOf": [
+              {
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^[^.\\s]+\\.[^.\\s]+$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pins"
+          }
+        },
+        "type": "object",
+        "title": "ConnectorUpdate",
+        "description": "Only what's sent changes. strip and hole null take it off the board; pins is the\nwhole list."
+      },
       "ConstantChange": {
         "properties": {
           "name": {
@@ -2306,6 +3819,107 @@
           "value"
         ],
         "title": "ConstantOut"
+      },
+      "CutIn": {
+        "properties": {
+          "strip": {
+            "type": "integer",
+            "maximum": 300.0,
+            "minimum": -100.0,
+            "title": "Strip"
+          },
+          "hole": {
+            "type": "integer",
+            "maximum": 300.0,
+            "minimum": -100.0,
+            "title": "Hole"
+          },
+          "between": {
+            "type": "boolean",
+            "title": "Between",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "strip",
+          "hole"
+        ],
+        "title": "CutIn"
+      },
+      "CutOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "strip": {
+            "type": "integer",
+            "title": "Strip"
+          },
+          "hole": {
+            "type": "integer",
+            "title": "Hole"
+          },
+          "between": {
+            "type": "boolean",
+            "title": "Between"
+          },
+          "at": {
+            "type": "string",
+            "title": "At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "strip",
+          "hole",
+          "between",
+          "at"
+        ],
+        "title": "CutOut"
+      },
+      "CutSnapshot": {
+        "properties": {
+          "strip": {
+            "type": "integer",
+            "title": "Strip"
+          },
+          "hole": {
+            "type": "integer",
+            "title": "Hole"
+          },
+          "between": {
+            "type": "boolean",
+            "title": "Between"
+          }
+        },
+        "type": "object",
+        "required": [
+          "strip",
+          "hole",
+          "between"
+        ],
+        "title": "CutSnapshot"
+      },
+      "CutsIn": {
+        "properties": {
+          "cuts": {
+            "items": {
+              "$ref": "#/components/schemas/CutIn"
+            },
+            "type": "array",
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Cuts"
+          }
+        },
+        "type": "object",
+        "required": [
+          "cuts"
+        ],
+        "title": "CutsIn"
       },
       "DesignChecks": {
         "properties": {
@@ -2846,6 +4460,260 @@
         ],
         "title": "HoleOut"
       },
+      "JumperIn": {
+        "properties": {
+          "a_strip": {
+            "type": "integer",
+            "maximum": 300.0,
+            "minimum": -100.0,
+            "title": "A Strip"
+          },
+          "a_hole": {
+            "type": "integer",
+            "maximum": 300.0,
+            "minimum": -100.0,
+            "title": "A Hole"
+          },
+          "b_strip": {
+            "type": "integer",
+            "maximum": 300.0,
+            "minimum": -100.0,
+            "title": "B Strip"
+          },
+          "b_hole": {
+            "type": "integer",
+            "maximum": 300.0,
+            "minimum": -100.0,
+            "title": "B Hole"
+          },
+          "side": {
+            "$ref": "#/components/schemas/JumperSide",
+            "default": "top"
+          },
+          "insulated": {
+            "type": "boolean",
+            "title": "Insulated",
+            "default": false
+          },
+          "color": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WireColor"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "a_strip",
+          "a_hole",
+          "b_strip",
+          "b_hole"
+        ],
+        "title": "JumperIn"
+      },
+      "JumperOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "a_strip": {
+            "type": "integer",
+            "title": "A Strip"
+          },
+          "a_hole": {
+            "type": "integer",
+            "title": "A Hole"
+          },
+          "b_strip": {
+            "type": "integer",
+            "title": "B Strip"
+          },
+          "b_hole": {
+            "type": "integer",
+            "title": "B Hole"
+          },
+          "a": {
+            "type": "string",
+            "title": "A"
+          },
+          "b": {
+            "type": "string",
+            "title": "B"
+          },
+          "side": {
+            "$ref": "#/components/schemas/JumperSide"
+          },
+          "insulated": {
+            "type": "boolean",
+            "title": "Insulated"
+          },
+          "color": {
+            "$ref": "#/components/schemas/WireColor"
+          },
+          "length": {
+            "type": "number",
+            "title": "Length"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "a_strip",
+          "a_hole",
+          "b_strip",
+          "b_hole",
+          "a",
+          "b",
+          "side",
+          "insulated",
+          "color",
+          "length"
+        ],
+        "title": "JumperOut"
+      },
+      "JumperSide": {
+        "type": "string",
+        "enum": [
+          "top",
+          "bottom"
+        ],
+        "title": "JumperSide"
+      },
+      "JumperSnapshot": {
+        "properties": {
+          "a_strip": {
+            "type": "integer",
+            "title": "A Strip"
+          },
+          "a_hole": {
+            "type": "integer",
+            "title": "A Hole"
+          },
+          "b_strip": {
+            "type": "integer",
+            "title": "B Strip"
+          },
+          "b_hole": {
+            "type": "integer",
+            "title": "B Hole"
+          },
+          "side": {
+            "$ref": "#/components/schemas/JumperSide"
+          },
+          "insulated": {
+            "type": "boolean",
+            "title": "Insulated"
+          },
+          "color": {
+            "$ref": "#/components/schemas/WireColor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "a_strip",
+          "a_hole",
+          "b_strip",
+          "b_hole",
+          "side",
+          "insulated",
+          "color"
+        ],
+        "title": "JumperSnapshot"
+      },
+      "JumperUpdate": {
+        "properties": {
+          "a_strip": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 300.0,
+                "minimum": -100.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "A Strip"
+          },
+          "a_hole": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 300.0,
+                "minimum": -100.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "A Hole"
+          },
+          "b_strip": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 300.0,
+                "minimum": -100.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "B Strip"
+          },
+          "b_hole": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 300.0,
+                "minimum": -100.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "B Hole"
+          },
+          "side": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JumperSide"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "insulated": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Insulated"
+          },
+          "color": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WireColor"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "title": "JumperUpdate"
+      },
       "Lang": {
         "type": "string",
         "enum": [
@@ -2853,6 +4721,588 @@
           "py"
         ],
         "title": "Lang"
+      },
+      "LayoutCheck": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "severity": {
+            "$ref": "#/components/schemas/Severity"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "pins": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Pins"
+          },
+          "holes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Holes"
+          },
+          "net": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Net"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "severity",
+          "message",
+          "pins",
+          "holes"
+        ],
+        "title": "LayoutCheck"
+      },
+      "LayoutCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "board_type": {
+            "$ref": "#/components/schemas/BoardType",
+            "default": "stripboard"
+          },
+          "strips": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100.0,
+                "minimum": 2.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Strips"
+          },
+          "holes": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 200.0,
+                "minimum": 2.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Holes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "LayoutCreate"
+      },
+      "LayoutDetail": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "design_id": {
+            "type": "integer",
+            "title": "Design Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "board_type": {
+            "$ref": "#/components/schemas/BoardType"
+          },
+          "strips": {
+            "type": "integer",
+            "title": "Strips"
+          },
+          "holes": {
+            "type": "integer",
+            "title": "Holes"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          },
+          "check_summary": {
+            "$ref": "#/components/schemas/CheckSummary"
+          },
+          "stats": {
+            "$ref": "#/components/schemas/LayoutStats"
+          },
+          "placed": {
+            "items": {
+              "$ref": "#/components/schemas/PlacedRef"
+            },
+            "type": "array",
+            "title": "Placed"
+          },
+          "notes": {
+            "type": "string",
+            "title": "Notes"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "parts": {
+            "items": {
+              "$ref": "#/components/schemas/LayoutPartOut"
+            },
+            "type": "array",
+            "title": "Parts"
+          },
+          "not_placed": {
+            "items": {
+              "$ref": "#/components/schemas/UnplacedOut"
+            },
+            "type": "array",
+            "title": "Not Placed"
+          },
+          "cuts": {
+            "items": {
+              "$ref": "#/components/schemas/CutOut"
+            },
+            "type": "array",
+            "title": "Cuts"
+          },
+          "jumpers": {
+            "items": {
+              "$ref": "#/components/schemas/JumperOut"
+            },
+            "type": "array",
+            "title": "Jumpers"
+          },
+          "connectors": {
+            "items": {
+              "$ref": "#/components/schemas/ConnectorOut"
+            },
+            "type": "array",
+            "title": "Connectors"
+          },
+          "segments": {
+            "items": {
+              "$ref": "#/components/schemas/SegmentOut"
+            },
+            "type": "array",
+            "title": "Segments"
+          },
+          "links": {
+            "items": {
+              "$ref": "#/components/schemas/LinkOut"
+            },
+            "type": "array",
+            "title": "Links"
+          },
+          "checks": {
+            "items": {
+              "$ref": "#/components/schemas/LayoutCheck"
+            },
+            "type": "array",
+            "title": "Checks"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "design_id",
+          "name",
+          "board_type",
+          "strips",
+          "holes",
+          "updated_at",
+          "check_summary",
+          "stats",
+          "placed",
+          "notes",
+          "created_at",
+          "parts",
+          "not_placed",
+          "cuts",
+          "jumpers",
+          "connectors",
+          "segments",
+          "links",
+          "checks"
+        ],
+        "title": "LayoutDetail"
+      },
+      "LayoutPartOut": {
+        "properties": {
+          "placement_id": {
+            "type": "integer",
+            "title": "Placement Id"
+          },
+          "ref": {
+            "type": "string",
+            "title": "Ref"
+          },
+          "part_id": {
+            "type": "integer",
+            "title": "Part Id"
+          },
+          "part_name": {
+            "type": "string",
+            "title": "Part Name"
+          },
+          "on_board": {
+            "type": "boolean",
+            "title": "On Board"
+          },
+          "strip": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Strip"
+          },
+          "hole": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hole"
+          },
+          "at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "At"
+          },
+          "rotation": {
+            "type": "integer",
+            "title": "Rotation"
+          },
+          "mount": {
+            "$ref": "#/components/schemas/Mount"
+          },
+          "footprint_sig": {
+            "type": "string",
+            "title": "Footprint Sig"
+          },
+          "pins": {
+            "items": {
+              "$ref": "#/components/schemas/BoardPinOut"
+            },
+            "type": "array",
+            "title": "Pins"
+          },
+          "body": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BodyOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "placement_id",
+          "ref",
+          "part_id",
+          "part_name",
+          "on_board",
+          "strip",
+          "hole",
+          "at",
+          "rotation",
+          "mount",
+          "footprint_sig",
+          "pins",
+          "body"
+        ],
+        "title": "LayoutPartOut"
+      },
+      "LayoutRevisionOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "author": {
+            "$ref": "#/components/schemas/Author"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "created_at",
+          "author",
+          "summary"
+        ],
+        "title": "LayoutRevisionOut"
+      },
+      "LayoutSnapshot": {
+        "properties": {
+          "parts": {
+            "items": {
+              "$ref": "#/components/schemas/PartSnapshot"
+            },
+            "type": "array",
+            "title": "Parts",
+            "default": []
+          },
+          "cuts": {
+            "items": {
+              "$ref": "#/components/schemas/CutSnapshot"
+            },
+            "type": "array",
+            "title": "Cuts",
+            "default": []
+          },
+          "jumpers": {
+            "items": {
+              "$ref": "#/components/schemas/JumperSnapshot"
+            },
+            "type": "array",
+            "title": "Jumpers",
+            "default": []
+          },
+          "connectors": {
+            "items": {
+              "$ref": "#/components/schemas/ConnectorSnapshot"
+            },
+            "type": "array",
+            "title": "Connectors",
+            "default": []
+          }
+        },
+        "type": "object",
+        "title": "LayoutSnapshot"
+      },
+      "LayoutStats": {
+        "properties": {
+          "on_board": {
+            "type": "integer",
+            "title": "On Board"
+          },
+          "off_board": {
+            "type": "integer",
+            "title": "Off Board"
+          },
+          "not_placed": {
+            "type": "integer",
+            "title": "Not Placed"
+          },
+          "missing": {
+            "type": "integer",
+            "title": "Missing"
+          },
+          "cuts": {
+            "type": "integer",
+            "title": "Cuts"
+          },
+          "jumpers": {
+            "type": "integer",
+            "title": "Jumpers"
+          },
+          "jumper_length": {
+            "type": "number",
+            "title": "Jumper Length"
+          },
+          "area_strips": {
+            "type": "integer",
+            "title": "Area Strips"
+          },
+          "area_holes": {
+            "type": "integer",
+            "title": "Area Holes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "on_board",
+          "off_board",
+          "not_placed",
+          "missing",
+          "cuts",
+          "jumpers",
+          "jumper_length",
+          "area_strips",
+          "area_holes"
+        ],
+        "title": "LayoutStats"
+      },
+      "LayoutSummary": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "design_id": {
+            "type": "integer",
+            "title": "Design Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "board_type": {
+            "$ref": "#/components/schemas/BoardType"
+          },
+          "strips": {
+            "type": "integer",
+            "title": "Strips"
+          },
+          "holes": {
+            "type": "integer",
+            "title": "Holes"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          },
+          "check_summary": {
+            "$ref": "#/components/schemas/CheckSummary"
+          },
+          "stats": {
+            "$ref": "#/components/schemas/LayoutStats"
+          },
+          "placed": {
+            "items": {
+              "$ref": "#/components/schemas/PlacedRef"
+            },
+            "type": "array",
+            "title": "Placed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "design_id",
+          "name",
+          "board_type",
+          "strips",
+          "holes",
+          "updated_at",
+          "check_summary",
+          "stats",
+          "placed"
+        ],
+        "title": "LayoutSummary"
+      },
+      "LayoutUpdate": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          }
+        },
+        "type": "object",
+        "title": "LayoutUpdate"
+      },
+      "LinkOut": {
+        "properties": {
+          "net": {
+            "type": "string",
+            "title": "Net"
+          },
+          "a": {
+            "type": "string",
+            "title": "A"
+          },
+          "b": {
+            "type": "string",
+            "title": "B"
+          },
+          "a_strip": {
+            "type": "integer",
+            "title": "A Strip"
+          },
+          "a_hole": {
+            "type": "integer",
+            "title": "A Hole"
+          },
+          "b_strip": {
+            "type": "integer",
+            "title": "B Strip"
+          },
+          "b_hole": {
+            "type": "integer",
+            "title": "B Hole"
+          }
+        },
+        "type": "object",
+        "required": [
+          "net",
+          "a",
+          "b",
+          "a_strip",
+          "a_hole",
+          "b_strip",
+          "b_hole"
+        ],
+        "title": "LinkOut",
+        "description": "A connection the board doesn't make yet: the ratsnest."
       },
       "LogicVoltage": {
         "type": "string",
@@ -2876,6 +5326,14 @@
           "token"
         ],
         "title": "McpToken"
+      },
+      "Mount": {
+        "type": "string",
+        "enum": [
+          "socketed",
+          "soldered"
+        ],
+        "title": "Mount"
       },
       "NetOut": {
         "properties": {
@@ -3288,6 +5746,139 @@
         "title": "PartLibrary",
         "description": "A library firmware for the part needs, on the platforms listed (empty: all)."
       },
+      "PartPlace": {
+        "properties": {
+          "placement_id": {
+            "type": "integer",
+            "title": "Placement Id"
+          },
+          "on_board": {
+            "type": "boolean",
+            "title": "On Board",
+            "default": true
+          },
+          "strip": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 300.0,
+                "minimum": -100.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Strip"
+          },
+          "hole": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 300.0,
+                "minimum": -100.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hole"
+          },
+          "rotation": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "enum": [
+                  0,
+                  90,
+                  180,
+                  270
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rotation"
+          },
+          "mount": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Mount"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "placement_id"
+        ],
+        "title": "PartPlace",
+        "description": "A design placement on the board (strip and hole of its footprint's origin), or\noff it. The mount defaults to socketed for boards, soldered for everything else."
+      },
+      "PartSnapshot": {
+        "properties": {
+          "placement_id": {
+            "type": "integer",
+            "title": "Placement Id"
+          },
+          "ref": {
+            "type": "string",
+            "title": "Ref"
+          },
+          "on_board": {
+            "type": "boolean",
+            "title": "On Board"
+          },
+          "strip": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Strip"
+          },
+          "hole": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hole"
+          },
+          "rotation": {
+            "type": "integer",
+            "title": "Rotation"
+          },
+          "mount": {
+            "$ref": "#/components/schemas/Mount"
+          },
+          "footprint_sig": {
+            "type": "string",
+            "title": "Footprint Sig",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "placement_id",
+          "ref",
+          "on_board",
+          "strip",
+          "hole",
+          "rotation",
+          "mount"
+        ],
+        "title": "PartSnapshot"
+      },
       "PartSummary": {
         "properties": {
           "id": {
@@ -3558,6 +6149,24 @@
         "type": "object",
         "title": "PartUpdate",
         "description": "Only the fields sent are changed. Nullable fields are cleared with null."
+      },
+      "PartsPlace": {
+        "properties": {
+          "parts": {
+            "items": {
+              "$ref": "#/components/schemas/PartPlace"
+            },
+            "type": "array",
+            "maxItems": 50,
+            "minItems": 1,
+            "title": "Parts"
+          }
+        },
+        "type": "object",
+        "required": [
+          "parts"
+        ],
+        "title": "PartsPlace"
       },
       "PinFlag": {
         "type": "string",
@@ -3993,6 +6602,37 @@
         "title": "PinsReplace",
         "description": "The part's whole pin list, in order: each side's pins top to bottom or left to right."
       },
+      "PlacedRef": {
+        "properties": {
+          "placement_id": {
+            "type": "integer",
+            "title": "Placement Id"
+          },
+          "on_board": {
+            "type": "boolean",
+            "title": "On Board"
+          },
+          "at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "placement_id",
+          "on_board",
+          "at"
+        ],
+        "title": "PlacedRef",
+        "description": "Where one of the design's placements is in a layout, for the schematic."
+      },
       "PlacementIn": {
         "properties": {
           "part_id": {
@@ -4296,6 +6936,48 @@
         ],
         "title": "RevisionOut"
       },
+      "SegmentOut": {
+        "properties": {
+          "a_strip": {
+            "type": "integer",
+            "title": "A Strip"
+          },
+          "a_hole": {
+            "type": "integer",
+            "title": "A Hole"
+          },
+          "b_strip": {
+            "type": "integer",
+            "title": "B Strip"
+          },
+          "b_hole": {
+            "type": "integer",
+            "title": "B Hole"
+          },
+          "nets": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Nets"
+          },
+          "short": {
+            "type": "boolean",
+            "title": "Short"
+          }
+        },
+        "type": "object",
+        "required": [
+          "a_strip",
+          "a_hole",
+          "b_strip",
+          "b_hole",
+          "nets",
+          "short"
+        ],
+        "title": "SegmentOut",
+        "description": "A straight run of joined copper and the design nets it carries."
+      },
       "Severity": {
         "type": "string",
         "enum": [
@@ -4548,6 +7230,39 @@
           "reason"
         ],
         "title": "UnassignedPin"
+      },
+      "UnplacedOut": {
+        "properties": {
+          "placement_id": {
+            "type": "integer",
+            "title": "Placement Id"
+          },
+          "ref": {
+            "type": "string",
+            "title": "Ref"
+          },
+          "part_id": {
+            "type": "integer",
+            "title": "Part Id"
+          },
+          "part_name": {
+            "type": "string",
+            "title": "Part Name"
+          },
+          "has_footprint": {
+            "type": "boolean",
+            "title": "Has Footprint"
+          }
+        },
+        "type": "object",
+        "required": [
+          "placement_id",
+          "ref",
+          "part_id",
+          "part_name",
+          "has_footprint"
+        ],
+        "title": "UnplacedOut"
       },
       "ValidationError": {
         "properties": {

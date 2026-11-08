@@ -1,11 +1,12 @@
 import { Handle, type NodeProps, Position, useUpdateNodeInternals } from '@xyflow/react'
 import { cn } from 'cn'
+import { CircuitBoard } from 'lucide-react'
 import { memo, useContext, useEffect } from 'react'
 import type { PinSide } from '@/api/generated/model'
 import { pinColorGroup, pinKey, type Rotation } from '@/features/parts/card/layout'
 import { PartCard } from '@/features/parts/card/part-card'
 import { pinTooltip, powerRole } from '@/features/parts/card/pin-style'
-import { PinEventsContext } from './context'
+import { BoardsContext, PinEventsContext } from './context'
 import { cardLevel, FocusContext, focusClass } from './focus'
 import { useHighlightedPins } from './highlight'
 import type { PartNodeType } from './model'
@@ -23,6 +24,7 @@ function PartNodeComponent({ id, data, selected }: NodeProps<PartNodeType>) {
   const events = useContext(PinEventsContext)
   const level = cardLevel(useContext(FocusContext), id)
   const updateNodeInternals = useUpdateNodeInternals()
+  const boards = useContext(BoardsContext).get(placement.id) ?? []
 
   // Handles move when the card rotates or its pins change; React Flow must re-measure.
   // Keyed on what places the pins, not on the pin list itself: every answer from the
@@ -43,6 +45,17 @@ function PartNodeComponent({ id, data, selected }: NodeProps<PartNodeType>) {
       rotation={placement.rotation as Rotation}
       selected={selected}
       lit={lit}
+      badge={
+        boards.length > 0 && (
+          <CircuitBoard className="size-3 text-muted-foreground" aria-label="On a board layout">
+            <title>
+              {boards
+                .map((b) => `${b.layout}: ${b.at ? `first pin at ${b.at}` : 'off the board'}`)
+                .join('\n')}
+            </title>
+          </CircuitBoard>
+        )
+      }
       // Unverified parts get a dashed edge, a hint to check their pinout.
       className={cn(!part.verified && 'outline-dashed', focusClass(level))}
       renderPin={({ pin, side, x, y }, on) => (

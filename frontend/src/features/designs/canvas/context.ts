@@ -20,3 +20,12 @@ export const PHONE_FIT = { padding: 0.1, minZoom: 0.75, maxZoom: 1.25 }
 
 /** Library rows carry the part's id under this type when dragged onto the canvas. */
 export const PART_DRAG_TYPE = 'application/x-ohm-part'
+
+/** Where each placement is on the design's board layouts, by placement id (step 16). */
+export interface OnBoard {
+  layoutId: number
+  layout: string
+  /** Its first pin's hole, or null when it's off that board. */
+  at: string | null
+}
+export const BoardsContext = createContext<Map<number, OnBoard[]>>(new Map())

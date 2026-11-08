@@ -14,6 +14,7 @@
 |---|---|---|
 | `/` | Designs | List of designs, most recently changed first: name, part count, check summary (error/warning counts), Shelf-help project link marker. New design button. Filter by tag |
 | `/designs/:id` | Design | The canvas (below), with the name editable in the header |
+| `/designs/:id/layouts/:layoutId` | Board layout | The design's parts on a protoboard (step 16; see Layout page below) |
 | `/parts` | Parts | The library: search, filter by kind and tag, an "Unverified" filter. Rows show name, kind, logic voltage, pin count and the unverified badge. **New part** opens a dialog (name, kind, logic voltage) and goes to the new part's page, as Shelf-help's New item does. **Starter parts** lists the 21 starter modules, ticks the ones already in the library, and adds the rest (unverified), then shows the Unverified filter |
 | `/parts/:id` | Part | Fields (kind, voltages, I2C addresses, datasheet, Shelf-help item id, Wokwi type; for boards also platform and PlatformIO board), libraries (under the description: each spec, for all boards or one platform, added and removed in place), the pin editor (each pin's roles, flags, tie, code name and Wokwi name behind its details button), the footprint editor (step 14: holes and outline in mm, Generate from sides, a preview on a 2.54 mm grid), notes (markdown), attachments (datasheets, pinout images), "Used in" designs, and "Mark verified" |
 | `/settings` | Settings | Claude (MCP): the token (hidden until shown; copy; make a new one), and the Claude Code command and Claude Desktop config for the add-on's host port 8097. Tag management |
@@ -81,6 +82,78 @@ The design page has four areas around the canvas:
 - Fit-to-view counts cards, not the wires looping round them, so it pads by 20%.
 - **Wires on the same net share tracks** (2026-11-08): a step along a track the wire's own net already uses costs half a fresh one, and the net's own wires don't count as parallel, neighbouring or crossing traffic. So a rail's wires gather into one trunk instead of running side by side. Where three or more ways of one net meet, a **junction dot** is drawn in the net's colour (its first wire's), as on a schematic. Each wire is still its own record, selected, recoloured and removed on its own.
 - **A wire is drawn exactly on its route,** pin centre to pin centre. React Flow's measured handle positions only tell whether the route is stale (a card mid-drag); joining the route to them drew slanted end stretches whenever a measurement came out a few pixels off (seen on a busy design after moving a card, 2026-11-08). Cards ask React Flow to re-measure their pins only when the pins' names, sides, order or the rotation change, not on every answer from the server.
+
+## Layout page (step 16)
+
+A board layout of a design, from the view switcher in the design header: `Schematic | Stripboard v1 ▾ | New layout…`.
+
+**The view switcher:**
+- Each layout shows its state ("2 to join · 1 error", "Matches the design", "Empty").
+- On the schematic, an amber dot marks that some layout needs attention.
+- New layout asks for the board (stripboard 24 × 37, or breadboard pattern 14 × 62) and a name, then opens it.
+
+**The page uses the design page's shell:**
+- left: the parts tray;
+- centre: the board;
+- right: the Inspector;
+- bottom: the layout checks bar.
+
+Below 1280 px wide (the board needs the room) the tray and Inspector become overlays, as on tablets. A phone gets a read-only view.
+
+**The board** (`features/layouts/board/`) is drawn as SVG with its own pan and zoom, not React Flow, which is built for nodes and edges rather than a grid of holes:
+- **Labels:** strips lettered down the side, holes numbered along the top.
+- **Copper:** tinted by the net it carries (ground dark, supplies red, other nets from a palette). Copper that joins pins the design keeps apart, unwired pins included, is hatched red. On the component side the copper is faint; turned over (the button, or F) it's solid and mirrored left to right, with labels staying on their holes.
+- **Cuts:** a ring at a hole, or a bar between holes.
+- **Bottom links:** grey, or their colour if insulated.
+- **Parts:**
+  - each pin a dot in its net's colour (a tooltip gives the pin, hole and net);
+  - the outline dashed when socketed, solid when soldered;
+  - the ref in the corner.
+- **Connectors and top jumpers:** drawn over the parts.
+- **The ratsnest:** dashed lines in the net's colour, from the API's `links`.
+
+The board stays fitted to its space until you pan (drag empty board) or zoom (wheel); the fit button fits it again.
+
+**Placing and moving:**
+- Drag a part from the tray onto the board, or press Place and click the hole for its first pin (the way to do it on touch). The pins show where it will land while pointing.
+- Drag a part on the board to move it by whole holes.
+- R turns the selected part a quarter clockwise.
+- Delete or Backspace sets it back to not placed.
+- Esc clears the selection.
+- Ctrl+Z and Ctrl+Shift+Z (or Ctrl+Y) undo and redo, as on the design page. Every change is saved straight away and undone through the layout snapshot (`PUT /layouts/{id}/snapshot`).
+
+**Tools** (step 17), in a toolbar over the board:
+
+| Tool | Key | What it does |
+|---|---|---|
+| Select | V | Click a part, jumper or connector to select it; drag parts and connectors to move them by whole holes |
+| Cut | C | Click a hole to cut the strip there, or near the gap between two holes to cut between them; click a cut to remove it. A dashed ring or bar shows where it would cut. Cutting a hole with a leg, connector pin or jumper end in it is refused, with the reason. Stripboard only |
+| Jumper | J | Click one end, then the other; a line follows the pointer. It goes on the side you're looking at: component side for a top jumper, copper side (turned over) for a bottom link. A top jumper's end in a taken hole is refused. Esc drops the first end. New jumpers aren't selected, so on a tablet the Inspector doesn't cover the board between jumpers |
+| Connector | K | Pick the type (female or male header, JST-XH, 5.08 mm screw terminal) and pin count in the toolbar, then click where pin 1 goes; ghost pins show where it lands. The new connector is selected, to assign its pins |
+
+- **Keys:** R turns the selected part or connector. Delete removes the selected jumper or connector, or unplaces a part. Esc steps back: it drops a jumper's first end, then goes back to Select, then clears the selection. Each tool shows a one-line hint under the toolbar.
+- **The middle button** pans with any tool; the left button pans the empty board with Select.
+
+**The parts tray:**
+- **Not placed yet:** each part has Place and Off board. A part without a footprint links to its part page instead, or can be kept off the board.
+- **On the board:** each part with its first pin's hole.
+- **Off the board:** each part with the pins that still need a connector, in the part's own pin order, and **Add a N-pin connector**. That opens the connector tool with those pins assigned in that order (a straight cable), ready to click where pin 1 goes.
+
+**The Inspector:**
+- **A selected part:** its first pin's hole and rotation, Rotate, Off board, Unplace, **Cut between rows** (stripboard), Socketed / Soldered, its pins (hole and net), and Show in schematic.
+- **A selected jumper:** its ends and length, component or copper side, insulated (bottom links), colour, and Remove.
+- **A selected connector:** its type, pin count and pin 1's hole; Rotate and Remove; a picker per pin for what it carries (the off-board parts' pins, or nothing); Add a pin and Remove the last pin.
+- **Nothing selected:** the layout's name (editable), board, part counts, connections still to join, cuts, jumpers, area used, notes, **Trim dead copper** (stripboard) and Delete layout.
+
+**The checks bar:**
+- It shows the counts and "N to join", "Nothing on the board yet", or "The board matches the design".
+- Picking a result lights up its holes and pins on the board.
+
+**History** (⋯ menu) lists the layout's revisions with Restore. Changes made elsewhere (Claude, another tab) show a "Claude changed this layout" notice with a link to History, and drop the undo steps, as on the design page.
+
+**On the schematic:**
+- A part that's on a layout gets a small board mark in its card's corner, with a tooltip naming the layout and hole.
+- Its Inspector lists the layouts it's on, each with Show on board, which opens the layout with the part selected (`?select=`). Show in schematic does the reverse.
 
 ## Canvas spike findings
 

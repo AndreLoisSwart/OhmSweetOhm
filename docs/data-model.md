@@ -114,3 +114,25 @@ Attachment   id, original_filename, mime_type, size, stored_path, created_at,
 - **Protoboard holes are 2.54 mm apart.** A part sits on a protoboard as it is only when its holes are multiples of 2.54 mm from its first hole; the footprint editor marks any that aren't.
 - **A hole is part of the pin:** renaming or reordering pins keeps their holes. Changing a footprint through MCP sets the part unverified, as changing its pins does.
 
+## Protoboard layouts (step 15)
+
+```
+Layout         id, design_id → Design, name, board_type (stripboard | breadboard),
+               strips, holes, notes, created_at, updated_at
+LayoutPart     id, layout_id → Layout, placement_id → Placement (unique per layout),
+               on_board, strip, hole (the footprint's origin; null off board),
+               rotation, mount (socketed | soldered), footprint_sig
+Cut            id, layout_id, strip, hole, between
+Jumper         id, layout_id, a_strip, a_hole, b_strip, b_hole, side (top | bottom),
+               insulated, color
+Connector      id, layout_id, ref (unique per layout), type (header_male |
+               header_female | jst_xh | screw_508), pin_count, strip, hole, rotation
+ConnectorPin   id, connector_id, index (from 1), placement_id, pin_id (the off-board
+               pin it carries; set to null when that placement or pin goes)
+LayoutRevision id, layout_id, created_at, author, summary, snapshot (JSON)
+```
+
+- **A layout holds only physical facts.** Nets come from its design; board connectivity and layout checks are computed, never stored.
+- **Positions are 1-based** and read as the board's labels: strip 3, hole 14 is C14.
+- **A placement with no `LayoutPart` isn't placed yet.** Removing a placement from the design removes it from its layouts, and deleting a design deletes its layouts.
+

@@ -1,5 +1,5 @@
 import { cn } from 'cn'
-import { Cable, ExternalLink, RotateCw, Trash2 } from 'lucide-react'
+import { Cable, CircuitBoard, ExternalLink, RotateCw, Trash2 } from 'lucide-react'
 import { useContext, useState, type ReactNode } from 'react'
 import { Link } from 'react-router'
 import { toast } from 'sonner'
@@ -20,6 +20,7 @@ import { UnverifiedBadge } from '@/features/parts/badges'
 import { pinColor, powerRole } from '@/features/parts/card/pin-style'
 import { parseOptionalId } from '@/features/parts/fields'
 import { TagEditor } from '@/features/tags/tag-editor'
+import { BoardsContext } from './canvas/context'
 import { HighlightContext, usePinnedNet } from './canvas/highlight'
 import { describeNet, netsByPin, powerNote, turned } from './canvas/model'
 import { SuggestWiringDialog } from './suggest-wiring-dialog'
@@ -60,6 +61,35 @@ function PinButton({ pin, net }: { pin: string; net?: NetOut }) {
     >
       {pin}
     </button>
+  )
+}
+
+/** The board layouts the part is on, each with Show on board (step 16). */
+function OnBoards({ designId, placementId }: { designId: number; placementId: number }) {
+  const boards = useContext(BoardsContext).get(placementId) ?? []
+  if (!boards.length) return null
+  return (
+    <Section title="Board layouts">
+      <ul className="grid gap-1 text-sm">
+        {boards.map((b) => (
+          <li key={b.layoutId} className="flex items-center gap-2">
+            <CircuitBoard className="size-3.5 shrink-0 text-muted-foreground" />
+            <span className="min-w-0 flex-1 truncate">
+              {b.layout}
+              <span className="text-muted-foreground">
+                {b.at ? ` · ${b.at}` : ' · off the board'}
+              </span>
+            </span>
+            <Link
+              to={`/designs/${designId}/layouts/${b.layoutId}?select=${placementId}`}
+              className="text-xs underline-offset-4 hover:underline"
+            >
+              Show on board
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </Section>
   )
 }
 
@@ -153,6 +183,7 @@ function PartInspector({
           />
         </>
       )}
+      <OnBoards designId={design.id} placementId={placement.id} />
       <Section title="Note">
         {readOnly ? (
           <p className="text-sm whitespace-pre-wrap">{placement.note || '—'}</p>

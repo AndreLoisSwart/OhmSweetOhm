@@ -177,7 +177,7 @@ LayoutRevision  layout_id, created_at, author, summary, snapshot (JSON)
 
   - 3.5 mm terminals don't fit the grid and are left out.
   - Each connector pin is assigned to an off-board pin, so the cable is explicit.
-- **Breadboard pattern:** the same model with fixed copper: groups of five each side of the gap, and power rails along both edges. There's no cut tool. Size presets, with the user's board size to be confirmed.
+- **Breadboard pattern:** the same model with fixed copper: groups of five each side of the gap, and power rails along both edges. There's no cut tool. The user's board is 62 holes long.
 - **When the design changes:**
   - A removed placement leaves its layouts.
   - A new wire is a missing connection.
@@ -207,8 +207,46 @@ Then it's compared with the design's nets:
 | `unassigned_connector_pin` | warning | a connector pin carrying nothing |
 | `off_board_unconnected` | warning | an off-board part's connection with no connector pin |
 | `layout_out_of_date` | warning | a part's footprint changed after it was placed |
+| `no_footprint` | error | a part on the board has a pin (not NC) with no hole (added in step 15) |
+| `off_grid` | error | a part's holes aren't on the 2.54 mm grid (added in step 15) |
+| `connector_not_placed` | warning | a connector that isn't on the board yet (added in step 15) |
 
 A summary gives jumper count, total jumper length, cuts and board area used, as the score to improve.
+
+**Built in step 15 (2026-11-08)**, in `backend/app/modules/layouts/`, through the API only:
+
+- **Data:** the tables above, with a migration. `LayoutPart` also stores `footprint_sig`, a fingerprint of the part's footprint when it was last placed or moved. That's how `layout_out_of_date` notices a change; moving the part, even in place, confirms the new footprint.
+- **Positions** are 1-based, with strip 1 as A, and are sent as numbers; answers add labels like `C14` (`board.label`/`parse_label`, AA after Z).
+- **Geometry** (`board.py`):
+  - A footprint in mm is turned clockwise about its origin, then laid on holes 2.54 mm apart: x along the strips, y across them.
+  - A hole within 0.1 mm of the grid counts as on it.
+  - A body becomes a box in fractional holes. A hole is under it when strictly inside.
+  - Connectors: pin 1 at the connector's position, the rest one hole apart (two for 5.08 mm terminals), turned like parts.
+- **Connectivity:**
+  - Every hole is a node (its solder joint). Copper joins neighbouring holes; a cut at a hole removes that hole's copper but not its joint.
+  - A bare bottom link touches every hole on its straight path; a top jumper or insulated link touches only its ends.
+  - **A pin that isn't wired in the design counts as its own net,** so a GPIO left on a GND strip is reported as a short. The pins of a part joined inside it share one, so its two GND pins on different strips are fine.
+- **Short messages suggest a cut:** for two nets on one stripboard strip, the free hole midway between them ("cut at B4"), or a cut between holes when none is free.
+- **The ratsnest** (`links`): a missing net's pieces joined nearest first, as a minimum spanning tree, so the canvas can draw the fewest lines.
+- **Off-board pins** need a connector only when their net reaches the board: a servo powered by a USB supply, both off board, needs none.
+- **Bodies:**
+  - Two bodies may overlap only when one part is socketed and the other soldered (the low part sits under the raised one).
+  - A soldered body blocks other pins, connector pins and top jumper ends under it, including a jumper right beside a 5 mm LED's leg, under its rim.
+- **Sizes:**
+  - A stripboard defaults to 24 × 37.
+  - A breadboard pattern is always 14 rows: rails on rows 1–2 and 13–14, blocks of five on rows 3–7 and 8–12. It defaults to 62 holes, the user's full-size board (confirmed 2026-11-08), and its cuts are refused.
+- **API:**
+  - `GET/POST /designs/{id}/layouts`.
+  - `GET/PATCH/DELETE /layouts/{id}`.
+  - `PUT /layouts/{id}/parts` places, moves or takes parts off the board; a move without a rotation keeps the current one. `DELETE …/parts/{placement_id}` sets a part back to not placed.
+  - `POST …/cuts` (a batch) and `DELETE …/cuts/{id}`.
+  - `POST/PATCH/DELETE …/jumpers`. The default colour is blue on top and grey underneath.
+  - `POST/PATCH/DELETE …/connectors`, named J1, J2… unless given a ref. One off-board pin can be on only one connector pin.
+  - `PUT …/snapshot` for undo, and `GET …/revisions` with `POST …/restore`.
+
+  Every change answers with the whole layout: its parts with each pin's hole, the parts not placed (and whether each has a footprint), cuts, jumpers, connectors, copper segments with the nets they carry (for tinting), the ratsnest, the checks and the stats.
+- **Revisions:** as for designs. Claude's changes each save one (the service takes a summary, used by step 18), the canvas saves one per editing session, and a restore saves the state first. The latest 50 are kept.
+- **Tests** (`tests/test_layouts.py`): geometry, every check, breadboard groups, connectors, undo and revisions, design changes flowing through, and a whole Nano + LED + off-board BME280 build on the 24 × 37 board, from 15 shorts to no errors, warnings or notes.
 
 ### The layout canvas (steps 16–17)
 
@@ -263,6 +301,30 @@ It isn't drawn on the schematic, because physical and logical drawings make each
 - "Show on board" and "Show in schematic" jump between the two views with the part selected.
 - A highlighted net carries over when switching views.
 - The design header shows each layout's state: "Stripboard v1: 2 connections missing, 1 short".
+
+**Built in step 16 (2026-11-08):** the layout page, as described in pages.md (Layout page).
+- **The board is SVG,** with its own pan and zoom, rather than React Flow.
+- **API additions:**
+  - segments say whether they carry a `short` (so a GPIO on a GND strip is drawn hatched too);
+  - layout parts return their `footprint_sig`, so undo doesn't mark them out of date;
+  - connector pins return their placement and pin ids, for undo;
+  - layout summaries list where each placement is (`placed`), for the schematic's badges.
+- **Not done yet:**
+  - the dashed frame round on-board parts on the schematic;
+  - carrying a highlighted net between the two views;
+  - focus on the board.
+
+  The cut, jumper and connector tools are step 17.
+
+**Built in step 17 (2026-11-08):** the cut, jumper and connector tools, as described in pages.md (Layout page).
+- **Helpers in the API,** for step 18 to reuse:
+  - `POST /layouts/{id}/parts/{placement_id}/cut-between-rows` cuts each strip a part spans between neighbouring pins on different nets: at a free hole midway, or between holes when none is free. Tied pins (RST and RST2) and strips already split are left alone.
+  - `POST /layouts/{id}/trim` cuts each strip just past its outermost leg, connector pin or jumper end, between holes so no hole is lost. Strips with nothing on them stay whole.
+
+  Both are refused when there's nothing to cut, and on a breadboard pattern.
+- **Off-board pins** needing a connector are listed in the part's own pin order.
+- **A snapshot part without a footprint fingerprint** takes the current one, rather than being flagged out of date.
+- **Not done:** previewing a cut's new strip tints before clicking. The dashed mark shows where it will go, and the tints update as soon as it's made.
 
 ### Claude over MCP (step 18)
 

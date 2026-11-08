@@ -16,10 +16,11 @@ import {
   Workflow,
   X,
 } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
 import { errorMessage } from '@/api/fetcher'
 import { listRevisions, useDeleteDesign, useGetDesign } from '@/api/generated/designs/designs'
+import { useListLayouts } from '@/api/generated/layouts/layouts'
 import type { DesignDetail } from '@/api/generated/model'
 import { EditableText } from '@/components/editable-text'
 import { EmptyState } from '@/components/empty-state'
@@ -35,6 +36,8 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { plural } from '@/lib/format'
 import { PHONE_QUERY, useMediaQuery } from '@/lib/use-media-query'
+import { ViewSwitcher } from '@/features/layouts/view-switcher'
+import { BoardsContext, type OnBoard } from './canvas/context'
 import { DesignCanvas } from './canvas/design-canvas'
 import { ChecksBar } from './checks-bar'
 import { HistoryDialog } from './history-dialog'
@@ -70,6 +73,28 @@ function DesignEditor({ design }: { design: DesignDetail }) {
     setEdges((previous) => buildEdges(design, previous))
   }, [design, setNodes, setEdges])
 
+  // Where each part is on the design's board layouts: a badge on its card.
+  const { data: layouts } = useListLayouts(design.id)
+  const boards = useMemo(() => {
+    const map = new Map<number, OnBoard[]>()
+    for (const layout of layouts ?? [])
+      for (const p of layout.placed)
+        map.set(p.placement_id, [
+          ...(map.get(p.placement_id) ?? []),
+          { layoutId: layout.id, layout: layout.name, at: p.at },
+        ])
+    return map
+  }, [layouts])
+
+  // ?select= (from a layout's "Show in schematic") selects that part once its card exists.
+  const [params, setParams] = useSearchParams()
+  const pendingSelect = params.get('select')
+  useEffect(() => {
+    if (!pendingSelect || !nodes.length) return
+    setNodes((ns) => ns.map((n) => ({ ...n, selected: n.id === pendingSelect })))
+    setParams({}, { replace: true })
+  }, [pendingSelect, nodes.length, setNodes, setParams])
+
   const selectedNode = nodes.find((n) => n.selected)
   const placement = design.placements.find((p) => String(p.id) === selectedNode?.id)
   const selectedEdge = edges.find((e) => e.selected)
@@ -100,218 +125,229 @@ function DesignEditor({ design }: { design: DesignDetail }) {
 
   return (
     <HighlightContext.Provider value={store}>
-      <div className="flex min-h-0 flex-1 flex-col">
-        <header className="flex h-12 shrink-0 items-center gap-1 border-b px-2">
-          <Button asChild variant="ghost" size="icon-sm">
-            <Link to="/" aria-label="All designs">
-              <ArrowLeft />
-            </Link>
-          </Button>
-          <div className="min-w-0 flex-1">
-            {readOnly ? (
-              <h1 className="truncate font-semibold">{design.name}</h1>
-            ) : (
-              <EditableText
-                value={design.name}
-                onSave={(name) => quietly(actions.updateDesign({ name }))}
-                aria-label="Design name"
-                className="font-semibold"
-              />
-            )}
-          </div>
-          <span className="hidden text-xs text-muted-foreground sm:inline">
-            {plural(design.part_count, 'part')}
-          </span>
-          {readOnly && (
-            <span
-              className="flex items-center gap-1 text-xs text-muted-foreground"
-              title="Designs are read-only on a phone"
-            >
-              <Lock className="size-3.5" />
-              Read-only
-            </span>
-          )}
-          {!readOnly && (
-            <>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label="Undo"
-                title="Undo (Ctrl+Z)"
-                disabled={!actions.canUndo}
-                onClick={() => quietly(actions.undo())}
-              >
-                <Undo2 />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label="Redo"
-                title="Redo (Ctrl+Shift+Z)"
-                disabled={!actions.canRedo}
-                onClick={() => quietly(actions.redo())}
-              >
-                <Redo2 />
-              </Button>
-            </>
-          )}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon-sm" aria-label="More">
-                <MoreHorizontal />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onSelect={() => setHistoryOpen(true)}>
-                <History />
-                History
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => setPinMapOpen(true)}>
-                <FileCode />
-                Pin map
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => setFilesOpen('bringup')}>
-                <ListChecks />
-                Bring-up sketch
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => setFilesOpen('platformio')}>
-                <Package />
-                PlatformIO project
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => setFilesOpen('wokwi')}>
-                <Play />
-                Simulate in Wokwi
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <PinMapDialog design={design} open={pinMapOpen} onOpenChange={setPinMapOpen} />
-          {(['bringup', 'platformio', 'wokwi'] as const).map((kind) => (
-            <FirmwareFilesDialog
-              key={kind}
-              kind={kind}
-              design={design}
-              open={filesOpen === kind}
-              onOpenChange={(open) => setFilesOpen(open ? kind : null)}
-            />
-          ))}
-          <HistoryDialog
-            designId={design.id}
-            open={historyOpen}
-            onOpenChange={setHistoryOpen}
-            actions={actions}
-            readOnly={readOnly}
-          />
-          {!wide && (
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              aria-label="Design details"
-              aria-pressed={detailsOpen}
-              onClick={() => setDetailsOpen((open) => !open)}
-            >
-              <Info />
+      <BoardsContext.Provider value={boards}>
+        <div className="flex min-h-0 flex-1 flex-col">
+          <header className="flex h-12 shrink-0 items-center gap-1 border-b px-2">
+            <Button asChild variant="ghost" size="icon-sm">
+              <Link to="/" aria-label="All designs">
+                <ArrowLeft />
+              </Link>
             </Button>
-          )}
-        </header>
-        {changedBy.who && (
-          <div className="flex shrink-0 items-center gap-2 border-b bg-primary/10 px-3 py-1.5 text-sm">
-            <Bot className="size-4 shrink-0" />
-            <span className="flex-1">
-              {changedBy.who === 'claude'
-                ? 'Claude changed this design.'
-                : 'This design was changed elsewhere.'}
-            </span>
-            <Button
-              variant="link"
-              size="sm"
-              className="h-auto px-0"
-              onClick={() => setHistoryOpen(true)}
-            >
-              History
-            </Button>
-            <Button variant="ghost" size="icon-xs" aria-label="Dismiss" onClick={changedBy.dismiss}>
-              <X />
-            </Button>
-          </div>
-        )}
-        <div className="flex min-h-0 flex-1">
-          {wide && !readOnly && (
-            <aside className="w-60 shrink-0 border-r">
-              <LibraryPanel design={design} actions={actions} />
-            </aside>
-          )}
-          <div className="flex min-w-0 flex-1 flex-col">
-            <div className="relative min-h-0 flex-1">
-              <DesignCanvas
-                design={design}
-                nodes={nodes}
-                edges={edges}
-                onNodesChange={onNodesChange}
-                onEdgesChange={onEdgesChange}
-                actions={actions}
-                readOnly={readOnly}
-              />
-              {design.placements.length === 0 && (
-                <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-6">
-                  <EmptyState
-                    icon={Workflow}
-                    title="An empty design"
-                    description={
-                      readOnly
-                        ? 'Parts are placed on a tablet or computer.'
-                        : wide
-                          ? 'Drag parts from the library, then wire pin to pin.'
-                          : 'Add parts from the library, then wire pin to pin.'
-                    }
-                  />
-                </div>
-              )}
-              {!wide && !readOnly && (
-                <>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="absolute top-2 left-2 z-10 bg-card"
-                    onClick={() => setLibraryOpen((open) => !open)}
-                    aria-pressed={libraryOpen}
-                  >
-                    <Library />
-                    Parts
-                  </Button>
-                  {libraryOpen && (
-                    <aside className="absolute top-12 bottom-2 left-2 z-10 w-64 rounded-lg border bg-card shadow-lg">
-                      <LibraryPanel
-                        design={design}
-                        actions={actions}
-                        onAdded={() => setLibraryOpen(false)}
-                      />
-                    </aside>
-                  )}
-                </>
-              )}
-              {!wide && (
-                <BottomSheet open={Boolean(placement || wire || detailsOpen)} onClose={closeSheet}>
-                  {inspector}
-                </BottomSheet>
+            <div className="min-w-0 flex-1">
+              {readOnly ? (
+                <h1 className="truncate font-semibold">{design.name}</h1>
+              ) : (
+                <EditableText
+                  value={design.name}
+                  onSave={(name) => quietly(actions.updateDesign({ name }))}
+                  aria-label="Design name"
+                  className="font-semibold"
+                />
               )}
             </div>
-            <ChecksBar
-              design={design}
-              open={checksOpen}
-              onOpenChange={(open) => {
-                // Below desktop width the sheet and the list share the bottom of the
-                // screen: they take turns, so the canvas stays in view.
-                if (open && !wide) closeSheet()
-                setChecksOpen(open)
-              }}
-              onPick={() => !wide && setChecksOpen(false)}
+            <ViewSwitcher designId={design.id} current={null} readOnly={readOnly} />
+            <span className="hidden text-xs text-muted-foreground sm:inline">
+              {plural(design.part_count, 'part')}
+            </span>
+            {readOnly && (
+              <span
+                className="flex items-center gap-1 text-xs text-muted-foreground"
+                title="Designs are read-only on a phone"
+              >
+                <Lock className="size-3.5" />
+                Read-only
+              </span>
+            )}
+            {!readOnly && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="Undo"
+                  title="Undo (Ctrl+Z)"
+                  disabled={!actions.canUndo}
+                  onClick={() => quietly(actions.undo())}
+                >
+                  <Undo2 />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="Redo"
+                  title="Redo (Ctrl+Shift+Z)"
+                  disabled={!actions.canRedo}
+                  onClick={() => quietly(actions.redo())}
+                >
+                  <Redo2 />
+                </Button>
+              </>
+            )}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon-sm" aria-label="More">
+                  <MoreHorizontal />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={() => setHistoryOpen(true)}>
+                  <History />
+                  History
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setPinMapOpen(true)}>
+                  <FileCode />
+                  Pin map
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setFilesOpen('bringup')}>
+                  <ListChecks />
+                  Bring-up sketch
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setFilesOpen('platformio')}>
+                  <Package />
+                  PlatformIO project
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setFilesOpen('wokwi')}>
+                  <Play />
+                  Simulate in Wokwi
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <PinMapDialog design={design} open={pinMapOpen} onOpenChange={setPinMapOpen} />
+            {(['bringup', 'platformio', 'wokwi'] as const).map((kind) => (
+              <FirmwareFilesDialog
+                key={kind}
+                kind={kind}
+                design={design}
+                open={filesOpen === kind}
+                onOpenChange={(open) => setFilesOpen(open ? kind : null)}
+              />
+            ))}
+            <HistoryDialog
+              designId={design.id}
+              open={historyOpen}
+              onOpenChange={setHistoryOpen}
+              actions={actions}
+              readOnly={readOnly}
             />
-          </div>
-          {wide && (
-            <aside className="w-80 shrink-0 overflow-y-auto border-l p-4">{inspector}</aside>
+            {!wide && (
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Design details"
+                aria-pressed={detailsOpen}
+                onClick={() => setDetailsOpen((open) => !open)}
+              >
+                <Info />
+              </Button>
+            )}
+          </header>
+          {changedBy.who && (
+            <div className="flex shrink-0 items-center gap-2 border-b bg-primary/10 px-3 py-1.5 text-sm">
+              <Bot className="size-4 shrink-0" />
+              <span className="flex-1">
+                {changedBy.who === 'claude'
+                  ? 'Claude changed this design.'
+                  : 'This design was changed elsewhere.'}
+              </span>
+              <Button
+                variant="link"
+                size="sm"
+                className="h-auto px-0"
+                onClick={() => setHistoryOpen(true)}
+              >
+                History
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                aria-label="Dismiss"
+                onClick={changedBy.dismiss}
+              >
+                <X />
+              </Button>
+            </div>
           )}
+          <div className="flex min-h-0 flex-1">
+            {wide && !readOnly && (
+              <aside className="w-60 shrink-0 border-r">
+                <LibraryPanel design={design} actions={actions} />
+              </aside>
+            )}
+            <div className="flex min-w-0 flex-1 flex-col">
+              <div className="relative min-h-0 flex-1">
+                <DesignCanvas
+                  design={design}
+                  nodes={nodes}
+                  edges={edges}
+                  onNodesChange={onNodesChange}
+                  onEdgesChange={onEdgesChange}
+                  actions={actions}
+                  readOnly={readOnly}
+                />
+                {design.placements.length === 0 && (
+                  <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-6">
+                    <EmptyState
+                      icon={Workflow}
+                      title="An empty design"
+                      description={
+                        readOnly
+                          ? 'Parts are placed on a tablet or computer.'
+                          : wide
+                            ? 'Drag parts from the library, then wire pin to pin.'
+                            : 'Add parts from the library, then wire pin to pin.'
+                      }
+                    />
+                  </div>
+                )}
+                {!wide && !readOnly && (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="absolute top-2 left-2 z-10 bg-card"
+                      onClick={() => setLibraryOpen((open) => !open)}
+                      aria-pressed={libraryOpen}
+                    >
+                      <Library />
+                      Parts
+                    </Button>
+                    {libraryOpen && (
+                      <aside className="absolute top-12 bottom-2 left-2 z-10 w-64 rounded-lg border bg-card shadow-lg">
+                        <LibraryPanel
+                          design={design}
+                          actions={actions}
+                          onAdded={() => setLibraryOpen(false)}
+                        />
+                      </aside>
+                    )}
+                  </>
+                )}
+                {!wide && (
+                  <BottomSheet
+                    open={Boolean(placement || wire || detailsOpen)}
+                    onClose={closeSheet}
+                  >
+                    {inspector}
+                  </BottomSheet>
+                )}
+              </div>
+              <ChecksBar
+                design={design}
+                open={checksOpen}
+                onOpenChange={(open) => {
+                  // Below desktop width the sheet and the list share the bottom of the
+                  // screen: they take turns, so the canvas stays in view.
+                  if (open && !wide) closeSheet()
+                  setChecksOpen(open)
+                }}
+                onPick={() => !wide && setChecksOpen(false)}
+              />
+            </div>
+            {wide && (
+              <aside className="w-80 shrink-0 overflow-y-auto border-l p-4">{inspector}</aside>
+            )}
+          </div>
         </div>
-      </div>
+      </BoardsContext.Provider>
     </HighlightContext.Provider>
   )
 }

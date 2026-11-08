@@ -83,6 +83,8 @@ type Props<P extends ShownPin> = Omit<ComponentProps<'div'>, 'title'> & {
   /** Top line: the placement's ref on the canvas, the part's name in the preview. */
   title: string
   subtitle?: string
+  /** A small mark in the top right corner (on the canvas: the part is on a board). */
+  badge?: ReactNode
   pins: P[]
   rotation?: Rotation
   selected?: boolean
@@ -105,6 +107,7 @@ export function PartCard<P extends ShownPin>({
   selected,
   lit,
   renderPin,
+  badge,
   className,
   style,
   ...rest
@@ -132,6 +135,7 @@ export function PartCard<P extends ShownPin>({
         <div className="truncate font-mono text-xs font-semibold">{title}</div>
         {subtitle && <div className="truncate text-[10px] text-muted-foreground">{subtitle}</div>}
       </div>
+      {badge && <div className="absolute top-1 right-1">{badge}</div>}
       {layout.slots.map((slot, i) => {
         const on = lit?.has(slot.pin.name) ?? false
         return (

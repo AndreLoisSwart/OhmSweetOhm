@@ -307,6 +307,11 @@ def _resolve(design: Design, pin_ref: str) -> tuple[Placement, Pin]:
     return placement, pin
 
 
+def resolve_pin(design: Design, pin_ref: str) -> tuple[Placement, Pin]:
+    """`esp.GPIO21` to its placement and pin, for other modules (layouts' connectors)."""
+    return _resolve(design, pin_ref)
+
+
 def add_wires(
     session: Session, design_id: int, items: list[WireIn], claude: str | None = None
 ) -> Design:

@@ -12,6 +12,7 @@ const page = <K extends string>(load: () => Promise<Record<K, React.ComponentTyp
 const PartsPage = page(() => import('@/features/parts/parts-page'), 'PartsPage')
 const PartDetailPage = page(() => import('@/features/parts/part-detail-page'), 'PartDetailPage')
 const DesignPage = page(() => import('@/features/designs/design-page'), 'DesignPage')
+const LayoutPage = page(() => import('@/features/layouts/layout-page'), 'LayoutPage')
 const SettingsPage = page(() => import('@/features/settings/settings-page'), 'SettingsPage')
 
 export default function App() {
@@ -20,6 +21,7 @@ export default function App() {
       <Route element={<AppShell />}>
         <Route index element={<DesignsPage />} />
         <Route path="designs/:id" element={<DesignPage />} />
+        <Route path="designs/:id/layouts/:layoutId" element={<LayoutPage />} />
         <Route path="parts" element={<PartsPage />} />
         <Route path="parts/:id" element={<PartDetailPage />} />
         <Route path="settings" element={<SettingsPage />} />
