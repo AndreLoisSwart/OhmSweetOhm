@@ -6,6 +6,7 @@ import { pinColorGroup, pinKey, type Rotation } from '@/features/parts/card/layo
 import { PartCard } from '@/features/parts/card/part-card'
 import { pinTooltip, powerRole } from '@/features/parts/card/pin-style'
 import { PinEventsContext } from './context'
+import { cardLevel, FocusContext, focusClass } from './focus'
 import { useHighlightedPins } from './highlight'
 import type { PartNodeType } from './model'
 
@@ -20,6 +21,7 @@ function PartNodeComponent({ id, data, selected }: NodeProps<PartNodeType>) {
   const { placement, part } = data
   const lit = useHighlightedPins(placement.ref)
   const events = useContext(PinEventsContext)
+  const level = cardLevel(useContext(FocusContext), id)
   const updateNodeInternals = useUpdateNodeInternals()
 
   // Handles move when the card rotates or its pins change; React Flow must re-measure.
@@ -42,7 +44,7 @@ function PartNodeComponent({ id, data, selected }: NodeProps<PartNodeType>) {
       selected={selected}
       lit={lit}
       // Unverified parts get a dashed edge, a hint to check their pinout.
-      className={cn(!part.verified && 'outline-dashed')}
+      className={cn(!part.verified && 'outline-dashed', focusClass(level))}
       renderPin={({ pin, side, x, y }, on) => (
         <Handle
           id={pin.name}

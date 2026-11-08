@@ -10,9 +10,11 @@ import {
   MiniMap,
   type OnEdgesChange,
   type OnNodesChange,
+  Panel,
   ReactFlow,
   useNodesInitialized,
   useReactFlow,
+  ViewportPortal,
 } from '@xyflow/react'
 import { cn } from 'cn'
 import {
@@ -23,15 +25,19 @@ import {
   useEffect,
   useMemo,
   useRef,
+  useState,
 } from 'react'
 import type { DesignDetail } from '@/api/generated/model'
 import { GRID } from '@/features/parts/card/layout'
 import { type DesignActions, quietly } from '../use-design-actions'
 import { FIT, PART_DRAG_TYPE, PHONE_FIT, PinEventsContext, RoutesContext } from './context'
+import { Focus as FocusIcon, X } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { FocusContext, focusClass, focusOf, netLevels } from './focus'
 import { HighlightContext } from './highlight'
 import { netsByPin, type PartNodeType, routeInput, turned, type WireEdgeType } from './model'
 import { PartNode } from './part-node'
-import { routeWires } from './routing'
+import { route } from './routing'
 import { WireEdge } from './wire-edge'
 
 const nodeTypes = { part: PartNode }
@@ -95,10 +101,32 @@ export function DesignCanvas({
 
   // Routes from the saved positions. A card being dragged isn't saved yet, so its wires
   // fall back to plain paths until it is dropped and saved.
-  const routes = useMemo(() => {
+  const { routes, junctions } = useMemo(() => {
     const { cards, wires } = routeInput(design)
-    return routeWires(cards, wires)
+    return route(cards, wires)
   }, [design])
+
+  // Focus (focus.ts): the chosen parts and their wires; everything else greyed or faded.
+  const [focusIds, setFocusIds] = useState<string[] | null>(null)
+  const focus = useMemo(() => (focusIds ? focusOf(design, focusIds) : null), [design, focusIds])
+  const selectedIds = nodes.filter((n) => n.selected).map((n) => n.id)
+  const focusSelection = useCallback(() => {
+    if (selectedIds.length) setFocusIds(selectedIds)
+  }, [selectedIds])
+  const names = useMemo(
+    () => new Map(design.placements.map((p) => [String(p.id), p.ref])),
+    [design],
+  )
+
+  // Junction dots take their net's colour (its first wire's) and focus level.
+  const junctionStyle = useMemo(() => {
+    const color = new Map<string, string>()
+    for (const wire of design.wires) {
+      const net = nets.get(wire.a)?.name
+      if (net && !color.has(net)) color.set(net, wire.color)
+    }
+    return { color, level: netLevels(focus, design, (key) => nets.get(key)?.name) }
+  }, [design, nets, focus])
 
   const endOf = useCallback(
     (nodeId: string, handle: string | null | undefined) => {
@@ -178,6 +206,16 @@ export function DesignCanvas({
         return
       const mod = e.ctrlKey || e.metaKey
       const key = e.key.toLowerCase()
+      // F focuses the selected parts (or ends focus); Esc ends it.
+      if (key === 'escape' && focusIds) {
+        setFocusIds(null)
+        return
+      }
+      if (key === 'f' && !mod && !e.altKey) {
+        if (focusIds) setFocusIds(null)
+        else focusSelection()
+        return
+      }
       // Undo: Ctrl+Z. Redo: Ctrl+Shift+Z or Ctrl+Y (Cmd on a Mac).
       if (mod && (key === 'z' || key === 'y')) {
         e.preventDefault()
@@ -200,7 +238,7 @@ export function DesignCanvas({
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [readOnly, nodes, actions])
+  }, [readOnly, nodes, actions, focusIds, focusSelection])
 
   const onDragOver = (e: DragEvent) => {
     if (!e.dataTransfer.types.includes(PART_DRAG_TYPE)) return
@@ -220,46 +258,109 @@ export function DesignCanvas({
 
   return (
     <PinEventsContext.Provider value={pinEvents}>
-      <RoutesContext.Provider value={routes}>
-        <ReactFlow
-          className={cn('ohm-canvas', readOnly && 'read-only')}
-          colorMode="system"
-          nodes={nodes}
-          edges={edges}
-          nodeTypes={nodeTypes}
-          edgeTypes={edgeTypes}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onConnect={onConnect}
-          onBeforeDelete={onBeforeDelete}
-          onNodeDragStop={onNodeDragStop}
-          isValidConnection={isValidConnection}
-          connectionMode={ConnectionMode.Loose}
-          connectionRadius={14}
-          snapToGrid
-          snapGrid={[GRID, GRID]}
-          fitViewOptions={fit}
-          minZoom={0.2}
-          maxZoom={3}
-          nodesDraggable={!readOnly}
-          nodesConnectable={!readOnly}
-          // Otherwise a tap on a pin starts a wire even when nodesConnectable is off.
-          connectOnClick={!readOnly}
-          edgesReconnectable={false}
-          deleteKeyCode={readOnly ? null : ['Delete', 'Backspace']}
-          onEdgeMouseEnter={(_, e) => store.hover(nets.get(e.data!.wire.a)?.pins ?? [])}
-          onEdgeMouseLeave={() => store.hover([])}
-          onPaneClick={() => store.clear()}
-          onDragOver={onDragOver}
-          onDrop={onDrop}
-          proOptions={{ hideAttribution: true }}
-        >
-          <Background variant={BackgroundVariant.Dots} gap={GRID * 2} size={1.2} />
-          <Controls showInteractive={false} fitViewOptions={fit} />
-          <MiniMap pannable zoomable className="!bg-card max-lg:!hidden" />
-          {children}
-        </ReactFlow>
-      </RoutesContext.Provider>
+      <FocusContext.Provider value={focus}>
+        <RoutesContext.Provider value={routes}>
+          <ReactFlow
+            className={cn('ohm-canvas', readOnly && 'read-only')}
+            colorMode="system"
+            nodes={nodes}
+            edges={edges}
+            nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onConnect={onConnect}
+            onBeforeDelete={onBeforeDelete}
+            onNodeDragStop={onNodeDragStop}
+            isValidConnection={isValidConnection}
+            connectionMode={ConnectionMode.Loose}
+            connectionRadius={14}
+            snapToGrid
+            snapGrid={[GRID, GRID]}
+            fitViewOptions={fit}
+            minZoom={0.2}
+            maxZoom={3}
+            nodesDraggable={!readOnly}
+            nodesConnectable={!readOnly}
+            // Otherwise a tap on a pin starts a wire even when nodesConnectable is off.
+            connectOnClick={!readOnly}
+            edgesReconnectable={false}
+            deleteKeyCode={readOnly ? null : ['Delete', 'Backspace']}
+            onEdgeMouseEnter={(_, e) => store.hover(nets.get(e.data!.wire.a)?.pins ?? [])}
+            onEdgeMouseLeave={() => store.hover([])}
+            onPaneClick={() => {
+              store.clear()
+              setFocusIds(null)
+            }}
+            // While focusing, Ctrl/Cmd-click adds a part to the focus or takes it out.
+            onNodeClick={(e, node) => {
+              if (!focusIds || !(e.ctrlKey || e.metaKey)) return
+              setFocusIds((ids) =>
+                ids?.includes(node.id)
+                  ? ids.filter((id) => id !== node.id)
+                  : [...(ids ?? []), node.id],
+              )
+            }}
+            onDragOver={onDragOver}
+            onDrop={onDrop}
+            proOptions={{ hideAttribution: true }}
+          >
+            <Background variant={BackgroundVariant.Dots} gap={GRID * 2} size={1.2} />
+            <Controls showInteractive={false} fitViewOptions={fit} />
+            <MiniMap pannable zoomable className="!bg-card max-lg:!hidden" />
+            <ViewportPortal>
+              {junctions.map((j) => (
+                <div
+                  key={`${j.x},${j.y},${j.net}`}
+                  className={cn('junction', focusClass(junctionStyle.level.get(j.net) ?? 'normal'))}
+                  style={{
+                    transform: `translate(${j.x}px, ${j.y}px) translate(-50%, -50%)`,
+                    background: `var(--wire-${junctionStyle.color.get(j.net) ?? 'gray'})`,
+                  }}
+                />
+              ))}
+            </ViewportPortal>
+            <Panel position="top-center">
+              {focus ? (
+                <div className="flex items-center gap-2 rounded-full border bg-card py-1 pr-1 pl-3 text-xs shadow-sm">
+                  <FocusIcon className="size-3.5 text-primary" />
+                  <span>
+                    Focused on{' '}
+                    <span className="font-mono">
+                      {[...focus.nodes].map((id) => names.get(id)).join(', ')}
+                    </span>
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="xs"
+                    className="rounded-full"
+                    onClick={() => setFocusIds(null)}
+                    title="Esc, or click the canvas"
+                  >
+                    <X />
+                    Exit
+                  </Button>
+                </div>
+              ) : selectedIds.length > 0 ? (
+                <Button
+                  variant="outline"
+                  size="xs"
+                  className="rounded-full bg-card shadow-sm"
+                  onClick={focusSelection}
+                  title="Show only these parts and their wires (F)"
+                >
+                  <FocusIcon />
+                  Focus on{' '}
+                  {selectedIds.length === 1
+                    ? names.get(selectedIds[0])
+                    : `${selectedIds.length} parts`}
+                </Button>
+              ) : null}
+            </Panel>
+            {children}
+          </ReactFlow>
+        </RoutesContext.Provider>
+      </FocusContext.Provider>
     </PinEventsContext.Provider>
   )
 }

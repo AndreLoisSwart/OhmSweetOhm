@@ -82,6 +82,15 @@ Keep this in mind throughout phase 1: a design must convert to `diagram.json` wi
 
 Wokwi export stays its own item above. It reuses step 10's code names and bus data.
 
+## Canvas: more ways to tame a busy design
+
+Built: focus, and same-net wires sharing tracks with junction dots (pages.md, Design page). Suggested next, not decided:
+- **Power and ground as labels:** a view toggle drawing GND and supply wires as short stubs ending in a net label, instead of full wires. The wires stay in the design.
+- **Hide unused pins:** a view toggle showing cards with only their wired pins; routes follow, since they're computed.
+- **Find a part** (Ctrl+K) to zoom to and select it; **keyboard nudging** (arrows), Ctrl+A, Ctrl+D to duplicate.
+- **Export the canvas** as PNG or SVG.
+- **Wire hover tooltip** with the net and both ends.
+
 ## Ideas (not decided)
 
 - **Stock status from Shelf-help:** show have/low/out next to parts, and a "ready to build" bar on designs like Shelf-help's readiness. This needs a separate read-only token on Shelf-help that reaches only a narrow stock endpoint, never its full API.

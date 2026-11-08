@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { midpoint, type Point, type Rect, roundedPath, routeFor, routeWires } from './routing'
+import {
+  midpoint,
+  type Point,
+  type Rect,
+  roundedPath,
+  route,
+  routeFor,
+  routeWires,
+  type WireToRoute,
+} from './routing'
 
 const A: Rect = { x: 0, y: 0, width: 200, height: 360 }
 const B: Rect = { x: 400, y: 60, width: 120, height: 140 }
@@ -113,5 +122,84 @@ describe('routeFor', () => {
     // The card at the far end is being dragged and isn't saved yet.
     expect(routeFor(route, { x: 200, y: 110 }, { x: 420, y: 230 })).toBeNull()
     expect(routeFor(undefined, { x: 0, y: 0 }, { x: 0, y: 0 })).toBeNull()
+  })
+})
+
+/** The 10 px steps a route runs along, as "x,y>x,y" strings. */
+function steps(points: Point[]): Set<string> {
+  const out = new Set<string>()
+  for (const [p, q] of segments(points)) {
+    const n = Math.max(Math.abs(q.x - p.x), Math.abs(q.y - p.y)) / 10
+    for (let i = 0; i < n; i++) {
+      const a = { x: p.x + ((q.x - p.x) / n) * i, y: p.y + ((q.y - p.y) / n) * i }
+      const b = { x: p.x + ((q.x - p.x) / n) * (i + 1), y: p.y + ((q.y - p.y) / n) * (i + 1) }
+      const [s, e] = [a, b].sort((u, v) => u.x - v.x || u.y - v.y)
+      out.add(`${s.x},${s.y}>${e.x},${e.y}`)
+    }
+  }
+  return out
+}
+
+const shared = (a: Point[], b: Point[]) => [...steps(a)].filter((s) => steps(b).has(s)).length
+
+describe('same-net wires', () => {
+  // Two pins on A's right side going to two pins on B's left side.
+  const pair = (net?: [string, string]): WireToRoute[] => [
+    {
+      id: 'p',
+      a: { x: 200, y: 90, side: 'right' },
+      b: { x: 400, y: 130, side: 'left' },
+      net: net?.[0],
+    },
+    {
+      id: 'q',
+      a: { x: 200, y: 170, side: 'right' },
+      b: { x: 400, y: 150, side: 'left' },
+      net: net?.[1],
+    },
+  ]
+
+  it('share a trunk and branch at a junction', () => {
+    // Two neighbouring pins on A feeding one pin on B, below them: on one net they run
+    // together, rather than on parallel tracks that only meet at B's stub.
+    const wires = (net?: string): WireToRoute[] => [
+      { id: 'p', a: { x: 200, y: 90, side: 'right' }, b: { x: 400, y: 170, side: 'left' }, net },
+      { id: 'q', a: { x: 200, y: 110, side: 'right' }, b: { x: 400, y: 170, side: 'left' }, net },
+    ]
+    const apart = routeWires([A, B], wires())
+    const stubOnly = shared(apart.get('p')!, apart.get('q')!)
+    const { routes, junctions } = route([A, B], wires('GND'))
+    expect(shared(routes.get('p')!, routes.get('q')!)).toBeGreaterThan(stubOnly + 2)
+    expect(junctions.length).toBeGreaterThanOrEqual(1)
+    expect(junctions.every((j) => j.net === 'GND' && j.x % 10 === 0 && j.y % 10 === 0)).toBe(true)
+  })
+
+  it('keep apart on different nets, with no junctions', () => {
+    const { routes, junctions } = route([A, B], pair(['GND', '5V']))
+    expect(shared(routes.get('p')!, routes.get('q')!)).toBe(0)
+    expect(junctions).toEqual([])
+    // Wires without a net are each their own.
+    expect(route([A, B], pair()).junctions).toEqual([])
+  })
+
+  it('branch at the stub when two wires leave one pin', () => {
+    const { junctions } = route(
+      [A, B],
+      [
+        {
+          id: 'p',
+          a: { x: 200, y: 110, side: 'right' },
+          b: { x: 400, y: 90, side: 'left' },
+          net: 'V',
+        },
+        {
+          id: 'q',
+          a: { x: 200, y: 110, side: 'right' },
+          b: { x: 400, y: 190, side: 'left' },
+          net: 'V',
+        },
+      ],
+    )
+    expect(junctions.length).toBeGreaterThanOrEqual(1)
   })
 })

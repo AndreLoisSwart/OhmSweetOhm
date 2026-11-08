@@ -5,6 +5,10 @@
 // finds the cheapest path to the other pin's stub: steps cost 1, turns cost extra, and
 // running alongside an earlier wire costs more, so parallel wires take neighbouring
 // tracks. Cards (with a margin) and other pins' stubs are walls.
+//
+// Wires on the same net are the exception: running on a track the net already uses is
+// cheaper than a fresh step, so a rail's wires gather into one trunk, and the points
+// where it branches are returned as junctions (drawn as dots, as on a schematic).
 import type { PinSide } from '@/api/generated/model'
 import { GRID } from '@/features/parts/card/layout'
 
@@ -28,6 +32,18 @@ export interface WireToRoute {
   id: string
   a: WireEnd
   b: WireEnd
+  /** The net the wire is on; wires on the same net may share tracks. */
+  net?: string
+}
+
+/** Where a net's shared trunk branches (three or more ways meet). */
+export interface Junction extends Point {
+  net: string
+}
+
+export interface Routing {
+  routes: Map<string, Point[]>
+  junctions: Junction[]
 }
 
 /** How far a wire runs straight out of its pin before it may turn. */
@@ -37,6 +53,9 @@ const PARALLEL_COST = 8
 /** Running one track beside another wire: keeps parallel wires 20 px apart where there's room. */
 const NEIGHBOUR_COST = 3
 const CROSS_COST = 1
+/** A step along a track the wire's own net already uses: cheaper than a fresh one, so a
+ * rail's wires join up even at the price of a short detour. */
+const SHARED_STEP = 0.5
 /** Room around everything for wires that must go round the outside. */
 const MARGIN = 200
 const MAX_EXPANSIONS = 60_000
@@ -56,6 +75,9 @@ export const stubOf = (end: WireEnd): Point => ({
 // Directions: 0 right, 1 down, 2 left, 3 up.
 const DX = [1, 0, -1, 0]
 const DY = [0, 1, 0, -1]
+const dirOf = (dx: number, dy: number) => (dx > 0 ? 0 : dy > 0 ? 1 : dx < 0 ? 2 : 3)
+/** From a pin's stub end back to the pin. */
+const towardPin = (end: WireEnd) => dirOf(-OUT[end.side].x, -OUT[end.side].y)
 
 /** A binary heap of [priority, state]. */
 class Heap {
@@ -113,13 +135,20 @@ function simplify(points: Point[]): Point[] {
   return out
 }
 
+/** Each wire's corner points from pin to pin (see route). */
+export function routeWires(cards: Rect[], wires: WireToRoute[]): Map<string, Point[]> {
+  return route(cards, wires).routes
+}
+
 /**
  * Routes every wire. Returns each wire's corner points from pin to pin, or nothing for a
- * wire with no path (the caller draws those its simple way).
+ * wire with no path (the caller draws those its simple way), and the junctions where a
+ * net's shared trunk branches.
  */
-export function routeWires(cards: Rect[], wires: WireToRoute[]): Map<string, Point[]> {
+export function route(cards: Rect[], wires: WireToRoute[]): Routing {
   const routes = new Map<string, Point[]>()
-  if (!wires.length) return routes
+  const junctions: Junction[] = []
+  if (!wires.length) return { routes, junctions }
 
   // The search area: everything, plus room to go round the outside.
   const xs = [
@@ -157,6 +186,13 @@ export function routeWires(cards: Rect[], wires: WireToRoute[]): Map<string, Poi
   // How many earlier wires run through each point, horizontally and vertically.
   const usedH = new Uint16Array(cols * rows)
   const usedV = new Uint16Array(cols * rows)
+  // The same, for the net being routed only: filled from netCells before each search.
+  const sameH = new Uint16Array(cols * rows)
+  const sameV = new Uint16Array(cols * rows)
+  // The cells each net's wires run through (repeats counted, as in usedH/usedV), and the
+  // directions met at each cell, for finding junctions.
+  const netCells = new Map<string, { h: number[]; v: number[] }>()
+  const netDirs = new Map<string, Map<number, number>>()
 
   // Shorter wires first: they have the fewest ways round, and long ones can make room.
   const span = (w: WireToRoute) => Math.abs(w.a.x - w.b.x) + Math.abs(w.a.y - w.b.y)
@@ -166,6 +202,10 @@ export function routeWires(cards: Rect[], wires: WireToRoute[]): Map<string, Poi
   const came = new Int32Array(cols * rows * 4)
 
   for (const w of order) {
+    const net = w.net ?? `\0${w.id}`
+    const mine = netCells.get(net) ?? { h: [], v: [] }
+    for (const c of mine.h) sameH[c]++
+    for (const c of mine.v) sameV[c]++
     const startPoint = stubOf(w.a)
     const goalPoint = stubOf(w.b)
     const start = cell(startPoint)
@@ -208,14 +248,17 @@ export function routeWires(cards: Rect[], wires: WireToRoute[]): Map<string, Poi
         const n = ny * cols + nx
         if (wall[n] && n !== goal) continue
         const horizontal = d === 0 || d === 2
-        let step = 1 + (d !== dir ? TURN_COST : 0)
-        step += (horizontal ? usedH[n] : usedV[n]) * PARALLEL_COST
-        const side = horizontal ? cols : 1
         const used = horizontal ? usedH : usedV
+        const same = horizontal ? sameH : sameV
+        // Other nets only: the wire's own net may share, run beside and cross itself.
+        const others = (c: number) => used[c] - same[c]
+        let step = (same[n] ? SHARED_STEP : 1) + (d !== dir ? TURN_COST : 0)
+        step += others(n) * PARALLEL_COST
+        const side = horizontal ? cols : 1
         step +=
-          ((n >= side ? used[n - side] : 0) + (n + side < used.length ? used[n + side] : 0)) *
+          ((n >= side ? others(n - side) : 0) + (n + side < used.length ? others(n + side) : 0)) *
           NEIGHBOUR_COST
-        step += (horizontal ? usedV[n] : usedH[n]) * CROSS_COST
+        step += (horizontal ? usedV[n] - sameV[n] : usedH[n] - sameH[n]) * CROSS_COST
         if (n === goal && d !== goalDir) step += TURN_COST
         const next = n * 4 + d
         const total = here + step
@@ -227,15 +270,32 @@ export function routeWires(cards: Rect[], wires: WireToRoute[]): Map<string, Poi
       }
     }
     for (const c of opened) wall[c] = 1
+    for (const c of mine.h) sameH[c]--
+    for (const c of mine.v) sameV[c]--
     if (found < 0) continue
 
     const cells: number[] = []
     for (let s = found; s !== -1; s = came[s]) cells.push(s >> 2)
     cells.reverse()
+    const dirs = netDirs.get(net) ?? new Map<number, number>()
+    const meet = (c: number, d: number) => dirs.set(c, (dirs.get(c) ?? 0) | (1 << d))
+    meet(cells[0], towardPin(w.a))
+    meet(cells.at(-1)!, towardPin(w.b))
     for (let i = 1; i < cells.length; i++) {
       const horizontal = Math.abs(cells[i] - cells[i - 1]) === 1
-      for (const c of [cells[i - 1], cells[i]]) (horizontal ? usedH : usedV)[c]++
+      for (const c of [cells[i - 1], cells[i]]) {
+        ;(horizontal ? usedH : usedV)[c]++
+        ;(horizontal ? mine.h : mine.v).push(c)
+      }
+      const d = dirOf(
+        (cells[i] % cols) - (cells[i - 1] % cols),
+        Math.floor(cells[i] / cols) - Math.floor(cells[i - 1] / cols),
+      )
+      meet(cells[i - 1], d)
+      meet(cells[i], (d + 2) & 3)
     }
+    netCells.set(net, mine)
+    netDirs.set(net, dirs)
     const toPoint = (c: number): Point => ({
       x: minX + (c % cols) * GRID,
       y: minY + Math.floor(c / cols) * GRID,
@@ -245,7 +305,21 @@ export function routeWires(cards: Rect[], wires: WireToRoute[]): Map<string, Poi
       simplify([{ x: w.a.x, y: w.a.y }, ...cells.map(toPoint), { x: w.b.x, y: w.b.y }]),
     )
   }
-  return routes
+
+  // Three or more ways meeting on one net is a branch (or the net crossing itself).
+  const toPoint = (c: number): Point => ({
+    x: minX + (c % cols) * GRID,
+    y: minY + Math.floor(c / cols) * GRID,
+  })
+  for (const [net, dirs] of netDirs) {
+    if (net.startsWith('\0')) continue
+    for (const [c, mask] of dirs) {
+      let ways = 0
+      for (let m = mask; m; m &= m - 1) ways++
+      if (ways >= 3) junctions.push({ ...toPoint(c), net })
+    }
+  }
+  return { routes, junctions }
 }
 
 /** How far React Flow's end of a wire may be from its routed pin before the route is

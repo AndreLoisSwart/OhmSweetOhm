@@ -90,7 +90,7 @@ Decided after the canvas spike (2026-11-07, details in `pages.md`, Canvas spike 
 - **Phones get the read-only canvas** by media query, with tap to highlight a net; tablets wire by tap-pin-tap-pin or dragging.
 
 Decided in step 4 (2026-11-07):
-- **Wires are routed automatically** around cards and apart from each other, from the saved positions; routes aren't stored. Hand-placed bend points wait for phase 2.
+- **Wires are routed automatically** around cards and apart from each other, from the saved positions; routes aren't stored. Hand-placed bend points wait for phase 2. (Later: wires on the same net share tracks, with junction dots; see pages.md.)
 - **The API speaks `ref.PIN`** for wire ends, and every change to a design answers with the whole design, nets included.
 
 Decided for firmware support (2026-11-07):

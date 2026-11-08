@@ -1,7 +1,7 @@
 # Home Assistant add-on config. Lives at the repo root because HA uses this
 # folder as the Docker build context, and the image needs backend/ and frontend/.
 name: Ohm Sweet Ohm
-version: "0.4.0"
+version: "0.4.1"
 slug: ohm_sweet_ohm
 description: Electronics workbench for parts and wiring designs
 url: https://github.com/AndreLoisSwart/OhmSweetOhm

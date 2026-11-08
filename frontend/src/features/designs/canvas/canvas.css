@@ -96,3 +96,24 @@
   outline: none;
   box-shadow: none;
 }
+
+/* Focus (focus.ts): parts wired to a focused one are greyed, the rest fade right back.
+   Faded wires can't be clicked; faded cards still can, to add them to the focus. */
+.ohm-canvas .focus-dim {
+  opacity: 0.45;
+  filter: grayscale(1);
+}
+.ohm-canvas .focus-faded {
+  opacity: 0.1;
+  pointer-events: none;
+}
+
+/* Where a net's shared trunk branches, as on a schematic. */
+.ohm-canvas .junction {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 1.5px solid var(--wire-outline);
+  pointer-events: none;
+}

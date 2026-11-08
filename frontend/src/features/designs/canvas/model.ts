@@ -82,10 +82,13 @@ export function routeInput(design: DesignDetail): { cards: Rect[]; wires: WireTo
     const slot = layout.slots.find((s) => s.pin.name === pinName(key))!
     return { x: placement.x + slot.x, y: placement.y + slot.y, side: slot.side }
   }
+  // The net, so wires on one rail can share a trunk.
+  const nets = netsByPin(design)
   const wires = design.wires.map((w) => ({
     id: String(w.id),
     a: end(w.a_placement_id, w.a),
     b: end(w.b_placement_id, w.b),
+    net: nets.get(w.a)?.name,
   }))
   return { cards, wires }
 }
