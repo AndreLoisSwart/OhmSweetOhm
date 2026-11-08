@@ -74,6 +74,7 @@ The design page has four areas around the canvas:
 - Wires are routed shortest first, from the saved positions, on every change. Two cards and four wires took about 4 ms in the browser. A card being dragged isn't saved yet, so its wires fall back to plain square paths until it's dropped.
 - Routes aren't stored: they follow from positions, so adding a wire can re-route others. Bend points chosen by hand (Wokwi stores them) remain a phase 2 idea.
 - Fit-to-view counts cards, not the wires looping round them, so it pads by 20%.
+- **A wire is drawn exactly on its route,** pin centre to pin centre. React Flow's measured handle positions only tell whether the route is stale (a card mid-drag); joining the route to them drew slanted end stretches whenever a measurement came out a few pixels off (seen on a busy design after moving a card, 2026-11-08). Cards ask React Flow to re-measure their pins only when the pins' names, sides, order or the rotation change, not on every answer from the server.
 
 ## Canvas spike findings
 

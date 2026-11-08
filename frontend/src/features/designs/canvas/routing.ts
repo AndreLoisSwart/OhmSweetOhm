@@ -248,6 +248,25 @@ export function routeWires(cards: Rect[], wires: WireToRoute[]): Map<string, Poi
   return routes
 }
 
+/** How far React Flow's end of a wire may be from its routed pin before the route is
+ * taken as stale. Its handle ends sit up to half a dot (5 px) off the pin's centre. */
+export const ROUTE_TOLERANCE = 8
+
+/**
+ * The route to draw for a wire whose ends React Flow puts at `source` and `target`, or
+ * null when the route no longer meets them (a card is being dragged and isn't saved yet).
+ *
+ * The route is drawn exactly as computed: its ends come from the same card layout that
+ * places the pin dots, so they are the pins' centres. React Flow's measured handle
+ * positions only decide whether the route is stale; joining the route to them instead
+ * drew a slanted last stretch whenever a measurement came out a few pixels off.
+ */
+export function routeFor(route: Point[] | undefined, source: Point, target: Point): Point[] | null {
+  if (!route || route.length < 2) return null
+  const near = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y) <= ROUTE_TOLERANCE
+  return near(route[0], source) && near(route.at(-1)!, target) ? route : null
+}
+
 /** An SVG path through the points, with rounded corners. */
 export function roundedPath(points: Point[], radius = 6): string {
   if (points.length < 2) return ''

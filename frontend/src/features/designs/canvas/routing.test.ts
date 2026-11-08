@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { midpoint, type Point, type Rect, roundedPath, routeWires } from './routing'
+import { midpoint, type Point, type Rect, roundedPath, routeFor, routeWires } from './routing'
 
 const A: Rect = { x: 0, y: 0, width: 200, height: 360 }
 const B: Rect = { x: 400, y: 60, width: 120, height: 140 }
@@ -93,5 +93,25 @@ describe('path helpers', () => {
     ]
     expect(roundedPath(points)).toBe('M 0 0 L 94 0 Q 100 0 100 6 L 100 100')
     expect(midpoint(points)).toEqual({ x: 100, y: 0 })
+  })
+})
+
+describe('routeFor', () => {
+  const route = [
+    { x: 200, y: 110 },
+    { x: 300, y: 110 },
+    { x: 300, y: 210 },
+    { x: 400, y: 210 },
+  ]
+
+  it('draws the route as computed, not from the measured handle ends', () => {
+    // React Flow's ends a few pixels off (a left/right handle's edge, or a re-measure).
+    expect(routeFor(route, { x: 205, y: 113 }, { x: 395, y: 207 })).toBe(route)
+  })
+
+  it('gives up on a route that no longer meets the pins', () => {
+    // The card at the far end is being dragged and isn't saved yet.
+    expect(routeFor(route, { x: 200, y: 110 }, { x: 420, y: 230 })).toBeNull()
+    expect(routeFor(undefined, { x: 0, y: 0 }, { x: 0, y: 0 })).toBeNull()
   })
 })

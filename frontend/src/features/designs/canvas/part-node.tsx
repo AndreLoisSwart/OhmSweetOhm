@@ -23,7 +23,11 @@ function PartNodeComponent({ id, data, selected }: NodeProps<PartNodeType>) {
   const updateNodeInternals = useUpdateNodeInternals()
 
   // Handles move when the card rotates or its pins change; React Flow must re-measure.
-  useEffect(() => updateNodeInternals(id), [id, placement.rotation, part.pins, updateNodeInternals])
+  // Keyed on what places the pins, not on the pin list itself: every answer from the
+  // server brings a new copy of it, and re-measuring every card after each change was
+  // what shifted wire ends.
+  const layoutKey = part.pins.map((p) => `${p.name}:${p.side}:${p.position}`).join('|')
+  useEffect(() => updateNodeInternals(id), [id, placement.rotation, layoutKey, updateNodeInternals])
 
   const pinAt = (target: EventTarget) =>
     (target as HTMLElement).closest<HTMLElement>('[data-pin], [data-handleid]')

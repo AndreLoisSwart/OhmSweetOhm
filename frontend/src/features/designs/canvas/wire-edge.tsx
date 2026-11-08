@@ -3,10 +3,7 @@ import { memo, useContext } from 'react'
 import { RoutesContext } from './context'
 import { useIsLit } from './highlight'
 import type { WireEdgeType } from './model'
-import { midpoint, roundedPath } from './routing'
-
-/** How far React Flow's end point may be from the routed pin before the route is stale. */
-const TOLERANCE = 8
+import { midpoint, roundedPath, routeFor } from './routing'
 
 /**
  * A wire in its real colour over a contrasting outline, so black wires read in dark mode
@@ -19,18 +16,16 @@ function WireEdgeComponent(props: EdgeProps<WireEdgeType>) {
   const wire = props.data!.wire
   const lit = useIsLit(wire.a)
 
-  const route = routes.get(props.id)
-  const fits =
-    route &&
-    Math.hypot(route[0].x - sourceX, route[0].y - sourceY) <= TOLERANCE &&
-    Math.hypot(route.at(-1)!.x - targetX, route.at(-1)!.y - targetY) <= TOLERANCE
+  const route = routeFor(
+    routes.get(props.id),
+    { x: sourceX, y: sourceY },
+    { x: targetX, y: targetY },
+  )
   let path: string
   let labelAt: { x: number; y: number }
-  if (fits) {
-    // Start and end exactly where React Flow draws the pins.
-    const points = [{ x: sourceX, y: sourceY }, ...route.slice(1, -1), { x: targetX, y: targetY }]
-    path = roundedPath(points)
-    labelAt = midpoint(points)
+  if (route) {
+    path = roundedPath(route)
+    labelAt = midpoint(route)
   } else {
     const [smooth, x, y] = getSmoothStepPath({
       sourceX,
