@@ -35,6 +35,7 @@ import {
   PLATFORM_LABELS,
   PLATFORMS,
 } from './labels'
+import { FootprintEditor } from './footprint/footprint-editor'
 import { LibrariesEditor } from './libraries-editor'
 import { PinEditor } from './pins/pin-editor'
 
@@ -319,6 +320,15 @@ export function PartDetailPage() {
           In the order of the real headers, so the card reads like the board.
         </p>
         <PinEditor part={part} />
+      </section>
+
+      <section className="mt-10">
+        <h2 className="mb-1 text-lg font-semibold">Footprint</h2>
+        <p className="mb-4 text-sm text-muted-foreground">
+          Where each pin goes through a protoboard, and the outline the part covers, in mm from its
+          first pin. Take them from the maker&apos;s drawing, or measure the board.
+        </p>
+        <FootprintEditor key={part.pins.map((p) => `${p.id}:${p.name}`).join(',')} part={part} />
       </section>
 
       <div className="mt-10 grid gap-10 lg:grid-cols-2">

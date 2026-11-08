@@ -6,8 +6,14 @@ from app.core.errors import ConflictError, NotFoundError
 from app.modules.attachments import storage
 from app.modules.attachments.models import Attachment
 from app.modules.designs import queries as designs
+from app.modules.parts import footprint
 from app.modules.parts.models import Author, Part, PartKind, Pin
 from app.modules.parts.schemas import (
+    BodyMm,
+    FootprintIn,
+    FootprintOut,
+    Hole,
+    HoleOut,
     PartCreate,
     PartUpdate,
     PinIn,
@@ -81,8 +87,9 @@ def create_part(session: Session, data: PartCreate, author: Author = Author.USER
     return part
 
 
-# Firmware data Claude sets is checked by the user like pins: changing it unverifies.
-FIRMWARE_FIELDS = ("platform", "platformio_board", "libraries")
+# Firmware data and the body Claude sets are checked by the user like pins: changing
+# them unverifies.
+FIRMWARE_FIELDS = ("platform", "platformio_board", "libraries", "body_mm")
 
 
 def update_part(
@@ -149,6 +156,9 @@ def replace_pins(
         position = positions.get(data.side, 0)
         positions[data.side] = position + 1
         fields = data.model_dump(exclude={"id"})
+        if data.id is not None and "x_mm" not in data.model_fields_set:
+            # Left out: the pin keeps its hole (the pin editor doesn't edit footprints).
+            del fields["x_mm"], fields["y_mm"]
         if data.id is None:
             part.pins.append(Pin(**fields, position=position))
         else:
@@ -177,8 +187,67 @@ def _pin_signature(pins: list[Pin]) -> list[tuple]:
             tuple(p.flags),
             p.tie or "",
             p.code_name or "",
+            p.x_mm if p.x_mm is not None else -1000,
+            p.y_mm if p.y_mm is not None else -1000,
         )
         for p in pins
+    )
+
+
+def set_footprint(
+    session: Session, part_id: int, data: FootprintIn, author: Author = Author.USER
+) -> Part:
+    """Sets the part's whole footprint: its body and every pin's hole (pins not listed
+    get none). A change by Claude sets the part unverified, as for pins."""
+    part = get_part(session, part_id)
+    pins = {pin.id: pin for pin in part.pins}
+    holes: dict[int, Hole] = {}
+    for hole in data.holes:
+        if hole.pin_id not in pins:
+            raise NotFoundError(f"Pin {hole.pin_id} is not on this part")
+        if hole.pin_id in holes:
+            raise ConflictError(f"{pins[hole.pin_id].name} is given two holes")
+        holes[hole.pin_id] = hole
+    spots: dict[tuple[float, float], str] = {}
+    for pin_id, hole in holes.items():
+        if (other := spots.get((hole.x_mm, hole.y_mm))) is not None:
+            raise ConflictError(
+                f"{other} and {pins[pin_id].name} are in the same hole "
+                f"({hole.x_mm:g}, {hole.y_mm:g} mm)"
+            )
+        spots[(hole.x_mm, hole.y_mm)] = pins[pin_id].name
+    before = (part.body_mm, _pin_signature(part.pins))
+    part.body_mm = data.body_mm.model_dump() if data.body_mm else None
+    for pin_id, pin in pins.items():
+        hole = holes.get(pin_id)
+        pin.x_mm, pin.y_mm = (hole.x_mm, hole.y_mm) if hole else (None, None)
+    if author == Author.CLAUDE and (part.body_mm, _pin_signature(part.pins)) != before:
+        part.verified = False
+    part.updated_at = utcnow()
+    session.commit()
+    session.refresh(part)
+    return part
+
+
+def footprint_from_sides(
+    session: Session, part_id: int, span_mm: float | None, pitch_mm: float = footprint.PITCH_MM
+) -> FootprintOut:
+    """A footprint laid out from the pins' sides (footprint.from_sides), with a body just
+    around the pins. Not saved."""
+    part = get_part(session, part_id)
+    if not part.pins:
+        raise ConflictError("The part has no pins yet")
+    try:
+        holes = footprint.from_sides([p.side for p in part.pins], span_mm, pitch_mm)
+    except ValueError as e:
+        raise ConflictError(str(e)) from e
+    body = footprint.body_around(holes)
+    return FootprintOut(
+        body_mm=BodyMm(**body) if body else None,
+        holes=[
+            HoleOut(pin_id=pin.id, pin=pin.name, x_mm=x, y_mm=y)
+            for pin, (x, y) in zip(part.pins, holes, strict=True)
+        ],
     )
 
 
@@ -216,6 +285,7 @@ def copy_part(session: Session, part_id: int) -> Part:
         platform=source.platform,
         platformio_board=source.platformio_board,
         libraries=[dict(library) for library in source.libraries],
+        body_mm=dict(source.body_mm) if source.body_mm else None,
         tags=list(source.tags),
         created_by=Author.USER,
         verified=True,
@@ -231,6 +301,8 @@ def copy_part(session: Session, part_id: int) -> Part:
                 wokwi_name=pin.wokwi_name,
                 tie=pin.tie,
                 code_name=pin.code_name,
+                x_mm=pin.x_mm,
+                y_mm=pin.y_mm,
             )
             for pin in source.pins
         ],
@@ -290,10 +362,24 @@ def add_starter_parts(session: Session) -> StarterAdded:
     return StarterAdded(added=added, skipped=skipped, updated=updated)
 
 
+def _fill_footprint(part: Part, data: PartCreate) -> bool:
+    """The starter footprint, for a part with none at all whose pins all match it by
+    name (step 14). A footprint the user has started is never touched."""
+    if part.body_mm is not None or any(p.x_mm is not None for p in part.pins):
+        return False
+    holes = {p.name.lower(): (p.x_mm, p.y_mm) for p in data.pins if p.x_mm is not None}
+    if not holes or not part.pins or any(p.name.lower() not in holes for p in part.pins):
+        return False
+    for pin in part.pins:
+        pin.x_mm, pin.y_mm = holes[pin.name.lower()]
+    part.body_mm = data.body_mm.model_dump() if data.body_mm else None
+    return True
+
+
 def _fill_firmware_fields(session: Session, data: PartCreate) -> bool:
     """Fills a library part's empty platform, PlatformIO board and libraries (added in
-    build step 12), and its Wokwi type and pin names (the Wokwi export), from the starter
-    data. Never overwrites what's there."""
+    build step 12), its Wokwi type and pin names (the Wokwi export) and its footprint
+    (step 14), from the starter data. Never overwrites what's there."""
     part = session.scalar(select(Part).where(Part.name == data.name))
     filled = False
     if part.platform is None and data.platform is not None:
@@ -308,6 +394,7 @@ def _fill_firmware_fields(session: Session, data: PartCreate) -> bool:
     if part.wokwi_type is None and data.wokwi_type is not None:
         part.wokwi_type = data.wokwi_type
         filled = True
+    filled |= _fill_footprint(part, data)
     wokwi_names = {p.name.lower(): p.wokwi_name for p in data.pins if p.wokwi_name}
     for pin in part.pins:
         if pin.wokwi_name is None and (name := wokwi_names.get(pin.name.lower())):

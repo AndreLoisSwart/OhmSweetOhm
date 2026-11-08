@@ -21,4 +21,6 @@ export interface PinOut {
   tie: string | null;
   code_name: string | null;
   default_code_name: string | null;
+  x_mm: number | null;
+  y_mm: number | null;
 }

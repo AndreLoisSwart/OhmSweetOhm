@@ -26,6 +26,8 @@ const canvasPart = (id: number, part: typeof BME280): CanvasPart => ({
     tie: null,
     code_name: null,
     default_code_name: null,
+    x_mm: null,
+    y_mm: null,
   })),
 })
 

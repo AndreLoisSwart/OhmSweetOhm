@@ -56,6 +56,9 @@ from app.modules.parts import service as part_service
 from app.modules.parts.models import Author, LogicVoltage, PartKind, Platform
 from app.modules.parts.router import part_detail
 from app.modules.parts.schemas import (
+    BodyMm,
+    FootprintIn,
+    Hole,
     PartCreate,
     PartDetail,
     PartLibrary,
@@ -83,6 +86,11 @@ designs carry Shelf-help ids (shelf_item_id, shelf_project_id).
   the Shelf-help tools before storing it. 0 unlinks.
 - Ground pins of a part are joined inside it, and so are pins sharing a tie (two 3V3 pins
   tied "3V3"); nets include them. Set tie when creating parts with repeated supply pins.
+- Footprints are in mm: each pin's hole (x_mm, y_mm) from the part's origin, usually
+  its first pin, top view with x right and y down, and body_mm the outline it covers.
+  Take them from the maker's drawing, and say so in the notes. For header modules use
+  set_footprint with from_sides (the gap between the header rows, pitch 2.54), then
+  set the real body_mm. Most modules' holes are multiples of 2.54 mm apart.
 - Writing firmware for a design (not ESPHome): get_pin_map and save it in the firmware
   as pins.h or pins.py, then use its constants, never bare pin numbers. If a board pin
   has no code name, say so rather than guessing. Store where the firmware lives as the
@@ -114,6 +122,22 @@ WRITE = ToolAnnotations(readOnlyHint=False, destructiveHint=False)
 REMOVE = ToolAnnotations(readOnlyHint=False, destructiveHint=True)
 
 SessionOpener = Callable[[], AbstractContextManager[Session]]
+
+
+class PinHole(BaseModel):
+    """A pin's hole in a footprint, by the pin's name, in mm from the part's origin."""
+
+    pin: str
+    x_mm: float
+    y_mm: float
+
+
+class FromSides(BaseModel):
+    """Lay the holes out from the pins' sides: left and right pins as columns span_mm
+    apart (top and bottom pins as rows), pitch_mm between neighbours."""
+
+    span_mm: float | None = None
+    pitch_mm: float = 2.54
 
 
 class PlacedPart(BaseModel):
@@ -337,6 +361,7 @@ def build_server(open_session: SessionOpener) -> MCPServer:
         platformio_board: str | None = None,
         libraries: list[PartLibrary] | None = None,
         tag_ids: list[int] | None = None,
+        body_mm: BodyMm | None = None,
     ) -> PartDetail:
         """Creates a part with its pins. It starts unverified, for the user to check.
         Pins go in header order per side (left and right top to bottom, top and bottom
@@ -348,7 +373,8 @@ def build_server(open_session: SessionOpener) -> MCPServer:
         came from in notes_md. Boards: platform and platformio_board (PlatformIO's board
         id, e.g. esp32dev). libraries: what firmware for the part needs, as PlatformIO
         specs (`owner/Name@^major.minor`), each limited to some platforms when it only
-        works there (e.g. ESP32Servo on espressif32)."""
+        works there (e.g. ESP32Servo on espressif32). Footprint: x_mm and y_mm on each
+        pin and body_mm, or set it afterwards with set_footprint."""
         data = PartCreate(
             name=name,
             kind=kind,
@@ -366,6 +392,7 @@ def build_server(open_session: SessionOpener) -> MCPServer:
             platformio_board=platformio_board,
             libraries=libraries or [],
             tag_ids=tag_ids or [],
+            body_mm=body_mm,
         )
         with open_session() as session:
             part = part_service.create_part(session, data, Author.CLAUDE)
@@ -418,6 +445,42 @@ def build_server(open_session: SessionOpener) -> MCPServer:
                 part_service.update_part(session, part_id, PartUpdate(**fields), Author.CLAUDE)
             if pins is not None:
                 part_service.replace_pins(session, part_id, pins, Author.CLAUDE)
+            return _part_detail(session, part_id)
+
+    @tool(WRITE)
+    def set_footprint(
+        part_id: int,
+        holes: list[PinHole] | None = None,
+        from_sides: FromSides | None = None,
+        body_mm: BodyMm | None = None,
+    ) -> PartDetail:
+        """Sets the part's whole footprint, in mm from its origin (top view, x right, y
+        down). Give either holes (every pin that goes through the board; pins left out
+        get none) or from_sides (header modules: holes laid out from the pins' sides).
+        body_mm is the outline the part covers; without it, from_sides keeps the body the
+        part has, or makes one just around the pins. Sets the part unverified."""
+        if (holes is None) == (from_sides is None):
+            raise ConflictError("Give either holes or from_sides")
+        with open_session() as session:
+            part = part_service.get_part(session, part_id)
+            if from_sides is not None:
+                made = part_service.footprint_from_sides(
+                    session, part_id, from_sides.span_mm, from_sides.pitch_mm
+                )
+                given = [Hole(pin_id=h.pin_id, x_mm=h.x_mm, y_mm=h.y_mm) for h in made.holes]
+                body = body_mm or part.body_mm or made.body_mm
+            else:
+                by_name = {pin.name.lower(): pin for pin in part.pins}
+                given = []
+                for hole in holes:
+                    pin = by_name.get(hole.pin.lower())
+                    if pin is None:
+                        raise NotFoundError(f'{part.name} has no pin "{hole.pin}"')
+                    given.append(Hole(pin_id=pin.id, x_mm=hole.x_mm, y_mm=hole.y_mm))
+                body = body_mm
+            part_service.set_footprint(
+                session, part_id, FootprintIn(body_mm=body, holes=given), Author.CLAUDE
+            )
             return _part_detail(session, part_id)
 
     @tool(WRITE)

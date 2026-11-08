@@ -123,6 +123,8 @@ class Part(Base):
     # Libraries firmware for this part needs: [{"spec": "owner/Name@^1.2",
     # "platforms": [...]}], an empty platforms list meaning every platform.
     libraries: Mapped[list[dict]] = mapped_column(JSON, default=list)
+    # The outline it covers on a board, in mm from its origin: {x, y, w, h} (step 14).
+    body_mm: Mapped[dict | None] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
 
@@ -169,6 +171,9 @@ class Pin(Base):
     tie: Mapped[str | None] = mapped_column(String(20))
     # What firmware calls this pin (`21`, `A0`), where the name rule gets it wrong.
     code_name: Mapped[str | None] = mapped_column(String(20))
+    # Its hole in the footprint, in mm from the part's origin, top view: x right, y down.
+    x_mm: Mapped[float | None]
+    y_mm: Mapped[float | None]
 
     part: Mapped[Part] = relationship(back_populates="pins")
 

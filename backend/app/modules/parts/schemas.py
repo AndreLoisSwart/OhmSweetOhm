@@ -46,6 +46,24 @@ PlatformioBoard = Annotated[
 ]
 
 
+# A footprint coordinate: mm from the part's origin, to 0.01 mm.
+Mm = Annotated[float, Field(ge=-500, le=500)]
+
+
+class BodyMm(BaseModel):
+    """The outline a part covers on a board, in mm from its origin (top view)."""
+
+    x: Mm
+    y: Mm
+    w: Annotated[float, Field(gt=0, le=500)]
+    h: Annotated[float, Field(gt=0, le=500)]
+
+    @field_validator("x", "y", "w", "h")
+    @classmethod
+    def _round(cls, value: float) -> float:
+        return round(value, 2)
+
+
 class PartLibrary(BaseModel):
     """A library firmware for the part needs, on the platforms listed (empty: all)."""
 
@@ -102,9 +120,21 @@ class PinIn(BaseModel):
     # What firmware calls the pin, e.g. `21` or `A0`. Only where the name rule is wrong:
     # GPIO21 → 21, D2 → 2, A0 → A0.
     code_name: CodeName | None = None
+    # Its hole in the footprint, in mm from the part's origin; both or neither. Left out
+    # for an existing pin, the hole it has is kept.
+    x_mm: Mm | None = None
+    y_mm: Mm | None = None
 
     _unique_lists = field_validator("functions", "flags")(_unique)
     _optional = field_validator("wokwi_name", "tie", "code_name")(_clean_optional)
+
+    @model_validator(mode="after")
+    def _hole(self):
+        if (self.x_mm is None) != (self.y_mm is None):
+            raise ValueError("A hole needs both x_mm and y_mm, or neither")
+        if self.x_mm is not None:
+            self.x_mm, self.y_mm = round(self.x_mm, 2), round(self.y_mm, 2)
+        return self
 
 
 def check_pin_names(pins: list[PinIn]) -> list[PinIn]:
@@ -140,6 +170,8 @@ class PinOut(BaseModel):
     code_name: str | None
     # What the name rule gives when code_name is empty.
     default_code_name: str | None
+    x_mm: float | None
+    y_mm: float | None
 
 
 class PartSummary(BaseModel):
@@ -168,6 +200,7 @@ class PartDetail(PartSummary):
     platform: Platform | None
     platformio_board: str | None
     libraries: list[PartLibrary]
+    body_mm: BodyMm | None
     created_at: datetime
     # Left side first, then right, top and bottom; each in header order.
     pins: list[PinOut]
@@ -206,6 +239,7 @@ class PartCreate(_PartFields):
     platform: Platform | None = None
     platformio_board: PlatformioBoard | None = None
     libraries: list[PartLibrary] = []
+    body_mm: BodyMm | None = None
     tag_ids: list[int] = []
     pins: list[PinIn] = []
 
@@ -234,6 +268,7 @@ class PartUpdate(_PartFields):
     platform: Platform | None = None
     platformio_board: PlatformioBoard | None = None
     libraries: list[PartLibrary] | None = None
+    body_mm: BodyMm | None = None
     tag_ids: list[int] | None = None
 
     _not_null = field_validator(
@@ -268,3 +303,34 @@ class StarterAdded(BaseModel):
     # Already in the library, with empty firmware fields (platform, PlatformIO board,
     # libraries) filled in from the starter data.
     updated: list[str] = []
+
+
+class Hole(BaseModel):
+    """A pin's hole in a footprint, in mm from the part's origin."""
+
+    pin_id: int
+    x_mm: Mm
+    y_mm: Mm
+
+    @field_validator("x_mm", "y_mm")
+    @classmethod
+    def _round(cls, value: float) -> float:
+        return round(value, 2)
+
+
+class FootprintIn(BaseModel):
+    """A part's whole footprint: its pins not listed get no hole."""
+
+    body_mm: BodyMm | None = None
+    holes: list[Hole] = []
+
+
+class HoleOut(Hole):
+    pin: str
+
+
+class FootprintOut(BaseModel):
+    """A footprint made from the pins' sides, to check before saving."""
+
+    body_mm: BodyMm | None
+    holes: list[HoleOut]

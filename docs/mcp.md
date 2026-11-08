@@ -25,6 +25,7 @@ These are the same as Shelf-help's:
 | `search_parts(query?, kind?, tag_id?, unverified_only?)` → `{parts}` | Parts with name, kind, logic voltage, verified flag, pin count and Shelf-help item id |
 | `get_part(part_id)` | The full part, with every pin (id, kind, functions, voltage, flags, side, position) in header order, and the designs it's placed in |
 | `create_part(...)` | A new part with its pins. Starts unverified. From step 12 also `platform`, `platformio_board` and `libraries` |
+| `set_footprint(part_id, holes? \| from_sides?, body_mm?)` | From step 14. The whole footprint in mm: either `holes` (`[{pin, x_mm, y_mm}]` by pin name; pins left out get none) or `from_sides` (`{span_mm, pitch_mm}`, laid out from the pins' sides). `body_mm` is `{x, y, w, h}`; without it, `from_sides` keeps the part's body, or makes one around the pins. Sets the part unverified. `create_part` also takes `body_mm`, and pins' `x_mm`/`y_mm` |
 | `update_part(part_id, ..., pins?)` | Change fields. `pins` is the whole list, every existing pin sent with its id, plus new ones: that adds, renames and reorders pins. Leaving a pin out is refused (no deletes through MCP). Sets the part unverified if its pins, platform, PlatformIO board or libraries change (step 12); other field changes don't. `libraries` is the whole list. Notes aren't a field here (append only) |
 | `append_part_notes(part_id, text)` | Add to the part's notes |
 | `list_tags()`, `create_tag(name)` | Tags for parts and designs |

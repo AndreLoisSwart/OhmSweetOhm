@@ -5,6 +5,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { Author } from './author';
+import type { BodyMm } from './bodyMm';
 import type { DesignRef } from './designRef';
 import type { LogicVoltage } from './logicVoltage';
 import type { PartKind } from './partKind';
@@ -34,6 +35,7 @@ export interface PartDetail {
   platform: Platform | null;
   platformio_board: string | null;
   libraries: PartLibrary[];
+  body_mm: BodyMm | null;
   created_at: string;
   pins: PinOut[];
   used_in?: DesignRef[];

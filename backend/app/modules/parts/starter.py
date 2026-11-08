@@ -10,6 +10,8 @@ there is one, with the silkscreen label in the notes. Arduino boards use D2 and 
 every board pin gets its code name from the name rule (models.default_code_name).
 """
 
+from app.modules.parts.footprint import PITCH_MM, from_sides
+from app.modules.parts.models import PinSide
 from app.modules.parts.schemas import PartCreate
 
 CHECK = "Typed from the maker's pinout by Claude. Check it against your board before relying on it."
@@ -33,6 +35,31 @@ def notes(*lines: str) -> str:
 
 
 IN_ONLY = {"flags": ["input_only"]}
+
+
+def with_footprint(
+    part: dict,
+    body: tuple[float, float, float, float],
+    span_mm: float | None = None,
+    pitch_mm: float = PITCH_MM,
+    note: str = "",
+) -> dict:
+    """The part with holes laid out from its pins' sides (footprint.from_sides) and its
+    body outline (x, y, w, h), all in mm from its first pin."""
+    holes = from_sides([PinSide(p["side"]) for p in part["pins"]], span_mm, pitch_mm)
+    pins = [{**p, "x_mm": x, "y_mm": y} for p, (x, y) in zip(part["pins"], holes, strict=True)]
+    notes_md = part["notes_md"]
+    if note:
+        # Before the closing "check it" line.
+        head, _, tail = notes_md.rpartition("\n\n")
+        notes_md = f"{head}\n\n{note}\n\n{tail}"
+    return {
+        **part,
+        "pins": pins,
+        "body_mm": dict(zip("xywh", body, strict=True)),
+        "notes_md": notes_md,
+    }
+
 
 # ESP32 DevKit V1 (DOIT, 30 pins), top view with the antenna at the top.
 ESP32_DEVKIT_V1 = {
@@ -709,25 +736,57 @@ HOLDER_18650 = {
     "pins": side("right", ("+", "power_out", {"voltage": 3.7}), ("-", "ground")),
 }
 
+# Footprints (build step 14), in mm. Outlines are approximate, from the makers'
+# drawings; the Uno (its headers are off the 2.54 mm grid), the HC-SR04, PIR, relay,
+# servo, LED strip and power parts have none, since they stay off a protoboard.
+OUTLINE = "Footprint: holes and outline in mm from the first pin; the outline is approximate."
 STARTER_PARTS: list[dict] = [
-    ESP32_DEVKIT_V1,
-    ESP32_C3_SUPERMINI,
+    with_footprint(
+        ESP32_DEVKIT_V1,
+        (-2.72, -10.0, 28.3, 51.6),
+        span_mm=22.86,
+        note=(
+            f"{OUTLINE} The headers are 22.86 mm (0.9 in) apart on most 30-pin boards and "
+            "25.4 mm on some: measure yours and fix the right-hand holes if so."
+        ),
+    ),
+    with_footprint(ESP32_C3_SUPERMINI, (-1.38, -3.2, 18.0, 22.5), span_mm=15.24, note=OUTLINE),
     ARDUINO_UNO_R3,
-    ARDUINO_NANO,
-    ARDUINO_PRO_MICRO,
-    WEMOS_D1_MINI,
-    BME280,
-    DHT22,
-    DS18B20,
+    with_footprint(ARDUINO_NANO, (-1.38, -3.82, 18.0, 43.2), span_mm=15.24, note=OUTLINE),
+    with_footprint(ARDUINO_PRO_MICRO, (-1.38, -2.53, 18.0, 33.0), span_mm=15.24, note=OUTLINE),
+    with_footprint(WEMOS_D1_MINI, (-1.37, -13.9, 25.6, 34.2), span_mm=22.86, note=OUTLINE),
+    with_footprint(BME280, (-1.4, -1.45, 15.0, 10.5), note=OUTLINE),
+    with_footprint(
+        DHT22,
+        (-3.74, -3.85, 15.1, 7.7),
+        note=f"{OUTLINE} It stands upright, so the outline is its base.",
+    ),
+    with_footprint(
+        DS18B20,
+        (0.14, -1.9, 4.8, 3.8),
+        note=(
+            f"{OUTLINE} The legs are 1.27 mm apart; the footprint has them spread to "
+            "2.54 mm to fit a protoboard."
+        ),
+    ),
     HC_SR04,
     PIR_HC_SR501,
-    BH1750,
-    INA219,
-    SSD1306,
+    with_footprint(BH1750, (-1.3, -1.87, 18.5, 13.9), note=OUTLINE),
+    with_footprint(INA219, (-1.3, -6.35, 22.8, 25.4), note=OUTLINE),
+    with_footprint(SSD1306, (-9.84, -1.3, 27.3, 27.8), note=OUTLINE),
     RELAY_1CH,
     SG90,
-    LED,
-    PUSH_BUTTON,
+    with_footprint(LED, (-1.63, -2.9, 5.8, 5.8), note=OUTLINE),
+    with_footprint(
+        PUSH_BUTTON,
+        (0.81, -0.46, 6.0, 6.0),
+        span_mm=7.62,
+        pitch_mm=5.08,
+        note=(
+            f"{OUTLINE} The legs are 6.5 × 4.5 mm apart; the footprint has them at "
+            "7.62 × 5.08 mm (three holes by two), as they're usually bent to fit."
+        ),
+    ),
     WS2812B,
     USB_5V,
     AMS1117,

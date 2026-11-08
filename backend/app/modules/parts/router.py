@@ -9,6 +9,8 @@ from app.modules.parts import service
 from app.modules.parts.models import Part, PartKind
 from app.modules.parts.schemas import (
     DesignRef,
+    FootprintIn,
+    FootprintOut,
     PartCreate,
     PartDetail,
     PartSummary,
@@ -71,6 +73,25 @@ def update_part(part_id: int, data: PartUpdate, session: SessionDep) -> PartDeta
 @router.put("/{part_id}/pins")
 def replace_pins(part_id: int, data: PinsReplace, session: SessionDep) -> PartDetail:
     return part_detail(session, service.replace_pins(session, part_id, data.pins))
+
+
+@router.put("/{part_id}/footprint")
+def set_footprint(part_id: int, data: FootprintIn, session: SessionDep) -> PartDetail:
+    """The part's whole footprint, in mm from its origin: its body and each pin's hole.
+    Pins not listed get no hole."""
+    return part_detail(session, service.set_footprint(session, part_id, data))
+
+
+@router.get("/{part_id}/footprint/from-sides")
+def footprint_from_sides(
+    part_id: int,
+    session: SessionDep,
+    span_mm: Annotated[float | None, Query(gt=0, le=500)] = None,
+    pitch_mm: Annotated[float, Query(gt=0, le=50)] = 2.54,
+) -> FootprintOut:
+    """Holes laid out from the pins' sides: left and right pins as columns span_mm apart
+    (top and bottom as rows), pitch_mm between neighbours. Not saved."""
+    return service.footprint_from_sides(session, part_id, span_mm, pitch_mm)
 
 
 @router.post("/{part_id}/copy", status_code=201)

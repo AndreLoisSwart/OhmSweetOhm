@@ -7,6 +7,7 @@
 
 export * from './attachmentOut';
 export * from './author';
+export * from './bodyMm';
 export * from './bodyUploadAttachment';
 export * from './canvasPart';
 export * from './checkResult';
@@ -21,11 +22,16 @@ export * from './designSummary';
 export * from './designUpdate';
 export * from './firmwareFile';
 export * from './firmwareFiles';
+export * from './footprintFromSidesParams';
+export * from './footprintIn';
+export * from './footprintOut';
 export * from './getBringupSketchParams';
 export * from './getPinMapParams';
 export * from './getPlatformioProjectParams';
 export * from './getWokwiExportParams';
 export * from './health';
+export * from './hole';
+export * from './holeOut';
 export * from './hTTPValidationError';
 export * from './lang';
 export * from './listAttachmentsParams';

@@ -24,6 +24,8 @@ const out = (id: number, name: string, side: PinOut['side'], position: number): 
   tie: null,
   code_name: null,
   default_code_name: null,
+  x_mm: null,
+  y_mm: null,
 })
 
 describe('drafts', () => {

@@ -27,4 +27,6 @@ export interface PinIn {
   wokwi_name?: string | null;
   tie?: string | null;
   code_name?: string | null;
+  x_mm?: number | null;
+  y_mm?: number | null;
 }

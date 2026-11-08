@@ -4,6 +4,7 @@
  * Ohm Sweet Ohm
  * OpenAPI spec version: 0.1.0
  */
+import type { BodyMm } from './bodyMm';
 import type { LogicVoltage } from './logicVoltage';
 import type { PartKind } from './partKind';
 import type { PartLibrary } from './partLibrary';
@@ -33,6 +34,7 @@ export interface PartCreate {
   platform?: Platform | null;
   platformio_board?: string | null;
   libraries?: PartLibrary[];
+  body_mm?: BodyMm | null;
   tag_ids?: number[];
   pins?: PinIn[];
 }

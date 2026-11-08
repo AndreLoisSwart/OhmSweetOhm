@@ -396,6 +396,132 @@
         }
       }
     },
+    "/api/parts/{part_id}/footprint": {
+      "put": {
+        "tags": [
+          "parts"
+        ],
+        "summary": "Set Footprint",
+        "description": "The part's whole footprint, in mm from its origin: its body and each pin's hole.\nPins not listed get no hole.",
+        "operationId": "set_footprint",
+        "parameters": [
+          {
+            "name": "part_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Part Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FootprintIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/parts/{part_id}/footprint/from-sides": {
+      "get": {
+        "tags": [
+          "parts"
+        ],
+        "summary": "Footprint From Sides",
+        "description": "Holes laid out from the pins' sides: left and right pins as columns span_mm apart\n(top and bottom as rows), pitch_mm between neighbours. Not saved.",
+        "operationId": "footprint_from_sides",
+        "parameters": [
+          {
+            "name": "part_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Part Id"
+            }
+          },
+          {
+            "name": "span_mm",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "maximum": 500,
+                  "exclusiveMinimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Span Mm"
+            }
+          },
+          {
+            "name": "pitch_mm",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "maximum": 50,
+              "exclusiveMinimum": 0,
+              "default": 2.54,
+              "title": "Pitch Mm"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FootprintOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/parts/{part_id}/copy": {
       "post": {
         "tags": [
@@ -1968,6 +2094,43 @@
         ],
         "title": "Author"
       },
+      "BodyMm": {
+        "properties": {
+          "x": {
+            "type": "number",
+            "maximum": 500.0,
+            "minimum": -500.0,
+            "title": "X"
+          },
+          "y": {
+            "type": "number",
+            "maximum": 500.0,
+            "minimum": -500.0,
+            "title": "Y"
+          },
+          "w": {
+            "type": "number",
+            "maximum": 500.0,
+            "exclusiveMinimum": 0.0,
+            "title": "W"
+          },
+          "h": {
+            "type": "number",
+            "maximum": 500.0,
+            "exclusiveMinimum": 0.0,
+            "title": "H"
+          }
+        },
+        "type": "object",
+        "required": [
+          "x",
+          "y",
+          "w",
+          "h"
+        ],
+        "title": "BodyMm",
+        "description": "The outline a part covers on a board, in mm from its origin (top view)."
+      },
       "Body_upload_attachment": {
         "properties": {
           "owner_type": {
@@ -2533,6 +2696,59 @@
         "title": "FirmwareFiles",
         "description": "Generated files for one board: the bring-up sketch with its pins.h, or the\nPlatformIO project file."
       },
+      "FootprintIn": {
+        "properties": {
+          "body_mm": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BodyMm"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "holes": {
+            "items": {
+              "$ref": "#/components/schemas/Hole"
+            },
+            "type": "array",
+            "title": "Holes",
+            "default": []
+          }
+        },
+        "type": "object",
+        "title": "FootprintIn",
+        "description": "A part's whole footprint: its pins not listed get no hole."
+      },
+      "FootprintOut": {
+        "properties": {
+          "body_mm": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BodyMm"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "holes": {
+            "items": {
+              "$ref": "#/components/schemas/HoleOut"
+            },
+            "type": "array",
+            "title": "Holes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "body_mm",
+          "holes"
+        ],
+        "title": "FootprintOut",
+        "description": "A footprint made from the pins' sides, to check before saving."
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -2569,6 +2785,66 @@
           "time"
         ],
         "title": "Health"
+      },
+      "Hole": {
+        "properties": {
+          "pin_id": {
+            "type": "integer",
+            "title": "Pin Id"
+          },
+          "x_mm": {
+            "type": "number",
+            "maximum": 500.0,
+            "minimum": -500.0,
+            "title": "X Mm"
+          },
+          "y_mm": {
+            "type": "number",
+            "maximum": 500.0,
+            "minimum": -500.0,
+            "title": "Y Mm"
+          }
+        },
+        "type": "object",
+        "required": [
+          "pin_id",
+          "x_mm",
+          "y_mm"
+        ],
+        "title": "Hole",
+        "description": "A pin's hole in a footprint, in mm from the part's origin."
+      },
+      "HoleOut": {
+        "properties": {
+          "pin_id": {
+            "type": "integer",
+            "title": "Pin Id"
+          },
+          "x_mm": {
+            "type": "number",
+            "maximum": 500.0,
+            "minimum": -500.0,
+            "title": "X Mm"
+          },
+          "y_mm": {
+            "type": "number",
+            "maximum": 500.0,
+            "minimum": -500.0,
+            "title": "Y Mm"
+          },
+          "pin": {
+            "type": "string",
+            "title": "Pin"
+          }
+        },
+        "type": "object",
+        "required": [
+          "pin_id",
+          "x_mm",
+          "y_mm",
+          "pin"
+        ],
+        "title": "HoleOut"
       },
       "Lang": {
         "type": "string",
@@ -2750,6 +3026,16 @@
             "title": "Libraries",
             "default": []
           },
+          "body_mm": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BodyMm"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "tag_ids": {
             "items": {
               "type": "integer"
@@ -2904,6 +3190,16 @@
             "type": "array",
             "title": "Libraries"
           },
+          "body_mm": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BodyMm"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -2947,6 +3243,7 @@
           "platform",
           "platformio_board",
           "libraries",
+          "body_mm",
           "created_at",
           "pins"
         ],
@@ -3233,6 +3530,16 @@
             ],
             "title": "Libraries"
           },
+          "body_mm": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BodyMm"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "tag_ids": {
             "anyOf": [
               {
@@ -3357,6 +3664,32 @@
               }
             ],
             "title": "Code Name"
+          },
+          "x_mm": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 500.0,
+                "minimum": -500.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "X Mm"
+          },
+          "y_mm": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 500.0,
+                "minimum": -500.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Y Mm"
           }
         },
         "type": "object",
@@ -3590,6 +3923,28 @@
               }
             ],
             "title": "Default Code Name"
+          },
+          "x_mm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "X Mm"
+          },
+          "y_mm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Y Mm"
           }
         },
         "type": "object",
@@ -3605,7 +3960,9 @@
           "wokwi_name",
           "tie",
           "code_name",
-          "default_code_name"
+          "default_code_name",
+          "x_mm",
+          "y_mm"
         ],
         "title": "PinOut"
       },

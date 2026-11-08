@@ -24,6 +24,9 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  FootprintFromSidesParams,
+  FootprintIn,
+  FootprintOut,
   HTTPValidationError,
   ListPartsParams,
   PartCreate,
@@ -785,7 +788,214 @@ export const useReplacePins = <TError = ErrorType<HTTPValidationError>,
       > => {
       return useMutation(getReplacePinsMutationOptions(options), queryClient);
     }
-    export const getCopyPartUrl = (partId: number,) => {
+    export const getSetFootprintUrl = (partId: number,) => {
+
+
+
+
+  return `/api/parts/${partId}/footprint`
+}
+
+/**
+ * The part's whole footprint, in mm from its origin: its body and each pin's hole.
+ * Pins not listed get no hole.
+ * @summary Set Footprint
+ */
+export const setFootprint = async (partId: number,
+    footprintIn: FootprintIn, options?: Parameters<typeof apiFetch>[1]): Promise<PartDetail> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<PartDetail>(getSetFootprintUrl(partId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(footprintIn)
+  }
+);}
+
+
+
+
+
+export const getSetFootprintMutationKey = () => ['setFootprint'] as const;
+
+export const getSetFootprintMutationOptions = <TError = ErrorType<HTTPValidationError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setFootprint>>, TError,SetFootprintMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof setFootprint>>, TError,SetFootprintMutationVariables, TContext> => {
+
+const mutationKey = getSetFootprintMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof setFootprint>>, SetFootprintMutationVariables> = (props) => {
+          const {partId,data} = props ?? {};
+
+          return  setFootprint(partId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SetFootprintMutationResult = NonNullable<Awaited<ReturnType<typeof setFootprint>>>
+    export type SetFootprintMutationBody = FootprintIn
+    export type SetFootprintMutationError = ErrorType<HTTPValidationError>
+    export type SetFootprintMutationVariables = {partId: number;data: FootprintIn}
+
+    /**
+ * @summary Set Footprint
+ */
+export const useSetFootprint = <TError = ErrorType<HTTPValidationError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setFootprint>>, TError,SetFootprintMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof setFootprint>>,
+        TError,
+        SetFootprintMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSetFootprintMutationOptions(options), queryClient);
+    }
+    export const getFootprintFromSidesUrl = (partId: number,
+    params?: FootprintFromSidesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/parts/${partId}/footprint/from-sides?${stringifiedParams}` : `/api/parts/${partId}/footprint/from-sides`
+}
+
+/**
+ * Holes laid out from the pins' sides: left and right pins as columns span_mm apart
+ * (top and bottom as rows), pitch_mm between neighbours. Not saved.
+ * @summary Footprint From Sides
+ */
+export const footprintFromSides = async (partId: number,
+    params?: FootprintFromSidesParams, options?: Parameters<typeof apiFetch>[1]): Promise<FootprintOut> => {
+
+  return apiFetch<FootprintOut>(getFootprintFromSidesUrl(partId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getFootprintFromSidesQueryKey = (partId: number,
+    params?: FootprintFromSidesParams,) => {
+    return [
+    `/api/parts/${partId}/footprint/from-sides`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getFootprintFromSidesQueryOptions = <TData = Awaited<ReturnType<typeof footprintFromSides>>, TError = ErrorType<HTTPValidationError>>(partId: number,
+    params?: FootprintFromSidesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof footprintFromSides>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getFootprintFromSidesQueryKey(partId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof footprintFromSides>>> = ({ signal }) => footprintFromSides(partId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: partId !== null && partId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof footprintFromSides>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type FootprintFromSidesQueryResult = NonNullable<Awaited<ReturnType<typeof footprintFromSides>>>
+export type FootprintFromSidesQueryError = ErrorType<HTTPValidationError>
+
+
+export function useFootprintFromSides<TData = Awaited<ReturnType<typeof footprintFromSides>>, TError = ErrorType<HTTPValidationError>>(
+ partId: number,
+    params: undefined |  FootprintFromSidesParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof footprintFromSides>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof footprintFromSides>>,
+          TError,
+          Awaited<ReturnType<typeof footprintFromSides>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useFootprintFromSides<TData = Awaited<ReturnType<typeof footprintFromSides>>, TError = ErrorType<HTTPValidationError>>(
+ partId: number,
+    params?: FootprintFromSidesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof footprintFromSides>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof footprintFromSides>>,
+          TError,
+          Awaited<ReturnType<typeof footprintFromSides>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useFootprintFromSides<TData = Awaited<ReturnType<typeof footprintFromSides>>, TError = ErrorType<HTTPValidationError>>(
+ partId: number,
+    params?: FootprintFromSidesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof footprintFromSides>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Footprint From Sides
+ */
+
+export function useFootprintFromSides<TData = Awaited<ReturnType<typeof footprintFromSides>>, TError = ErrorType<HTTPValidationError>>(
+ partId: number,
+    params?: FootprintFromSidesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof footprintFromSides>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getFootprintFromSidesQueryOptions(partId,params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export const getCopyPartUrl = (partId: number,) => {
 
 
 

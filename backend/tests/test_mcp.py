@@ -67,6 +67,7 @@ def test_tool_list(mcp):
         "create_part",
         "update_part",
         "append_part_notes",
+        "set_footprint",
         "list_tags",
         "create_tag",
         "list_designs",
@@ -377,3 +378,30 @@ def test_compare_pin_map_and_firmware_repo(mcp, api):
         "comment": "esp.GPIO21",
     }
     assert mcp("update_design", design_id=design_id, firmware_repo="")["firmware_repo"] is None
+
+
+def test_claude_sets_a_footprint(api, mcp):
+    pins = [
+        {"name": "VCC", "kind": "power_in", "side": "left"},
+        {"name": "GND", "kind": "ground", "side": "left"},
+        {"name": "SDA", "kind": "i2c_sda", "side": "right"},
+        {"name": "SCL", "kind": "i2c_scl", "side": "right"},
+    ]
+    part = api.post("/api/parts", json={"name": "Mod", "kind": "sensor", "pins": pins}).json()
+    out = mcp("set_footprint", part_id=part["id"], from_sides={"span_mm": 10.16})
+    assert holes(out)["SDA"] == (10.16, 0) and out["verified"] is False
+    out = mcp(
+        "set_footprint",
+        part_id=part["id"],
+        holes=[{"pin": "vcc", "x_mm": 0, "y_mm": 0}, {"pin": "GND", "x_mm": 2.54, "y_mm": 0}],
+        body_mm={"x": -1, "y": -1, "w": 5, "h": 2},
+    )
+    assert holes(out)["GND"] == (2.54, 0) and holes(out)["SDA"] == (None, None)
+    with pytest.raises(ToolError, match="either"):
+        mcp("set_footprint", part_id=part["id"])
+    with pytest.raises(ToolError, match="no pin"):
+        mcp("set_footprint", part_id=part["id"], holes=[{"pin": "X", "x_mm": 0, "y_mm": 0}])
+
+
+def holes(part) -> dict:
+    return {p["name"]: (p["x_mm"], p["y_mm"]) for p in part["pins"]}

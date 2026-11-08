@@ -64,10 +64,32 @@ Packaging and the canvas are the riskiest parts, so they come first.
 12. **Library hints.** `Part.libraries`, a board's `platform` and `platformio_board`, and a design's `platformio.ini` (board, platform and `lib_deps`).
 13. **Firmware link and drift check.** `Design.firmware_repo`, and Claude comparing the repo's `pins.h` with the design.
 
+**Then: protoboard layouts** (details in `future-enhancements.md`, Protoboard layouts; decided 2026-11-08). Stripboard and breadboard-pattern boards. Each step is built only when started:
+
+14. **Footprints.**
+    - `Pin.x_mm`/`y_mm` and `Part.body_mm` (all in mm), with a migration.
+    - The footprint editor on the part page: generate from sides, edit by hand, preview.
+    - Starter parts' footprints.
+15. **Layout model and checks.**
+    - Layouts, layout parts, cuts, jumpers and connectors, with migrations.
+    - Layout revisions.
+    - Board connectivity and every layout check, through the API only, heavily tested.
+16. **Board canvas: viewing and placing.**
+    - The design header's view switcher and the layout page.
+    - The board drawn with net-tinted strips, top and bottom views, and the ratsnest.
+    - The parts tray: place, move, rotate, mount, off board.
+    - The layout checks bar, undo/redo and History.
+    - Badges and Show on board on the schematic.
+17. **Cut, jumper and connector tools** on the canvas, with the cut-between-rows and trim helpers.
+18. **MCP.**
+    - Layout tools with the text picture, `propose_connectors` and the Claude instructions.
+    - Tested end to end by Claude laying out a real design on the 24 × 37 board.
+19. **Export:** the 1:1 copper side, cut, jumper and cable lists, and the layout parts list.
+
 ## Out of scope for phase 1
 
 - Simulation, Wokwi export and firmware generation (see `future-enhancements.md`; firmware support is planned as steps 10–13 above)
-- Breadboard view, PCB layout, schematic symbols
+- Breadboard view, PCB layout, schematic symbols (protoboard layouts are planned as steps 14–19 above)
 - Passive components as values (resistor ohms, capacitor farads) beyond simple parts
 - Stock tracking (that's Shelf-help)
 - Calls between this app and Shelf-help

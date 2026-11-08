@@ -13,12 +13,14 @@ Part         id, name (unique, ignoring case), kind, description,
              platform (nullable: espressif32, espressif8266, atmelavr),
              platformio_board (nullable, e.g. "esp32dev"),
              libraries (JSON list of {spec, platforms}),
+             body_mm (nullable JSON {x, y, w, h}: the outline on a board, step 14),
              created_at, updated_at
 
 Pin          id, part_id → Part, name (unique within the part),
              kind, functions (JSON list), voltage (nullable),
              flags (JSON list), side, position, wokwi_name (nullable),
-             tie (nullable), code_name (nullable, from step 10)
+             tie (nullable), code_name (nullable, from step 10),
+             x_mm, y_mm (nullable, both or neither: the pin's hole, step 14)
 
 Design       id, name, description_md,
              shelf_project_id (nullable, Shelf-help Project id),
@@ -105,3 +107,10 @@ Attachment   id, original_filename, mime_type, size, stored_path, created_at,
 - **Within a design, Claude can:** add, move and remove placements, add and remove wires, and edit labels and colours. Revisions make all of it undoable.
 - **Free text:** Claude can only append to `notes_md` and `description_md`, never rewrite them.
 - **In the app:** the user can delete anything, with a confirmation.
+
+## Footprints (step 14)
+
+- **Millimetres throughout.** A pin's hole (`x_mm`, `y_mm`) and the part's outline (`body_mm`) are measured from the part's origin, usually its first pin, in the top view with x to the right and y down, to 0.01 mm.
+- **Protoboard holes are 2.54 mm apart.** A part sits on a protoboard as it is only when its holes are multiples of 2.54 mm from its first hole; the footprint editor marks any that aren't.
+- **A hole is part of the pin:** renaming or reordering pins keeps their holes. Changing a footprint through MCP sets the part unverified, as changing its pins does.
+

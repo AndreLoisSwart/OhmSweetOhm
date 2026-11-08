@@ -93,6 +93,223 @@ Keep this in mind throughout phase 1: a design must convert to `diagram.json` wi
 
 Wokwi export stays its own item above. It reuses step 10's code names and bus data.
 
+## Protoboard layouts (decided 2026-11-08, build steps 14–19)
+
+Laying parts out on a protoboard is the hard part of building one. A **layout** places a design's parts on a physical board, and the app checks it against the design's nets. The layout canvas offers cut and jumper tools, and Claude places, cuts and adds jumpers over MCP, with the check as its feedback.
+
+**Boards in mind:** the user's 24 × 37 single-sided stripboard, with 24 strips running along the long side, and a breadboard-pattern protoboard. Both are fixed copper patterns, so one engine covers them. Plain perfboard (a pad per hole, needing real routing) and double-sided boards come later.
+
+### Principles
+
+- **A layout belongs to a design and holds only physical facts:**
+  - which of the design's placements are on the board, and where;
+  - the board's type and size;
+  - cuts, jumpers and connectors.
+- **The design owns connectivity.** The layout never changes nets. If a different GPIO would save jumpers, the schematic's wire is changed (by the user, or by Claude with their OK), and the layout follows.
+- **The layout places the design's own placements, never copies:** `esp` on the board *is* `esp` in the schematic. A design can have several layouts ("Stripboard v1", a smaller v2).
+- **Board connectivity and layout checks are computed, never stored,** as with nets and design checks.
+- **Every change to a layout through MCP saves a layout revision first.** Layouts have their own revisions and undo, as designs do.
+- **Layout objects never reach the design:** connectors, cuts and jumpers stay out of it, so `diagram.json` and the pin map are unchanged.
+
+### Footprints (step 14)
+
+A layout needs each pin's physical hole, which a part's sides and order don't give. **Everything is in millimetres** (decided 2026-11-08): a protoboard's holes are 2.54 mm apart, and lengths that aren't on that grid (a tactile switch's 6.5 × 4.5 mm legs, a 3.5 mm terminal) can be stored as they are and flagged, rather than rounded to a grid.
+- **`Pin.x_mm`, `Pin.y_mm`** (nullable, both or neither): the pin's hole in mm from the part's origin, usually its first pin, in the top view with x to the right and y down. Kept to 0.01 mm.
+- **`Part.body_mm`** (nullable): the outline the part covers on a board, `{x, y, w, h}` in mm from the same origin. Holes under it are blocked for a soldered part.
+- **A part can go on a board when every pin that's not NC has a hole on the 2.54 mm grid,** measured from its first hole. Pins with no hole, such as a relay module's screw terminals, mean the part must stay off board.
+- **Footprint editor** on the part page:
+  - **Generate from sides:** left pins become a column, right pins a column the given distance away in mm (15.24 for a Nano), and top and bottom pins become rows. Pitch is 2.54 mm by default.
+  - Hand-editing of holes and the outline, and a preview of them on a 2.54 mm grid, with any off-grid holes marked.
+- **Starter parts** get footprints from the makers' drawings and stay unverified until checked against the real board. ESP32 DevKit clones differ (22.86 or 25.4 mm between headers): the notes say to measure.
+
+**Built in step 14 (2026-11-08):**
+- **Data:** `Pin.x_mm`/`y_mm` and `Part.body_mm`, with a migration.
+- **API:**
+  - `PUT /parts/{id}/footprint` sets the whole footprint: the body, plus holes by pin id. Pins left out get none, and two pins in one hole is refused.
+  - `GET /parts/{id}/footprint/from-sides?span_mm=&pitch_mm=` proposes a footprint without saving it.
+  - The pin editor's saves keep each pin's hole: a pin sent without `x_mm` keeps the one it has.
+  - Copying a part copies its footprint.
+- **Generation** (`parts/footprint.py`): parts with pins on both the sides and the top or bottom are refused, to be placed by hand. In the editor, generating keeps an outline already entered; otherwise it proposes one 1.27 mm around the pins.
+- **Starter footprints:**
+  - ESP32 DevKit V1 (22.86 mm, with a note to measure), C3 SuperMini, Nano and Pro Micro (15.24 mm), D1 Mini (22.86 mm).
+  - BME280, BH1750, INA219, SSD1306.
+  - DHT22 (its upright base), DS18B20 (legs spread to 2.54 mm), LED, push button (7.62 × 5.08 mm, legs bent to fit).
+  - None for the Uno (its headers are off the grid), HC-SR04, PIR, relay, servo, LED strip or the power parts, which stay off board.
+  - Starter parts fills in a footprint for a library part with none at all whose pins all match by name; a footprint you've started is never touched.
+- **MCP:** `set_footprint(part_id, holes | from_sides, body_mm?)` by pin name, and `create_part` takes `body_mm` and pins' `x_mm`/`y_mm`. A change by Claude sets the part unverified.
+
+### Layout model (step 15)
+
+```
+Layout       id, design_id, name, board_type (stripboard | breadboard),
+             strips (24), holes (37), notes, created_at, updated_at
+LayoutPart   layout_id, placement_id (cascade), on_board (bool),
+             strip, hole (the origin's position; null when off board),
+             rotation (0/90/180/270), mount (socketed | soldered)
+Cut          layout_id, strip, hole, between (false: at the hole;
+             true: between this hole and the next)
+Jumper       layout_id, a_strip, a_hole, b_strip, b_hole, side (top | bottom),
+             insulated (bool), color
+Connector    layout_id, ref (J1…), type, pin_count, strip, hole, rotation
+ConnectorPin connector_id, index (1…), placement_id, pin_id (the off-board
+             pin this one carries; nullable)
+LayoutRevision  layout_id, created_at, author, summary, snapshot (JSON)
+```
+
+- **Coordinates match the physical board:** strips are lettered A–X and holes numbered 1–37, so a position reads **C14**. Positions are named this way everywhere: the canvas, check messages, MCP tools and the printed lists.
+- **A design placement can be on the board, off board, or not placed yet.**
+  - Not placed yet: it has no `LayoutPart`.
+  - Off board: `on_board` is false, as for a sensor on a cable. Its connections then need a connector.
+- **Mount:**
+  - Socketed (in female headers): the default for boards like the ESP32 and Nano. Holes under the body stay usable for top jumpers and low parts, and the parts list adds the headers.
+  - Soldered: the default for everything else. Holes under the body are blocked on top.
+- **Cuts:** at a hole by default, removing that hole's copper (a spot-face cutter). Between two holes is also supported (a knife cut), and saves a hole.
+- **Jumpers:**
+  - **Top:** insulated wire on the component side, through two holes that must be free.
+  - **Bottom:** a wire or solder blob on the copper. It can share a hole with a leg. It touches every strip it lies across unless marked insulated; a one-hole link is a solder bridge between neighbouring strips.
+- **Connectors** are generic, typed by their footprint:
+
+  | Type | Pitch |
+  |---|---|
+  | Male or female pin header (the default) | 2.54 mm |
+  | JST-XH | 2.5 mm, fitted to the 2.54 mm grid |
+  | Screw terminal | 5.08 mm, every other hole |
+
+  - 3.5 mm terminals don't fit the grid and are left out.
+  - Each connector pin is assigned to an off-board pin, so the cable is explicit.
+- **Breadboard pattern:** the same model with fixed copper: groups of five each side of the gap, and power rails along both edges. There's no cut tool. Size presets, with the user's board size to be confirmed.
+- **When the design changes:**
+  - A removed placement leaves its layouts.
+  - A new wire is a missing connection.
+  - A changed footprint is flagged on every layout using that part.
+
+### Board connectivity and layout checks (step 15)
+
+Connectivity is worked out by union-find over holes:
+- strip segments, split by cuts;
+- the breadboard's fixed groups;
+- jumpers and bottom links;
+- each pin's hole, joined to its part's ground pins and tied pins as in the design's nets;
+- connector pins, joined to the off-board pins they carry.
+
+Then it's compared with the design's nets:
+
+| Check | Severity | Fires when |
+|---|---|---|
+| `layout_missing` | error | two pins on one design net aren't connected on the board |
+| `layout_short` | error | one board connection joins two design nets, e.g. "strip C joins GND and 3V3: cut it between C9 and C11" |
+| `layout_overlap` | error | two parts, or a part and a connector, need the same hole |
+| `layout_off_edge` | error | a part, connector or jumper goes past the board's edge |
+| `cut_under_pin` | error | a cut at a hole with a leg in it |
+| `under_body` | error | a part or top jumper on a hole under a soldered part's body |
+| `jumper_hole_taken` | error | a top jumper's end on a hole with a leg or another jumper |
+| `diagonal_jumper` | note | a jumper that isn't straight along a strip or across strips |
+| `unassigned_connector_pin` | warning | a connector pin carrying nothing |
+| `off_board_unconnected` | warning | an off-board part's connection with no connector pin |
+| `layout_out_of_date` | warning | a part's footprint changed after it was placed |
+
+A summary gives jumper count, total jumper length, cuts and board area used, as the score to improve.
+
+### The layout canvas (steps 16–17)
+
+**Where:** its own canvas, opened from the design header's view switcher: `Schematic | Stripboard v1 ▾ | + New layout`, at `/designs/:id/layouts/:layoutId`. It uses the same page shell as the design page:
+- left: the parts tray;
+- right: the Inspector;
+- bottom: the layout checks bar.
+
+It isn't drawn on the schematic, because physical and logical drawings make each other worse.
+
+**Drawing:**
+- **Orientation:** landscape, with strips running left to right, lettered A–X down the side and numbered 1–37 along the top.
+- **Strips are tinted by the net they carry,** worked out live: GND dark, supplies red-ish, unused plain copper. A strip carrying two nets is hatched red.
+- **Parts** are drawn as footprints: their body outline, a dot on each hole a pin uses, and their ref.
+- **Ratsnest:** thin straight lines for connections the design needs and the board doesn't make yet. Each disappears as it's satisfied.
+- **Top and bottom views:**
+  - The top view is the default: parts solid, strips faint with their tints, top jumpers solid, cuts and bottom links faint.
+  - The **bottom view** is mirrored left to right, as the board looks when turned over to solder: copper, cuts and bottom links solid; parts as solder dots with a faint outline.
+  - Labels stay with their holes (C14 is C14 either way), and a marker shows where A1 is.
+
+**Parts tray:** the design's placements grouped as on board, off board and not placed yet. Drag a part onto the board, or mark it off board. Each off-board part lists the connections it needs, and from those the connectors.
+
+**Tools:**
+
+| Tool | Key | Behaviour |
+|---|---|---|
+| Select / move | V | Drag parts and connectors, which snap to holes. R rotates. A red outline while dragging marks an invalid spot. |
+| Cut | C | Click a hole to cut there, or the gap between two holes to cut between them; click a cut to remove it. While hovering, the strip previews its split with updated tints. Cutting a hole with a leg in it is refused, with the reason. |
+| Jumper | J | Tap one hole, then another. Top or bottom follows the current view, and can be switched in the Inspector. Esc cancels. |
+| Connector | K | Pick a type and pin count, then place it. Assign its pins in the Inspector, or let Claude propose. |
+
+**Helpers:**
+- **Cut between header rows:** one click on a part (or by Claude) cuts every strip it spans midway between its two rows.
+- **Trim dead copper:** cuts strip ends beyond their last connection. Optional.
+
+**Inspector:**
+- A part: its origin position ("pin 1 at C5"), rotation, mount, and the strip each pin is on.
+- A strip segment: its net, and what's on it.
+- A jumper: its ends, side and colour.
+- A connector: its pins and what each carries.
+
+**Carried over from the design canvas:**
+- saving straight away through the API;
+- undo/redo and History;
+- the "Claude changed this layout" notice;
+- net highlighting on hover and tap;
+- focus;
+- a read-only view on phones, for "where does this go?" at the bench.
+
+**Linking back to the schematic:**
+- Parts on a layout get a badge ("on Stripboard v1, C5"). A view toggle draws a dashed frame around them.
+- "Show on board" and "Show in schematic" jump between the two views with the part selected.
+- A highlighted net carries over when switching views.
+- The design header shows each layout's state: "Stripboard v1: 2 connections missing, 1 short".
+
+### Claude over MCP (step 18)
+
+| Tool | What it does |
+|---|---|
+| `list_layouts(design_id)`, `create_layout(design_id, name, board_type, strips?, holes?)` | |
+| `get_layout(layout_id)` | Everything placed, the connectivity by design net, the checks and summary, and a **text picture** of the board (below) |
+| `place_on_board(layout_id, parts: [{ref, at?, rotation?, mount?, off_board?}])` | `at` is a position like `"C5"` for the part's origin. Several parts per call |
+| `cut(layout_id, at: ["B4", "C9-10"])`, `uncut(...)` | `"C9-10"` is a cut between holes 9 and 10 |
+| `add_jumpers(layout_id, jumpers: [{a, b, side?, insulated?, color?}])`, `remove_jumper(layout_id, a, b)` | |
+| `add_connectors(layout_id, connectors: [{type, pins: ["bme.GND", ...], at?, rotation?}])` | Pins are assigned in order |
+| `propose_connectors(layout_id)` | Read-only. One connector per off-board part, in the part's own pin order so the cable runs straight, with a type that suits: a screw terminal for a power input, a header otherwise |
+| `cut_between_rows(layout_id, ref)` | The helper above |
+| `check_layout(layout_id)` | |
+
+Instructions for Claude:
+- **Work in loops:** place, check, adjust.
+- **Aim** for no errors first, then fewer jumpers, shorter jumpers and less board area.
+- **Suggest a schematic change** (a different GPIO) when it would simplify the board, and make it only with the user's OK.
+- **Removing** layout objects is allowed (each saves a revision, as `disconnect` does). Deleting a whole layout is for the app.
+
+Text picture: one line per strip, in the top view. Ref letters mark a part's pins, `x` a cut, `|` a cut between holes, digits a jumper's ends, and the strip's net at the end:
+
+```
+    1   5    10   15   20   25   30   35
+A  ··E··········B···················· GND
+B  ··E··x·······B····1··············· 3V3
+C  ··E··|··E···························  (two segments)
+…
+jumpers: 1 B20→F20 (top)   connectors: J1 at T2 (bme)
+```
+
+### Export (step 19)
+
+- **Copper side at 1:1** as SVG and a printable page: the bottom view, mirrored, with A–X and 1–37 labels, cuts and bottom links marked. It can be taped to the board.
+- **Cut list:** "B4, C9–10, G12 …", in board order for working along the strips.
+- **Jumper list:** "1: B20 → F20, top, red, 4 holes".
+- **Cable list:** "J1 → bme: GND, VIN, SCL, SDA (straight)".
+- **Layout parts list:** female headers for socketed parts, connectors by type and pin count, jumper wire length. A later link could add missing ones to Shelf-help as `need`.
+
+### Later
+
+- Collapsing a layout's parts on the schematic into one block that shows only its connectors (a view, like focus).
+- A deterministic auto-placer for a first draft, only if Claude plus the checks fall short.
+- Perfboard (needs routing), double-sided boards, and specific connector parts from the library.
+- A breadboard view of designs from the same engine.
+
 ## Canvas: more ways to tame a busy design
 
 Built: focus, and same-net wires sharing tracks with junction dots (pages.md, Design page). Suggested next, not decided:
@@ -105,7 +322,7 @@ Built: focus, and same-net wires sharing tracks with junction dots (pages.md, De
 ## Ideas (not decided)
 
 - **Stock status from Shelf-help:** show have/low/out next to parts, and a "ready to build" bar on designs like Shelf-help's readiness. This needs a separate read-only token on Shelf-help that reaches only a narrow stock endpoint, never its full API.
-- **Breadboard view:** a realistic breadboard layout as a second view of the same connection list.
+- **Breadboard view:** a realistic breadboard layout as a second view of the same connection list. (Planned to come from the protoboard layout engine; see Protoboard layouts.)
 - **Passive values:** resistors and capacitors with values, voltage dividers checked by the rules (e.g. a 5 V echo pin divided down to 3.3 V).
 - **Power budget:** current draw per part, summed per supply, checked against the regulator's limit.
 - **Pin assignment helper (built 2026-11-08):** for a placed part, `GET /designs/{id}/suggest-wiring?ref=`, the Inspector's Suggest wiring, and the MCP tool `suggest_wiring`.
