@@ -73,6 +73,7 @@ class DesignSummary(BaseModel):
     id: int
     name: str
     shelf_project_id: int | None
+    firmware_repo: str | None
     tags: list[TagRef]
     part_count: int
     updated_at: datetime
@@ -99,22 +100,38 @@ class DesignRef(BaseModel):
     name: str
 
 
+# Where the firmware lives: a local path or a repository URL, on one line.
+FirmwareRepo = Annotated[
+    str, StringConstraints(strip_whitespace=True, max_length=500, pattern=r"^[^\n\r]*$")
+]
+
+
+def _blank_is_none(value: str | None) -> str | None:
+    return value or None
+
+
 class DesignCreate(BaseModel):
     name: Name
     description_md: str = ""
     shelf_project_id: int | None = None
+    firmware_repo: FirmwareRepo | None = None
     tag_ids: list[int] = []
+
+    _repo = field_validator("firmware_repo")(_blank_is_none)
 
 
 class DesignUpdate(BaseModel):
-    """Only the fields sent are changed. shelf_project_id is cleared with null."""
+    """Only the fields sent are changed. shelf_project_id and firmware_repo are cleared
+    with null (firmware_repo with a blank too)."""
 
     name: Name | None = None
     description_md: str | None = None
     shelf_project_id: int | None = None
+    firmware_repo: FirmwareRepo | None = None
     tag_ids: list[int] | None = None
 
     _not_null = field_validator("name", "description_md", "tag_ids")(reject_null)
+    _repo = field_validator("firmware_repo")(_blank_is_none)
 
 
 class PlacementIn(BaseModel):

@@ -6,11 +6,13 @@
  */
 
 /**
- * Only the fields sent are changed. shelf_project_id is cleared with null.
+ * Only the fields sent are changed. shelf_project_id and firmware_repo are cleared
+ * with null (firmware_repo with a blank too).
  */
 export interface DesignUpdate {
   name?: string | null;
   description_md?: string | null;
   shelf_project_id?: number | null;
+  firmware_repo?: string | null;
   tag_ids?: number[] | null;
 }

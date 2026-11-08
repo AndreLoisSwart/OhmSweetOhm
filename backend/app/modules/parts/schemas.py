@@ -11,7 +11,15 @@ from pydantic import (
 )
 
 from app.core.schemas import Name, reject_null
-from app.modules.parts.models import Author, LogicVoltage, PartKind, PinFlag, PinKind, PinSide
+from app.modules.parts.models import (
+    Author,
+    LogicVoltage,
+    PartKind,
+    PinFlag,
+    PinKind,
+    PinSide,
+    Platform,
+)
 from app.modules.tags.schemas import TagRef
 
 # No spaces or dots: pins are named `ref.PIN` in wires and MCP tools.
@@ -25,6 +33,38 @@ CodeName = Annotated[
     str,
     StringConstraints(strip_whitespace=True, max_length=20, pattern=r"^([A-Za-z0-9_]+)?$"),
 ]
+
+
+# A PlatformIO library: `owner/Name@^1.2`, or just a name. One line, no list separators.
+LibrarySpec = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, min_length=1, max_length=200, pattern=r"^[^\n\r,;]+$"),
+]
+# A PlatformIO board id, e.g. esp32dev or nanoatmega328. Blank clears it.
+PlatformioBoard = Annotated[
+    str, StringConstraints(strip_whitespace=True, max_length=60, pattern=r"^[A-Za-z0-9_.-]*$")
+]
+
+
+class PartLibrary(BaseModel):
+    """A library firmware for the part needs, on the platforms listed (empty: all)."""
+
+    spec: LibrarySpec
+    platforms: list[Platform] = []
+
+    @field_validator("platforms")
+    @classmethod
+    def _unique_platforms(cls, value: list[Platform]) -> list[Platform]:
+        return list(dict.fromkeys(value))
+
+
+def _unique_libraries(libraries: list[PartLibrary] | None) -> list[PartLibrary] | None:
+    if libraries is None:
+        return None
+    seen: dict[str, PartLibrary] = {}
+    for library in libraries:
+        seen.setdefault(library.spec.lower(), library)
+    return list(seen.values())
 
 
 def _unique(values: list) -> list:
@@ -125,6 +165,9 @@ class PartDetail(PartSummary):
     notes_md: str
     created_by: Author
     wokwi_type: str | None
+    platform: Platform | None
+    platformio_board: str | None
+    libraries: list[PartLibrary]
     created_at: datetime
     # Left side first, then right, top and bottom; each in header order.
     pins: list[PinOut]
@@ -160,12 +203,16 @@ class PartCreate(_PartFields):
     notes_md: str = ""
     shelf_item_id: int | None = None
     wokwi_type: str | None = None
+    platform: Platform | None = None
+    platformio_board: PlatformioBoard | None = None
+    libraries: list[PartLibrary] = []
     tag_ids: list[int] = []
     pins: list[PinIn] = []
 
     _unique_lists = field_validator("i2c_addresses")(_unique)
     _url = field_validator("datasheet_url")(_clean_url)
-    _optional = field_validator("wokwi_type")(_clean_optional)
+    _optional = field_validator("wokwi_type", "platformio_board")(_clean_optional)
+    _libraries = field_validator("libraries")(_unique_libraries)
     _names = field_validator("pins")(check_pin_names)
 
 
@@ -184,6 +231,9 @@ class PartUpdate(_PartFields):
     verified: bool | None = None
     shelf_item_id: int | None = None
     wokwi_type: str | None = None
+    platform: Platform | None = None
+    platformio_board: PlatformioBoard | None = None
+    libraries: list[PartLibrary] | None = None
     tag_ids: list[int] | None = None
 
     _not_null = field_validator(
@@ -196,10 +246,12 @@ class PartUpdate(_PartFields):
         "notes_md",
         "verified",
         "tag_ids",
+        "libraries",
     )(reject_null)
     _unique_lists = field_validator("i2c_addresses")(lambda v: _unique(v) if v else v)
     _url = field_validator("datasheet_url")(_clean_url)
-    _optional = field_validator("wokwi_type")(_clean_optional)
+    _optional = field_validator("wokwi_type", "platformio_board")(_clean_optional)
+    _libraries = field_validator("libraries")(_unique_libraries)
 
 
 class StarterPartOut(BaseModel):
@@ -213,3 +265,6 @@ class StarterPartOut(BaseModel):
 class StarterAdded(BaseModel):
     added: list[str]
     skipped: list[str]
+    # Already in the library, with empty firmware fields (platform, PlatformIO board,
+    # libraries) filled in from the starter data.
+    updated: list[str] = []

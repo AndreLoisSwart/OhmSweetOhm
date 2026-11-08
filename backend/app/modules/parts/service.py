@@ -81,9 +81,19 @@ def create_part(session: Session, data: PartCreate, author: Author = Author.USER
     return part
 
 
-def update_part(session: Session, part_id: int, data: PartUpdate) -> Part:
+# Firmware data Claude sets is checked by the user like pins: changing it unverifies.
+FIRMWARE_FIELDS = ("platform", "platformio_board", "libraries")
+
+
+def update_part(
+    session: Session, part_id: int, data: PartUpdate, author: Author = Author.USER
+) -> Part:
     part = get_part(session, part_id)
     changes = data.model_dump(exclude_unset=True)
+    if author == Author.CLAUDE and any(
+        field in changes and changes[field] != getattr(part, field) for field in FIRMWARE_FIELDS
+    ):
+        part.verified = False
     if "name" in changes:
         _check_unique(session, changes["name"], exclude_id=part_id)
     low = changes.get("supply_min_v", part.supply_min_v)
@@ -203,6 +213,9 @@ def copy_part(session: Session, part_id: int) -> Part:
         notes_md=source.notes_md,
         shelf_item_id=None,
         wokwi_type=source.wokwi_type,
+        platform=source.platform,
+        platformio_board=source.platformio_board,
+        libraries=[dict(library) for library in source.libraries],
         tags=list(source.tags),
         created_by=Author.USER,
         verified=True,
@@ -263,11 +276,34 @@ def add_starter_parts(session: Session) -> StarterAdded:
     """Adds the starter parts not already in the library (by name). They come in as
     Claude's, so unverified: the user checks each against the real board."""
     have = _names(session)
-    added, skipped = [], []
+    added, skipped, updated = [], [], []
     for data in starter_parts():
         if data.name.lower() in have:
-            skipped.append(data.name)
+            if _fill_firmware_fields(session, data):
+                updated.append(data.name)
+            else:
+                skipped.append(data.name)
             continue
         create_part(session, data, Author.CLAUDE)
         added.append(data.name)
-    return StarterAdded(added=added, skipped=skipped)
+    session.commit()
+    return StarterAdded(added=added, skipped=skipped, updated=updated)
+
+
+def _fill_firmware_fields(session: Session, data: PartCreate) -> bool:
+    """Fills a library part's empty platform, PlatformIO board and libraries from the
+    starter data (added in build step 12). Never overwrites what's there."""
+    part = session.scalar(select(Part).where(Part.name == data.name))
+    filled = False
+    if part.platform is None and data.platform is not None:
+        part.platform = data.platform
+        filled = True
+    if part.platformio_board is None and data.platformio_board is not None:
+        part.platformio_board = data.platformio_board
+        filled = True
+    if not part.libraries and data.libraries:
+        part.libraries = [library.model_dump() for library in data.libraries]
+        filled = True
+    if filled:
+        part.updated_at = utcnow()
+    return filled

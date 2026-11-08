@@ -1,4 +1,11 @@
-import type { LogicVoltage, PartKind, PinFlag, PinKind, PinSide } from '@/api/generated/model'
+import type {
+  LogicVoltage,
+  PartKind,
+  PinFlag,
+  PinKind,
+  PinSide,
+  Platform,
+} from '@/api/generated/model'
 
 export const PART_KINDS: PartKind[] = [
   'board',
@@ -29,6 +36,13 @@ export const LOGIC_VOLTAGE_LABELS: Record<LogicVoltage, string> = {
   '5v': '5 V',
   both: '3.3 or 5 V',
   none: 'No logic',
+}
+
+export const PLATFORMS: Platform[] = ['espressif32', 'espressif8266', 'atmelavr']
+export const PLATFORM_LABELS: Record<Platform, string> = {
+  espressif32: 'ESP32',
+  espressif8266: 'ESP8266',
+  atmelavr: 'AVR',
 }
 
 export const PIN_KINDS: PinKind[] = [

@@ -8,7 +8,9 @@ import type { Author } from './author';
 import type { DesignRef } from './designRef';
 import type { LogicVoltage } from './logicVoltage';
 import type { PartKind } from './partKind';
+import type { PartLibrary } from './partLibrary';
 import type { PinOut } from './pinOut';
+import type { Platform } from './platform';
 import type { TagRef } from './tagRef';
 
 export interface PartDetail {
@@ -29,6 +31,9 @@ export interface PartDetail {
   notes_md: string;
   created_by: Author;
   wokwi_type: string | null;
+  platform: Platform | null;
+  platformio_board: string | null;
+  libraries: PartLibrary[];
   created_at: string;
   pins: PinOut[];
   used_in?: DesignRef[];

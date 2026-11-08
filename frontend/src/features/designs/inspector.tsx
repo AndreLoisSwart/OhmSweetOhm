@@ -1,5 +1,5 @@
 import { cn } from 'cn'
-import { RotateCw, Trash2 } from 'lucide-react'
+import { ExternalLink, RotateCw, Trash2 } from 'lucide-react'
 import { useContext, type ReactNode } from 'react'
 import { Link } from 'react-router'
 import { toast } from 'sonner'
@@ -294,7 +294,38 @@ function DesignInspector({
               className="w-28"
             />
           </Section>
+          <Section title="Firmware">
+            <div className="flex items-center gap-1">
+              <CommitInput
+                value={design.firmware_repo}
+                format={(repo) => repo ?? ''}
+                parse={(text) => ({ value: text.trim() || null })}
+                onSave={(firmware_repo) => save({ firmware_repo })}
+                placeholder="Repo path or URL"
+                aria-label="Firmware repo"
+                title="Where this design's firmware lives. Claude checks its pins.h against the design before changing pin code."
+                className="font-mono text-xs"
+              />
+              {design.firmware_repo && /^https?:\/\//i.test(design.firmware_repo) && (
+                <Button variant="ghost" size="icon-sm" asChild>
+                  <a
+                    href={design.firmware_repo}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="Open the firmware repo"
+                  >
+                    <ExternalLink />
+                  </a>
+                </Button>
+              )}
+            </div>
+          </Section>
         </>
+      )}
+      {readOnly && design.firmware_repo && (
+        <Section title="Firmware">
+          <p className="font-mono text-xs break-all">{design.firmware_repo}</p>
+        </Section>
       )}
       <Section title={`Nets (${design.nets.length})`}>
         {design.nets.length ? (

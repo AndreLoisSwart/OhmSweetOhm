@@ -8,4 +8,5 @@
 export interface StarterAdded {
   added: string[];
   skipped: string[];
+  updated?: string[];
 }

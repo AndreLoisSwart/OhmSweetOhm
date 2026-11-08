@@ -2,7 +2,7 @@ import { BadgeCheck, Copy, Cpu, ExternalLink, Trash2 } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { errorMessage } from '@/api/fetcher'
-import type { LogicVoltage, PartKind, PartUpdate } from '@/api/generated/model'
+import type { LogicVoltage, PartKind, PartUpdate, Platform } from '@/api/generated/model'
 import { useCopyPart, useDeletePart, useGetPart, useUpdatePart } from '@/api/generated/parts/parts'
 import { CommitInput } from '@/components/commit-input'
 import { ConfirmDialog } from '@/components/confirm-dialog'
@@ -27,7 +27,15 @@ import {
   parseUrl,
   parseVolts,
 } from './fields'
-import { LOGIC_VOLTAGE_LABELS, LOGIC_VOLTAGES, PART_KIND_LABELS, PART_KINDS } from './labels'
+import {
+  LOGIC_VOLTAGE_LABELS,
+  LOGIC_VOLTAGES,
+  PART_KIND_LABELS,
+  PART_KINDS,
+  PLATFORM_LABELS,
+  PLATFORMS,
+} from './labels'
+import { LibrariesEditor } from './libraries-editor'
 import { PinEditor } from './pins/pin-editor'
 
 function Field({
@@ -193,7 +201,7 @@ export function PartDetailPage() {
               parse={parseAddresses}
               onSave={(i2c_addresses) => save({ i2c_addresses })}
               placeholder="e.g. 0x76, 0x77 (default first)"
-              className="w-full font-mono sm:w-64"
+              className="w-full max-w-64 font-mono"
             />
           </Field>
           <Field label="Datasheet" htmlFor="part-datasheet">
@@ -246,9 +254,44 @@ export function PartDetailPage() {
               onSave={(wokwi_type) => save({ wokwi_type })}
               placeholder="e.g. board-esp32-devkit-c-v4"
               title="For simulating designs in Wokwi later (phase 2)"
-              className="w-full font-mono sm:w-64"
+              className="w-full max-w-64 font-mono"
             />
           </Field>
+          {(part.kind === 'board' || part.platform || part.platformio_board) && (
+            <>
+              <Field label="Platform" htmlFor="part-platform">
+                <NativeSelect
+                  id="part-platform"
+                  value={part.platform ?? ''}
+                  onChange={(e) => save({ platform: (e.target.value || null) as Platform | null })}
+                  className="w-full max-w-64"
+                >
+                  <option value="">Not set</option>
+                  {PLATFORMS.map((p) => (
+                    <option key={p} value={p}>
+                      {PLATFORM_LABELS[p]}
+                    </option>
+                  ))}
+                </NativeSelect>
+              </Field>
+              <Field label="PlatformIO board" htmlFor="part-pio-board">
+                <CommitInput
+                  id="part-pio-board"
+                  value={part.platformio_board}
+                  format={asText}
+                  parse={(text) =>
+                    /^[A-Za-z0-9_.-]*$/.test(text.trim())
+                      ? { value: text.trim() || null }
+                      : { error: 'Letters, digits, dots, dashes and _ only' }
+                  }
+                  onSave={(platformio_board) => save({ platformio_board })}
+                  placeholder="e.g. esp32dev, uno"
+                  title="The board id in platformio.ini, from PlatformIO's board list"
+                  className="w-full max-w-64 font-mono"
+                />
+              </Field>
+            </>
+          )}
         </dl>
 
         <section>
@@ -261,6 +304,12 @@ export function PartDetailPage() {
             placeholder="What it is, which variant, where it came from…"
             className="-ml-2 resize-y text-sm"
           />
+          <h2 className="mt-8 mb-1 text-sm font-medium">Libraries</h2>
+          <p className="mb-2 text-xs text-muted-foreground">
+            What firmware for this part needs, as PlatformIO libraries. A design&apos;s
+            platformio.ini lists them for its board.
+          </p>
+          <LibrariesEditor value={part.libraries} onChange={(libraries) => save({ libraries })} />
         </section>
       </div>
 

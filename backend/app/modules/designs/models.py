@@ -48,6 +48,8 @@ class Design(Base):
     description_md: Mapped[str] = mapped_column(Text, default="")
     # A Shelf-help Project id: another database, so no foreign key and never checked here.
     shelf_project_id: Mapped[int | None]
+    # Where the design's firmware lives: a local path or a URL (build step 13).
+    firmware_repo: Mapped[str | None] = mapped_column(String(500))
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
 

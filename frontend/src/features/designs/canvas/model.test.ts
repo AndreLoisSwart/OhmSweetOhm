@@ -33,6 +33,7 @@ const design: DesignDetail = {
   id: 1,
   name: 'Station',
   shelf_project_id: null,
+  firmware_repo: null,
   tags: [],
   part_count: 2,
   updated_at: '2026-11-07T12:00:00Z',

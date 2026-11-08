@@ -6,7 +6,11 @@
  */
 import type { FirmwareFile } from './firmwareFile';
 
-export interface BringupOut {
+/**
+ * Generated files for one board: the bring-up sketch with its pins.h, or the
+ * PlatformIO project file.
+ */
+export interface FirmwareFiles {
   board: string;
   boards: string[];
   files: FirmwareFile[];

@@ -61,7 +61,7 @@ Packaging and the canvas are the riskiest parts, so they come first.
 
 10. **Pin map.** `Pin.code_name`, a Pro Micro starter part, and a design's pins as a C++ `pins.h` or MicroPython `pins.py`, through the API, the inspector and MCP.
 11. **Bring-up sketch.** A library-free Arduino sketch that checks the built circuit against the design.
-12. **Library hints.** `Part.libraries` and a `platformio.ini` `lib_deps` block per design.
+12. **Library hints.** `Part.libraries`, a board's `platform` and `platformio_board`, and a design's `platformio.ini` (board, platform and `lib_deps`).
 13. **Firmware link and drift check.** `Design.firmware_repo`, and Claude comparing the repo's `pins.h` with the design.
 
 ## Out of scope for phase 1

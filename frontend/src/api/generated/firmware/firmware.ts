@@ -5,25 +5,32 @@
  * OpenAPI spec version: 0.1.0
  */
 import {
+  useMutation,
   useQuery
 } from '@tanstack/react-query';
 import type {
   DataTag,
   DefinedInitialDataOptions,
   DefinedUseQueryResult,
+  MutationFunction,
   QueryClient,
   QueryFunction,
   QueryKey,
   UndefinedInitialDataOptions,
+  UseMutationOptions,
+  UseMutationResult,
   UseQueryOptions,
   UseQueryResult
 } from '@tanstack/react-query';
 
 import type {
-  BringupOut,
+  FirmwareFiles,
   GetBringupSketchParams,
   GetPinMapParams,
+  GetPlatformioProjectParams,
   HTTPValidationError,
+  PinMapCompare,
+  PinMapDrift,
   PinMapOut
 } from '../model';
 
@@ -189,9 +196,9 @@ export const getGetBringupSketchUrl = (designId: number,
  * @summary Get Bringup Sketch
  */
 export const getBringupSketch = async (designId: number,
-    params?: GetBringupSketchParams, options?: Parameters<typeof apiFetch>[1]): Promise<BringupOut> => {
+    params?: GetBringupSketchParams, options?: Parameters<typeof apiFetch>[1]): Promise<FirmwareFiles> => {
 
-  return apiFetch<BringupOut>(getGetBringupSketchUrl(designId,params),
+  return apiFetch<FirmwareFiles>(getGetBringupSketchUrl(designId,params),
   {
     ...options,
     method: 'GET'
@@ -284,3 +291,210 @@ export function useGetBringupSketch<TData = Awaited<ReturnType<typeof getBringup
 
 
 
+export const getGetPlatformioProjectUrl = (designId: number,
+    params?: GetPlatformioProjectParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/designs/${designId}/platformio?${stringifiedParams}` : `/api/designs/${designId}/platformio`
+}
+
+/**
+ * platformio.ini for the board: its platform and board id, and the libraries the
+ * design's parts need on that platform. With more than one board, `board` is its ref.
+ * @summary Get Platformio Project
+ */
+export const getPlatformioProject = async (designId: number,
+    params?: GetPlatformioProjectParams, options?: Parameters<typeof apiFetch>[1]): Promise<FirmwareFiles> => {
+
+  return apiFetch<FirmwareFiles>(getGetPlatformioProjectUrl(designId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPlatformioProjectQueryKey = (designId: number,
+    params?: GetPlatformioProjectParams,) => {
+    return [
+    `/api/designs/${designId}/platformio`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetPlatformioProjectQueryOptions = <TData = Awaited<ReturnType<typeof getPlatformioProject>>, TError = ErrorType<HTTPValidationError>>(designId: number,
+    params?: GetPlatformioProjectParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPlatformioProject>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPlatformioProjectQueryKey(designId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPlatformioProject>>> = ({ signal }) => getPlatformioProject(designId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: designId !== null && designId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPlatformioProject>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetPlatformioProjectQueryResult = NonNullable<Awaited<ReturnType<typeof getPlatformioProject>>>
+export type GetPlatformioProjectQueryError = ErrorType<HTTPValidationError>
+
+
+export function useGetPlatformioProject<TData = Awaited<ReturnType<typeof getPlatformioProject>>, TError = ErrorType<HTTPValidationError>>(
+ designId: number,
+    params: undefined |  GetPlatformioProjectParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPlatformioProject>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getPlatformioProject>>,
+          TError,
+          Awaited<ReturnType<typeof getPlatformioProject>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetPlatformioProject<TData = Awaited<ReturnType<typeof getPlatformioProject>>, TError = ErrorType<HTTPValidationError>>(
+ designId: number,
+    params?: GetPlatformioProjectParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPlatformioProject>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getPlatformioProject>>,
+          TError,
+          Awaited<ReturnType<typeof getPlatformioProject>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetPlatformioProject<TData = Awaited<ReturnType<typeof getPlatformioProject>>, TError = ErrorType<HTTPValidationError>>(
+ designId: number,
+    params?: GetPlatformioProjectParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPlatformioProject>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get Platformio Project
+ */
+
+export function useGetPlatformioProject<TData = Awaited<ReturnType<typeof getPlatformioProject>>, TError = ErrorType<HTTPValidationError>>(
+ designId: number,
+    params?: GetPlatformioProjectParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPlatformioProject>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetPlatformioProjectQueryOptions(designId,params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export const getComparePinMapUrl = (designId: number,) => {
+
+
+
+
+  return `/api/designs/${designId}/pinmap/compare`
+}
+
+/**
+ * How a firmware's pins.h or pins.py differs from the design as it is now: constants
+ * whose pin changed, newly wired ones, and ones no longer in the design. Read-only.
+ * @summary Compare Pin Map
+ */
+export const comparePinMap = async (designId: number,
+    pinMapCompare: PinMapCompare, options?: Parameters<typeof apiFetch>[1]): Promise<PinMapDrift> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<PinMapDrift>(getComparePinMapUrl(designId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(pinMapCompare)
+  }
+);}
+
+
+
+
+
+export const getComparePinMapMutationKey = () => ['comparePinMap'] as const;
+
+export const getComparePinMapMutationOptions = <TError = ErrorType<HTTPValidationError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof comparePinMap>>, TError,ComparePinMapMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof comparePinMap>>, TError,ComparePinMapMutationVariables, TContext> => {
+
+const mutationKey = getComparePinMapMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof comparePinMap>>, ComparePinMapMutationVariables> = (props) => {
+          const {designId,data} = props ?? {};
+
+          return  comparePinMap(designId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ComparePinMapMutationResult = NonNullable<Awaited<ReturnType<typeof comparePinMap>>>
+    export type ComparePinMapMutationBody = PinMapCompare
+    export type ComparePinMapMutationError = ErrorType<HTTPValidationError>
+    export type ComparePinMapMutationVariables = {designId: number;data: PinMapCompare}
+
+    /**
+ * @summary Compare Pin Map
+ */
+export const useComparePinMap = <TError = ErrorType<HTTPValidationError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof comparePinMap>>, TError,ComparePinMapMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof comparePinMap>>,
+        TError,
+        ComparePinMapMutationVariables,
+        TContext
+      > => {
+      return useMutation(getComparePinMapMutationOptions(options), queryClient);
+    }

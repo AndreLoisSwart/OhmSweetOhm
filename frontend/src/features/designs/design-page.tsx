@@ -5,6 +5,7 @@ import {
   FileCode,
   History,
   ListChecks,
+  Package,
   Info,
   Library,
   Lock,
@@ -36,7 +37,7 @@ import { PHONE_QUERY, useMediaQuery } from '@/lib/use-media-query'
 import { DesignCanvas } from './canvas/design-canvas'
 import { ChecksBar } from './checks-bar'
 import { HistoryDialog } from './history-dialog'
-import { BringupDialog } from './bringup-dialog'
+import { FirmwareFilesDialog, type FirmwareFilesKind } from './firmware-files-dialog'
 import { PinMapDialog } from './pin-map-dialog'
 import { HighlightContext, HighlightStore, usePinnedNet } from './canvas/highlight'
 import { buildEdges, buildNodes, type PartNodeType, type WireEdgeType } from './canvas/model'
@@ -55,7 +56,7 @@ function DesignEditor({ design }: { design: DesignDetail }) {
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
   const [pinMapOpen, setPinMapOpen] = useState(false)
-  const [bringupOpen, setBringupOpen] = useState(false)
+  const [filesOpen, setFilesOpen] = useState<FirmwareFilesKind | null>(null)
   const [checksOpen, setChecksOpen] = useState(false)
   const changedBy = useOutsideChanges(design, actions)
 
@@ -168,14 +169,26 @@ function DesignEditor({ design }: { design: DesignDetail }) {
                 <FileCode />
                 Pin map
               </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => setBringupOpen(true)}>
+              <DropdownMenuItem onSelect={() => setFilesOpen('bringup')}>
                 <ListChecks />
                 Bring-up sketch
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setFilesOpen('platformio')}>
+                <Package />
+                PlatformIO project
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
           <PinMapDialog design={design} open={pinMapOpen} onOpenChange={setPinMapOpen} />
-          <BringupDialog design={design} open={bringupOpen} onOpenChange={setBringupOpen} />
+          {(['bringup', 'platformio'] as const).map((kind) => (
+            <FirmwareFilesDialog
+              key={kind}
+              kind={kind}
+              design={design}
+              open={filesOpen === kind}
+              onOpenChange={(open) => setFilesOpen(open ? kind : null)}
+            />
+          ))}
           <HistoryDialog
             designId={design.id}
             open={historyOpen}

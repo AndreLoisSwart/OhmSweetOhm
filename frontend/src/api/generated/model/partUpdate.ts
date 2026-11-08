@@ -6,6 +6,8 @@
  */
 import type { LogicVoltage } from './logicVoltage';
 import type { PartKind } from './partKind';
+import type { PartLibrary } from './partLibrary';
+import type { Platform } from './platform';
 
 /**
  * Only the fields sent are changed. Nullable fields are cleared with null.
@@ -23,5 +25,8 @@ export interface PartUpdate {
   verified?: boolean | null;
   shelf_item_id?: number | null;
   wokwi_type?: string | null;
+  platform?: Platform | null;
+  platformio_board?: string | null;
+  libraries?: PartLibrary[] | null;
   tag_ids?: number[] | null;
 }

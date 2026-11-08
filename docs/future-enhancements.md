@@ -62,9 +62,23 @@ Keep this in mind throughout phase 1: a design must convert to `diagram.json` wi
 - **`Part.libraries`** (JSON list of PlatformIO library ids, e.g. `adafruit/Adafruit BME280 Library@^2.2`), edited on the part page and through `update_part`. Starter parts get theirs.
 - A design gives a `platformio.ini` `lib_deps` block from its parts. No stored setup snippets: Claude writes `setup()` from the part and its library.
 
+**Built in step 12 (2026-11-08), with two additions agreed before starting:**
+- **A whole `platformio.ini`, not just `lib_deps`:** boards get `platform` (`espressif32`, `espressif8266`, `atmelavr`) and `platformio_board` (e.g. `esp32dev`, `uno`, `nanoatmega328`, `sparkfun_promicro16`, `esp32-c3-devkitm-1`, `d1_mini`). The file has `[env:<board ref>]` with platform, board, `framework = arduino` and `monitor_speed = 115200`; ESP32 boards with native USB (C3, S2, S3, C6, H2 in the board id) get a commented `ARDUINO_USB_CDC_ON_BOOT` line to uncomment. A board missing either field still gets a file, with those lines blank and a note saying where to set them.
+- **Libraries per platform:** each entry is `{spec, platforms}`, empty platforms meaning all. The file lists the ones for the board's platform and, in a comment, the ones it left out. Other boards in the design and their libraries are skipped.
+- Comments in the file say which parts need each library, and give the plain names for the Arduino IDE's Library Manager.
+- `GET /api/designs/{id}/platformio`, the MCP tool `get_platformio_project`, and a **PlatformIO project** dialog in the design's ⋯ menu (sharing the bring-up sketch's dialog). The part page has Platform and PlatformIO board fields for boards, and a Libraries list under the description.
+- **Starter data:** the six boards have their platform and board id; BME280, DHT22, DS18B20, BH1750, INA219, SSD1306, SG90 and WS2812B have their libraries. **Starter parts** also fills these fields on library parts with the same name where they're empty, and never overwrites them, so libraries added before step 12 catch up.
+- Versions are pinned to the major version (`^2.2`).
+
 **Step 13: firmware link and drift check.**
 - **`Design.firmware_repo`** (text: a local path or a URL), shown in the inspector and set through `update_design`.
 - **Drift check:** the firmware includes the generated `pins.h`, so checking for drift means regenerating it and comparing. The MCP instructions tell Claude Code to do that before changing pin-related code, and to say what moved.
+
+**Built in step 13 (2026-11-08):**
+- `Design.firmware_repo` with its migration: one line, up to 500 characters, blank clears it. In the inspector under the Shelf-help project (with a link when it's a URL; shown read-only on phones), on `create_design` and `update_design`, and in every design answer.
+- **The comparison is done by the app, not by Claude diffing text:** `POST /api/designs/{id}/pinmap/compare` and the MCP tool `compare_pin_map` take a firmware's `pins.h` or `pins.py` and list the constants whose value changed (with the pin they're on now), the ones newly wired, and the ones no longer in the design, plus the current file to replace it with. It reads `constexpr` and `#define` lines, or `NAME = value` for Python, so hand-written headers work too; hex values compare ignoring case.
+- **The generated header names its design and board** ("Ohm Sweet Ohm design 3, board esp"), so Claude can find the design from the repo alone.
+- The MCP instructions tell Claude to run `compare_pin_map` before changing pin-related code in a firmware with a generated pin map, report what moved, replace the file and fix code that used changed or removed constants.
 
 Wokwi export stays its own item above. It reuses step 10's code names and bus data.
 

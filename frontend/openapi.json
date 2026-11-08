@@ -1305,7 +1305,119 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/BringupOut"
+                  "$ref": "#/components/schemas/FirmwareFiles"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/designs/{design_id}/platformio": {
+      "get": {
+        "tags": [
+          "firmware"
+        ],
+        "summary": "Get Platformio Project",
+        "description": "platformio.ini for the board: its platform and board id, and the libraries the\ndesign's parts need on that platform. With more than one board, `board` is its ref.",
+        "operationId": "get_platformio_project",
+        "parameters": [
+          {
+            "name": "design_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Design Id"
+            }
+          },
+          {
+            "name": "board",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Board"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FirmwareFiles"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/designs/{design_id}/pinmap/compare": {
+      "post": {
+        "tags": [
+          "firmware"
+        ],
+        "summary": "Compare Pin Map",
+        "description": "How a firmware's pins.h or pins.py differs from the design as it is now: constants\nwhose pin changed, newly wired ones, and ones no longer in the design. Read-only.",
+        "operationId": "compare_pin_map",
+        "parameters": [
+          {
+            "name": "design_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Design Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PinMapCompare"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PinMapDrift"
                 }
               }
             }
@@ -1752,35 +1864,6 @@
         ],
         "title": "Body_upload_attachment"
       },
-      "BringupOut": {
-        "properties": {
-          "board": {
-            "type": "string",
-            "title": "Board"
-          },
-          "boards": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Boards"
-          },
-          "files": {
-            "items": {
-              "$ref": "#/components/schemas/FirmwareFile"
-            },
-            "type": "array",
-            "title": "Files"
-          }
-        },
-        "type": "object",
-        "required": [
-          "board",
-          "boards",
-          "files"
-        ],
-        "title": "BringupOut"
-      },
       "CanvasPart": {
         "properties": {
           "id": {
@@ -1883,6 +1966,57 @@
         "type": "object",
         "title": "CheckSummary"
       },
+      "ConstantChange": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "in_file": {
+            "type": "string",
+            "title": "In File"
+          },
+          "in_design": {
+            "type": "string",
+            "title": "In Design"
+          },
+          "comment": {
+            "type": "string",
+            "title": "Comment",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "in_file",
+          "in_design"
+        ],
+        "title": "ConstantChange"
+      },
+      "ConstantOut": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "value": {
+            "type": "string",
+            "title": "Value"
+          },
+          "comment": {
+            "type": "string",
+            "title": "Comment",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "value"
+        ],
+        "title": "ConstantOut"
+      },
       "DesignChecks": {
         "properties": {
           "design_id": {
@@ -1932,6 +2066,19 @@
             ],
             "title": "Shelf Project Id"
           },
+          "firmware_repo": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500,
+                "pattern": "^[^\\n\\r]*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Firmware Repo"
+          },
           "tag_ids": {
             "items": {
               "type": "integer"
@@ -1967,6 +2114,17 @@
               }
             ],
             "title": "Shelf Project Id"
+          },
+          "firmware_repo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Firmware Repo"
           },
           "tags": {
             "items": {
@@ -2033,6 +2191,7 @@
           "id",
           "name",
           "shelf_project_id",
+          "firmware_repo",
           "tags",
           "part_count",
           "updated_at",
@@ -2086,6 +2245,17 @@
             ],
             "title": "Shelf Project Id"
           },
+          "firmware_repo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Firmware Repo"
+          },
           "tags": {
             "items": {
               "$ref": "#/components/schemas/TagRef"
@@ -2111,6 +2281,7 @@
           "id",
           "name",
           "shelf_project_id",
+          "firmware_repo",
           "tags",
           "part_count",
           "updated_at",
@@ -2155,6 +2326,19 @@
             ],
             "title": "Shelf Project Id"
           },
+          "firmware_repo": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500,
+                "pattern": "^[^\\n\\r]*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Firmware Repo"
+          },
           "tag_ids": {
             "anyOf": [
               {
@@ -2172,7 +2356,7 @@
         },
         "type": "object",
         "title": "DesignUpdate",
-        "description": "Only the fields sent are changed. shelf_project_id is cleared with null."
+        "description": "Only the fields sent are changed. shelf_project_id and firmware_repo are cleared\nwith null (firmware_repo with a blank too)."
       },
       "FirmwareFile": {
         "properties": {
@@ -2191,6 +2375,36 @@
           "text"
         ],
         "title": "FirmwareFile"
+      },
+      "FirmwareFiles": {
+        "properties": {
+          "board": {
+            "type": "string",
+            "title": "Board"
+          },
+          "boards": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Boards"
+          },
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/FirmwareFile"
+            },
+            "type": "array",
+            "title": "Files"
+          }
+        },
+        "type": "object",
+        "required": [
+          "board",
+          "boards",
+          "files"
+        ],
+        "title": "FirmwareFiles",
+        "description": "Generated files for one board: the bring-up sketch with its pins.h, or the\nPlatformIO project file."
       },
       "HTTPValidationError": {
         "properties": {
@@ -2378,6 +2592,37 @@
             ],
             "title": "Wokwi Type"
           },
+          "platform": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Platform"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "platformio_board": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 60,
+                "pattern": "^[A-Za-z0-9_.-]*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Platformio Board"
+          },
+          "libraries": {
+            "items": {
+              "$ref": "#/components/schemas/PartLibrary"
+            },
+            "type": "array",
+            "title": "Libraries",
+            "default": []
+          },
           "tag_ids": {
             "items": {
               "type": "integer"
@@ -2504,6 +2749,34 @@
             ],
             "title": "Wokwi Type"
           },
+          "platform": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Platform"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "platformio_board": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Platformio Board"
+          },
+          "libraries": {
+            "items": {
+              "$ref": "#/components/schemas/PartLibrary"
+            },
+            "type": "array",
+            "title": "Libraries"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -2544,6 +2817,9 @@
           "notes_md",
           "created_by",
           "wokwi_type",
+          "platform",
+          "platformio_board",
+          "libraries",
           "created_at",
           "pins"
         ],
@@ -2562,6 +2838,31 @@
           "other"
         ],
         "title": "PartKind"
+      },
+      "PartLibrary": {
+        "properties": {
+          "spec": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[^\\n\\r,;]+$",
+            "title": "Spec"
+          },
+          "platforms": {
+            "items": {
+              "$ref": "#/components/schemas/Platform"
+            },
+            "type": "array",
+            "title": "Platforms",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "spec"
+        ],
+        "title": "PartLibrary",
+        "description": "A library firmware for the part needs, on the platforms listed (empty: all)."
       },
       "PartSummary": {
         "properties": {
@@ -2768,6 +3069,43 @@
             ],
             "title": "Wokwi Type"
           },
+          "platform": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Platform"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "platformio_board": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 60,
+                "pattern": "^[A-Za-z0-9_.-]*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Platformio Board"
+          },
+          "libraries": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/PartLibrary"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Libraries"
+          },
           "tag_ids": {
             "anyOf": [
               {
@@ -2925,6 +3263,82 @@
           "other"
         ],
         "title": "PinKind"
+      },
+      "PinMapCompare": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "lang": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Lang"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "board": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Board"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "PinMapCompare",
+        "description": "A firmware's pins.h or pins.py, to compare with the design as it is now."
+      },
+      "PinMapDrift": {
+        "properties": {
+          "up_to_date": {
+            "type": "boolean",
+            "title": "Up To Date"
+          },
+          "changed": {
+            "items": {
+              "$ref": "#/components/schemas/ConstantChange"
+            },
+            "type": "array",
+            "title": "Changed"
+          },
+          "added": {
+            "items": {
+              "$ref": "#/components/schemas/ConstantOut"
+            },
+            "type": "array",
+            "title": "Added"
+          },
+          "removed": {
+            "items": {
+              "$ref": "#/components/schemas/ConstantOut"
+            },
+            "type": "array",
+            "title": "Removed"
+          },
+          "pin_map": {
+            "$ref": "#/components/schemas/PinMapOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "up_to_date",
+          "changed",
+          "added",
+          "removed",
+          "pin_map"
+        ],
+        "title": "PinMapDrift"
       },
       "PinMapOut": {
         "properties": {
@@ -3350,6 +3764,16 @@
         ],
         "title": "PlacementsAdd"
       },
+      "Platform": {
+        "type": "string",
+        "enum": [
+          "espressif32",
+          "espressif8266",
+          "atmelavr"
+        ],
+        "title": "Platform",
+        "description": "A board's PlatformIO platform; library entries can be limited to some of them."
+      },
       "RevisionOut": {
         "properties": {
           "id": {
@@ -3439,6 +3863,14 @@
             },
             "type": "array",
             "title": "Skipped"
+          },
+          "updated": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Updated",
+            "default": []
           }
         },
         "type": "object",

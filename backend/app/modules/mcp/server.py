@@ -44,11 +44,18 @@ from app.modules.designs.schemas import (
 )
 from app.modules.firmware import service as firmware
 from app.modules.firmware.pinmap import Lang
-from app.modules.firmware.schemas import BringupOut, PinMapOut
+from app.modules.firmware.schemas import FirmwareFiles, PinMapCompare, PinMapDrift, PinMapOut
 from app.modules.parts import service as part_service
-from app.modules.parts.models import Author, LogicVoltage, PartKind
+from app.modules.parts.models import Author, LogicVoltage, PartKind, Platform
 from app.modules.parts.router import part_detail
-from app.modules.parts.schemas import PartCreate, PartDetail, PartSummary, PartUpdate, PinIn
+from app.modules.parts.schemas import (
+    PartCreate,
+    PartDetail,
+    PartLibrary,
+    PartSummary,
+    PartUpdate,
+    PinIn,
+)
 from app.modules.tags import service as tags
 from app.modules.tags.schemas import TagCreate, TagOut, TagRef
 
@@ -71,8 +78,15 @@ designs carry Shelf-help ids (shelf_item_id, shelf_project_id).
   tied "3V3"); nets include them. Set tie when creating parts with repeated supply pins.
 - Writing firmware for a design (not ESPHome): get_pin_map and save it in the firmware
   as pins.h or pins.py, then use its constants, never bare pin numbers. If a board pin
-  has no code name, say so rather than guessing. To check a newly built circuit, offer
-  get_bringup_sketch before writing the real firmware.
+  has no code name, say so rather than guessing. Store where the firmware lives as the
+  design's firmware_repo. To check a newly built circuit, offer get_bringup_sketch
+  before writing the real firmware. Start a PlatformIO project from
+  get_platformio_project. When a part needs a library it doesn't list, add it to the
+  part (update_part libraries) so the next design gets it too.
+- Before changing pin-related code in a firmware with a generated pins.h or pins.py
+  (its header names the design id), run compare_pin_map with the file's text. If the
+  design has moved on, tell the user what changed, replace the file with the new one,
+  and update code that used changed or removed constants.
 - Part kind actuator means the board drives it (LED, relay, buzzer, servo); buttons and
   switches are inputs, never actuators (the bring-up sketch drives actuator pins).
 - "Do I have what this design needs?": look up each part's Shelf-help item. Offer to mark
@@ -115,6 +129,7 @@ class DesignView(BaseModel):
     name: str
     description_md: str
     shelf_project_id: int | None
+    firmware_repo: str | None
     tags: list[TagRef]
     updated_at: datetime
     parts: list[PlacedPart]
@@ -179,6 +194,7 @@ def _view(design: Design) -> DesignView:
         name=detail.name,
         description_md=detail.description_md,
         shelf_project_id=detail.shelf_project_id,
+        firmware_repo=detail.firmware_repo,
         tags=detail.tags,
         updated_at=detail.updated_at,
         parts=[
@@ -305,6 +321,9 @@ def build_server(open_session: SessionOpener) -> MCPServer:
         notes_md: str = "",
         shelf_item_id: int | None = None,
         wokwi_type: str | None = None,
+        platform: Platform | None = None,
+        platformio_board: str | None = None,
+        libraries: list[PartLibrary] | None = None,
         tag_ids: list[int] | None = None,
     ) -> PartDetail:
         """Creates a part with its pins. It starts unverified, for the user to check.
@@ -314,7 +333,10 @@ def build_server(open_session: SessionOpener) -> MCPServer:
         A pin's kind is its main role; functions lists alternates (GPIO21: gpio with
         functions ["i2c_sda"]). voltage: what a power pin supplies or needs, or the most a
         signal pin accepts. i2c_addresses: 7-bit, the default first. Say where the pinout
-        came from in notes_md."""
+        came from in notes_md. Boards: platform and platformio_board (PlatformIO's board
+        id, e.g. esp32dev). libraries: what firmware for the part needs, as PlatformIO
+        specs (`owner/Name@^major.minor`), each limited to some platforms when it only
+        works there (e.g. ESP32Servo on espressif32)."""
         data = PartCreate(
             name=name,
             kind=kind,
@@ -328,6 +350,9 @@ def build_server(open_session: SessionOpener) -> MCPServer:
             notes_md=notes_md,
             shelf_item_id=shelf_item_id,
             wokwi_type=wokwi_type,
+            platform=platform,
+            platformio_board=platformio_board,
+            libraries=libraries or [],
             tag_ids=tag_ids or [],
         )
         with open_session() as session:
@@ -347,13 +372,17 @@ def build_server(open_session: SessionOpener) -> MCPServer:
         datasheet_url: str | None = None,
         shelf_item_id: int | None = None,
         wokwi_type: str | None = None,
+        platform: Platform | None = None,
+        platformio_board: str | None = None,
+        libraries: list[PartLibrary] | None = None,
         tag_ids: list[int] | None = None,
         pins: list[PinIn] | None = None,
     ) -> PartDetail:
         """Changes the fields given. pins, when given, is the whole pin list in header
         order: send every existing pin with its id (from get_part), changed or not, plus
         new ones without an id. That adds, renames and reorders pins; removing one isn't
-        possible here. Changing the pins sets the part unverified. Notes are added with
+        possible here. Changing the pins, platform, platformio_board or libraries
+        sets the part unverified. libraries, when given, is the whole list. Notes are added with
         append_part_notes. shelf_item_id: 0 unlinks; look the id up in Shelf-help before
         storing it, since this app can't check it."""
         fields = _set(
@@ -367,11 +396,14 @@ def build_server(open_session: SessionOpener) -> MCPServer:
             datasheet_url=datasheet_url,
             shelf_item_id=shelf_item_id,
             wokwi_type=wokwi_type,
+            platform=platform,
+            platformio_board=platformio_board,
+            libraries=libraries,
             tag_ids=tag_ids,
         )
         with open_session() as session:
             if fields:
-                part_service.update_part(session, part_id, PartUpdate(**fields))
+                part_service.update_part(session, part_id, PartUpdate(**fields), Author.CLAUDE)
             if pins is not None:
                 part_service.replace_pins(session, part_id, pins, Author.CLAUDE)
             return _part_detail(session, part_id)
@@ -421,13 +453,16 @@ def build_server(open_session: SessionOpener) -> MCPServer:
         name: str,
         description_md: str = "",
         shelf_project_id: int | None = None,
+        firmware_repo: str | None = None,
         tag_ids: list[int] | None = None,
     ) -> DesignView:
-        """Creates an empty design. description_md is markdown."""
+        """Creates an empty design. description_md is markdown. firmware_repo: where its
+        firmware lives (a local path or a repository URL)."""
         data = DesignCreate(
             name=name,
             description_md=description_md,
             shelf_project_id=shelf_project_id,
+            firmware_repo=firmware_repo,
             tag_ids=tag_ids or [],
         )
         with open_session() as session:
@@ -438,12 +473,21 @@ def build_server(open_session: SessionOpener) -> MCPServer:
         design_id: int,
         name: str | None = None,
         shelf_project_id: int | None = None,
+        firmware_repo: str | None = None,
         tag_ids: list[int] | None = None,
     ) -> DesignView:
-        """Renames a design, links it to a Shelf-help project, or sets its tags.
-        shelf_project_id: 0 unlinks; look the id up in Shelf-help before storing it, since
-        this app can't check it."""
-        data = DesignUpdate(**_set(name=name, shelf_project_id=shelf_project_id, tag_ids=tag_ids))
+        """Renames a design, links it to a Shelf-help project or its firmware, or sets its
+        tags. shelf_project_id: 0 unlinks; look the id up in Shelf-help before storing it,
+        since this app can't check it. firmware_repo: where the firmware lives (a local
+        path or a repository URL); an empty string clears it."""
+        data = DesignUpdate(
+            **_set(
+                name=name,
+                shelf_project_id=shelf_project_id,
+                firmware_repo=firmware_repo,
+                tag_ids=tag_ids,
+            )
+        )
         with open_session() as session:
             return _view(designs.update_design(session, design_id, data))
 
@@ -559,7 +603,7 @@ def build_server(open_session: SessionOpener) -> MCPServer:
             return firmware.pin_map(session, design_id, lang, board)
 
     @tool(READ)
-    def get_bringup_sketch(design_id: int, board: str | None = None) -> BringupOut:
+    def get_bringup_sketch(design_id: int, board: str | None = None) -> FirmwareFiles:
         """An Arduino sketch (no libraries) that checks the built circuit against the
         design: I2C parts answer at their addresses, actuator and display pins blink, other
         parts' pins are watched while the user triggers them, analog pins are read. Only
@@ -567,6 +611,29 @@ def build_server(open_session: SessionOpener) -> MCPServer:
         includes; save both in one sketch folder. board: as for get_pin_map."""
         with open_session() as session:
             return firmware.bringup_sketch(session, design_id, board)
+
+    @tool(READ)
+    def get_platformio_project(design_id: int, board: str | None = None) -> FirmwareFiles:
+        """platformio.ini for the design's board: platform, board id, framework arduino,
+        monitor speed, and lib_deps from the parts' libraries for that platform (with the
+        Arduino IDE names in a comment). Save it at the project root, next to src/.
+        board: as for get_pin_map."""
+        with open_session() as session:
+            return firmware.platformio_project(session, design_id, board)
+
+    @tool(READ)
+    def compare_pin_map(
+        design_id: int, text: str, lang: Lang | None = None, board: str | None = None
+    ) -> PinMapDrift:
+        """Checks a firmware's pins.h or pins.py (its whole text) against the design as it
+        is now: changed lists constants whose pin moved, added the newly wired ones,
+        removed the ones no longer in the design; up_to_date when there are none.
+        pin_map is the current file, to replace the old one with. Its header names the
+        design id and board ("Ohm Sweet Ohm design 3, board esp"). Read-only."""
+        with open_session() as session:
+            return firmware.compare_pin_map(
+                session, design_id, PinMapCompare(text=text, lang=lang, board=board)
+            )
 
     @tool(READ)
     def list_revisions(design_id: int) -> Revisions:

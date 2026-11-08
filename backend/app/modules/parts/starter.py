@@ -37,6 +37,8 @@ IN_ONLY = {"flags": ["input_only"]}
 # ESP32 DevKit V1 (DOIT, 30 pins), top view with the antenna at the top.
 ESP32_DEVKIT_V1 = {
     "name": "ESP32 DevKit V1 (30-pin)",
+    "platform": "espressif32",
+    "platformio_board": "esp32dev",
     "kind": "board",
     "logic_voltage": "3v3",
     "description": "DOIT ESP32 DevKit V1, the 30-pin version. ESP32-WROOM-32, CP2102 USB.",
@@ -99,6 +101,9 @@ ESP32_DEVKIT_V1 = {
 # ESP32-C3 SuperMini, top view with the USB-C socket at the top.
 ESP32_C3_SUPERMINI = {
     "name": "ESP32-C3 SuperMini",
+    "platform": "espressif32",
+    # No board of its own in PlatformIO; Espressif's C3 DevKitM is the usual stand-in.
+    "platformio_board": "esp32-c3-devkitm-1",
     "kind": "board",
     "logic_voltage": "3v3",
     "description": "Tiny ESP32-C3 board with USB-C (native USB, no separate serial chip).",
@@ -141,6 +146,8 @@ ALSO_GPIO = {"functions": ["gpio"]}
 # top edge, the power and analog headers along the bottom.
 ARDUINO_UNO_R3 = {
     "name": "Arduino Uno R3",
+    "platform": "atmelavr",
+    "platformio_board": "uno",
     "kind": "board",
     "logic_voltage": "5v",
     "supply_min_v": 7,
@@ -197,6 +204,9 @@ ARDUINO_UNO_R3 = {
 # Arduino Nano (ATmega328P), top view with the USB socket at the top.
 ARDUINO_NANO = {
     "name": "Arduino Nano",
+    "platform": "atmelavr",
+    # Old bootloader, as most clones have; genuine boards since 2018 use nanoatmega328new.
+    "platformio_board": "nanoatmega328",
     "kind": "board",
     "logic_voltage": "5v",
     "supply_min_v": 7,
@@ -251,6 +261,8 @@ ARDUINO_NANO = {
 # Arduino Pro Micro (ATmega32U4, 5 V / 16 MHz), top view with the USB socket at the top.
 ARDUINO_PRO_MICRO = {
     "name": "Arduino Pro Micro (5 V)",
+    "platform": "atmelavr",
+    "platformio_board": "sparkfun_promicro16",
     "kind": "board",
     "logic_voltage": "5v",
     "supply_min_v": 5,
@@ -301,6 +313,8 @@ ARDUINO_PRO_MICRO = {
 # Wemos (LOLIN) D1 Mini, top view with the antenna at the top.
 WEMOS_D1_MINI = {
     "name": "Wemos D1 Mini",
+    "platform": "espressif8266",
+    "platformio_board": "d1_mini",
     "kind": "board",
     "logic_voltage": "3v3",
     "description": "ESP8266 (ESP-12F) board with USB, 3.3 V logic.",
@@ -340,6 +354,7 @@ WEMOS_D1_MINI = {
 
 BME280 = {
     "name": "BME280 breakout (4-pin)",
+    "libraries": [{"spec": "adafruit/Adafruit BME280 Library@^2.2"}],
     "kind": "sensor",
     "logic_voltage": "3v3",
     "supply_min_v": 1.8,
@@ -362,6 +377,7 @@ BME280 = {
 
 DHT22 = {
     "name": "DHT22",
+    "libraries": [{"spec": "adafruit/DHT sensor library@^1.4"}],
     "kind": "sensor",
     "logic_voltage": "both",
     "supply_min_v": 3.3,
@@ -382,6 +398,10 @@ DHT22 = {
 
 DS18B20 = {
     "name": "DS18B20 (TO-92)",
+    "libraries": [
+        {"spec": "paulstoffregen/OneWire@^2.3"},
+        {"spec": "milesburton/DallasTemperature@^3.11"},
+    ],
     "kind": "sensor",
     "logic_voltage": "both",
     "supply_min_v": 3,
@@ -441,6 +461,7 @@ PIR_HC_SR501 = {
 
 BH1750 = {
     "name": "BH1750 (GY-302)",
+    "libraries": [{"spec": "claws/BH1750@^1.3"}],
     "kind": "sensor",
     "logic_voltage": "both",
     "supply_min_v": 3,
@@ -460,6 +481,7 @@ BH1750 = {
 
 INA219 = {
     "name": "INA219 breakout",
+    "libraries": [{"spec": "adafruit/Adafruit INA219@^1.2"}],
     "kind": "sensor",
     "logic_voltage": "both",
     "supply_min_v": 3,
@@ -484,6 +506,10 @@ INA219 = {
 
 SSD1306 = {
     "name": "SSD1306 128×64 OLED (I2C)",
+    "libraries": [
+        {"spec": "adafruit/Adafruit SSD1306@^2.5"},
+        {"spec": "adafruit/Adafruit GFX Library@^1.11"},
+    ],
     "kind": "display",
     "logic_voltage": "both",
     "supply_min_v": 3.3,
@@ -528,6 +554,11 @@ RELAY_1CH = {
 
 SG90 = {
     "name": "SG90 micro servo",
+    # ESP8266 cores include their own Servo library.
+    "libraries": [
+        {"spec": "arduino-libraries/Servo@^1.2", "platforms": ["atmelavr"]},
+        {"spec": "madhephaestus/ESP32Servo@^3.0", "platforms": ["espressif32"]},
+    ],
     "kind": "actuator",
     "logic_voltage": "5v",
     "supply_min_v": 4.8,
@@ -574,6 +605,7 @@ PUSH_BUTTON = {
 
 WS2812B = {
     "name": "WS2812B LED strip",
+    "libraries": [{"spec": "fastled/FastLED@^3.6"}],
     "kind": "actuator",
     "logic_voltage": "5v",
     "supply_min_v": 4.5,

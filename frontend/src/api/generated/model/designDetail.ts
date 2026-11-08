@@ -16,6 +16,7 @@ export interface DesignDetail {
   id: number;
   name: string;
   shelf_project_id: number | null;
+  firmware_repo: string | null;
   tags: TagRef[];
   part_count: number;
   updated_at: string;

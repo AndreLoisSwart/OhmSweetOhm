@@ -37,6 +37,14 @@ class LogicVoltage(StrEnum):
     NONE = "none"
 
 
+class Platform(StrEnum):
+    """A board's PlatformIO platform; library entries can be limited to some of them."""
+
+    ESP32 = "espressif32"
+    ESP8266 = "espressif8266"
+    AVR = "atmelavr"
+
+
 class Author(StrEnum):
     USER = "user"
     CLAUDE = "claude"
@@ -109,6 +117,12 @@ class Part(Base):
     shelf_item_id: Mapped[int | None]
     # Wokwi's part type, for the phase 2 export, e.g. "board-esp32-devkit-c-v4".
     wokwi_type: Mapped[str | None] = mapped_column(String(100))
+    # For boards: PlatformIO's platform and board id (e.g. espressif32, esp32dev).
+    platform: Mapped[Platform | None] = mapped_column(str_enum(Platform, "platform"))
+    platformio_board: Mapped[str | None] = mapped_column(String(60))
+    # Libraries firmware for this part needs: [{"spec": "owner/Name@^1.2",
+    # "platforms": [...]}], an empty platforms list meaning every platform.
+    libraries: Mapped[list[dict]] = mapped_column(JSON, default=list)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
 

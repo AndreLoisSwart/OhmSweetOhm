@@ -83,6 +83,8 @@ def test_tool_list(mcp):
         "check_design",
         "get_pin_map",
         "get_bringup_sketch",
+        "get_platformio_project",
+        "compare_pin_map",
         "list_revisions",
         "restore_revision",
     }
@@ -319,3 +321,57 @@ def test_get_bringup_sketch(mcp, api):
     out = mcp("get_bringup_sketch", design_id=design["id"])
     assert [f["filename"] for f in out["files"]] == ["bringup.ino", "pins.h"]
     assert "Wire.begin(BME_SDA, BME_SCL);" in out["files"][0]["text"]
+
+
+def test_firmware_fields_from_claude_unverify(mcp, api):
+    part = api.post("/api/parts", json={"name": "BME", "kind": "sensor"}).json()
+    assert part["verified"] is True
+    # Other fields leave it verified.
+    assert mcp("update_part", part_id=part["id"], description="Weather")["verified"] is True
+    libs = [{"spec": "adafruit/Adafruit BME280 Library@^2.2"}]
+    out = mcp("update_part", part_id=part["id"], libraries=libs)
+    assert out["verified"] is False
+    assert out["libraries"] == [{"spec": "adafruit/Adafruit BME280 Library@^2.2", "platforms": []}]
+    project = mcp("get_platformio_project", design_id=_one_board_design(api, part["id"]))
+    assert "adafruit/Adafruit BME280 Library@^2.2" in project["files"][0]["text"]
+
+
+def _one_board_design(api, part_id: int) -> int:
+    esp = api.post(
+        "/api/parts",
+        json={
+            "name": "ESP",
+            "kind": "board",
+            "platform": "espressif32",
+            "platformio_board": "esp32dev",
+            "pins": ESP_PINS,
+        },
+    ).json()
+    design = api.post("/api/designs", json={"name": "W"}).json()
+    api.post(
+        f"/api/designs/{design['id']}/placements",
+        json={"parts": [{"part_id": esp["id"], "ref": "esp"}, {"part_id": part_id, "ref": "bme"}]},
+    )
+    return design["id"]
+
+
+def test_compare_pin_map_and_firmware_repo(mcp, api):
+    part = api.post(
+        "/api/parts",
+        json={"name": "BME", "kind": "sensor", "i2c_addresses": [0x76], "pins": BME_PINS},
+    ).json()
+    design_id = _one_board_design(api, part["id"])
+    api.post(
+        f"/api/designs/{design_id}/wires", json={"wires": [{"a": "esp.GPIO21", "b": "bme.SDA"}]}
+    )
+    view = mcp("update_design", design_id=design_id, firmware_repo="~/code/weather")
+    assert view["firmware_repo"] == "~/code/weather"
+    drift = mcp("compare_pin_map", design_id=design_id, text="constexpr uint8_t BME_SDA = 22;")
+    assert drift["up_to_date"] is False
+    assert drift["changed"][0] == {
+        "name": "BME_SDA",
+        "in_file": "22",
+        "in_design": "21",
+        "comment": "esp.GPIO21",
+    }
+    assert mcp("update_design", design_id=design_id, firmware_repo="")["firmware_repo"] is None

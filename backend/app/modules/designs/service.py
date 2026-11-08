@@ -58,6 +58,7 @@ def summary(design: Design) -> DesignSummary:
         id=design.id,
         name=design.name,
         shelf_project_id=design.shelf_project_id,
+        firmware_repo=design.firmware_repo,
         tags=design.tags,
         part_count=design.part_count,
         updated_at=design.updated_at,
@@ -73,6 +74,7 @@ def detail(design: Design) -> DesignDetail:
         id=design.id,
         name=design.name,
         shelf_project_id=design.shelf_project_id,
+        firmware_repo=design.firmware_repo,
         tags=design.tags,
         part_count=design.part_count,
         updated_at=design.updated_at,
@@ -109,6 +111,7 @@ def create_design(session: Session, data: DesignCreate) -> Design:
         name=data.name,
         description_md=data.description_md,
         shelf_project_id=data.shelf_project_id,
+        firmware_repo=data.firmware_repo,
         tags=tags.get_tags(session, data.tag_ids),
     )
     session.add(design)

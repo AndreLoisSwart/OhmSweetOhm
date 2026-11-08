@@ -6,7 +6,9 @@
  */
 import type { LogicVoltage } from './logicVoltage';
 import type { PartKind } from './partKind';
+import type { PartLibrary } from './partLibrary';
 import type { PinIn } from './pinIn';
+import type { Platform } from './platform';
 
 export interface PartCreate {
   /**
@@ -28,6 +30,9 @@ export interface PartCreate {
   notes_md?: string;
   shelf_item_id?: number | null;
   wokwi_type?: string | null;
+  platform?: Platform | null;
+  platformio_board?: string | null;
+  libraries?: PartLibrary[];
   tag_ids?: number[];
   pins?: PinIn[];
 }

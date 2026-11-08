@@ -13,5 +13,6 @@ export interface DesignCreate {
   name: string;
   description_md?: string;
   shelf_project_id?: number | null;
+  firmware_repo?: string | null;
   tag_ids?: number[];
 }
