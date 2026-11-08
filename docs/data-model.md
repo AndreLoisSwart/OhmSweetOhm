@@ -60,6 +60,7 @@ Attachment   id, original_filename, mime_type, size, stored_path, created_at,
 - **Pin `voltage`** means what a power pin supplies (`power_out`) or needs (`power_in`). For a signal pin it is the highest voltage the pin accepts. When empty, a signal pin takes the part's `logic_voltage`.
 - **Pin order:** `side` and `position` place the pin on the canvas card, in the order of the real header. The card then reads like the physical board. The card's size is computed from its pins, never stored (see `pages.md`, Canvas spike findings).
 - **Pin names** are unique within a part. Repeated silkscreen names are numbered (`GND`, `GND2`); board pins are named by the chip's GPIO (`GPIO21`), with Wokwi's name in `wokwi_name` where it differs.
+- **Part `kind` `actuator`** means the board drives it: LEDs, relays, buzzers, servos. Buttons and switches are inputs (`other` or `sensor`), never actuators: the bring-up sketch drives actuator and display pins.
 - **Pin `code_name`** (from step 10) is what firmware calls a board pin. When empty it comes from the name: `GPIO<n>` → `<n>`, `D<n>` → `<n>`, `A<n>` stays `A<n>`; any other name has no code name and can't appear in a pin map. Set it only where the rule is wrong for a board.
 - **Part `libraries`** (from step 12) are PlatformIO library ids (`owner/Name@^version`), in the order to list them.
 - **Unverified parts:**

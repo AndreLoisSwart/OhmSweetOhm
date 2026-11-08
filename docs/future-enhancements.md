@@ -51,6 +51,13 @@ Keep this in mind throughout phase 1: a design must convert to `diagram.json` wi
 - Prints a pass or fail line per part on the serial monitor. Waits up to a few seconds for the serial port, for native-USB boards (Pro Micro, ESP32-C3).
 - Includes `pins.h`. Same three routes as the pin map (`/bringup`, a button, `get_bringup_sketch`).
 
+**Built in step 11 (2026-11-08):**
+- `backend/app/modules/firmware/bringup.py`, built on the pin map. `GET /api/designs/{id}/bringup` and the MCP tool `get_bringup_sketch` return `bringup.ino` and the `pins.h` it includes; a **Bring-up sketch** dialog in the design's ⋯ menu shows both, with Copy and Download.
+- **What it does, in order:** I2C parts are probed at each of their addresses (`Wire`, and `Wire1` for a second bus on an ESP32; AVR boards use their own SDA/SCL); actuator and display pins blink three times; other parts' pins are watched for 5 s with the pull-up on while you trigger them; analog pins are read for 3 s and their range printed. It ends with passed, failed and to-check-by-eye counts.
+- **What it never drives:** only pins of `actuator` and `display` parts are outputs. A board pin flagged `flash` or `input_only`, or shared by more than one part, is never driven. SPI and UART pins are listed as needing the part's library. Parts like the DHT22 or HC-SR04, which only answer when asked, report "didn't change" with that hint.
+- **Starter push button** is now kind `other`, not `actuator`, since the sketch drives actuators. A library that already has it needs its kind changed in the app.
+- Tests syntax-check generated sketches with `g++` against a small Arduino stub (`tests/arduino_stub/`), for ESP32 and AVR.
+
 **Step 12: library hints.**
 - **`Part.libraries`** (JSON list of PlatformIO library ids, e.g. `adafruit/Adafruit BME280 Library@^2.2`), edited on the part page and through `update_part`. Starter parts get theirs.
 - A design gives a `platformio.ini` `lib_deps` block from its parts. No stored setup snippets: Claude writes `setup()` from the part and its library.

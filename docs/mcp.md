@@ -46,6 +46,7 @@ These are the same as Shelf-help's:
 | `disconnect(design_id, a, b)` | Remove a wire |
 | `check_design(design_id)` | Run every check (see `checks.md`) |
 | `list_revisions(design_id)`, `restore_revision(design_id, revision_id)` | History, and undo |
+| `get_bringup_sketch(design_id, board?)` | From step 11. A library-free Arduino sketch that checks a built circuit against the design, as `{board, boards, files}`: `bringup.ino` and the `pins.h` it includes |
 | `get_pin_map(design_id, lang?, board?)` | From step 10. The design's pins as firmware constants: `pins.h` (`lang` "c", the default) or `pins.py` ("py"), as `{lang, filename, board, boards, text}`. `board` is needed only with more than one board |
 
 Tools that change a design take batches (`add_parts`, `connect`), so that building a circuit is a few calls rather than dozens. Each call that changes placements or wires saves one revision first (`author = claude`), summarising the change: "Added esp, BME280", "Connected esp.3V3 to bme.VIN, … and 1 more", "Moved and rotated esp", "Removed led1 and its 2 wires", "Disconnected esp.GND from bme.GND". Renaming a design, its tags and its description aren't in revisions (they aren't in a snapshot).

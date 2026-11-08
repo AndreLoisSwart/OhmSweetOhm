@@ -8,6 +8,7 @@
 export * from './attachmentOut';
 export * from './author';
 export * from './bodyUploadAttachment';
+export * from './bringupOut';
 export * from './canvasPart';
 export * from './checkResult';
 export * from './checkSummary';
@@ -17,6 +18,8 @@ export * from './designDetail';
 export * from './designRef';
 export * from './designSummary';
 export * from './designUpdate';
+export * from './firmwareFile';
+export * from './getBringupSketchParams';
 export * from './getPinMapParams';
 export * from './health';
 export * from './hTTPValidationError';

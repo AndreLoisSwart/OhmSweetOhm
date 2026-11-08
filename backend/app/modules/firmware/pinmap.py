@@ -46,6 +46,10 @@ class Constant:
     name: str
     value: str  # a code name (`21`, `A0`) or a hex I2C address
     comment: str = ""
+    # For a pin constant: the part's pin and the board pin it's on (the bring-up sketch
+    # decides from these how to test it).
+    pin: CPin | None = None
+    board_pin: CPin | None = None
 
 
 @dataclass
@@ -53,6 +57,7 @@ class Block:
     """One part's constants, with what couldn't be mapped."""
 
     title: str
+    placement: Placement
     constants: list[Constant] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
 
@@ -122,7 +127,7 @@ def build(design: Design, board_ref: str | None = None) -> PinMap:
         if placement is board:
             continue
         part = placement.part
-        block = Block(f"{placement.ref}: {part.name}")
+        block = Block(f"{placement.ref}: {part.name}", placement)
         roles: dict[PinKind, str] = {}
         for pin in ctx.placement_pins(placement):
             if pin.kind in NOT_SIGNAL:
@@ -148,7 +153,7 @@ def build(design: Design, board_ref: str | None = None) -> PinMap:
             if len(on_board) > 1:
                 comment.append("also on " + ", ".join(p.key for p in on_board[1:]))
             name = unique(identifier(f"{placement.ref}_{pin.pin.name}") or placement.ref.upper())
-            block.constants.append(Constant(name, code, ", ".join(comment)))
+            block.constants.append(Constant(name, code, ", ".join(comment), pin, board_pin))
             for roles_of_bus in BUSES.values():
                 for kind, _ in roles_of_bus:
                     if pin.has_role(kind):

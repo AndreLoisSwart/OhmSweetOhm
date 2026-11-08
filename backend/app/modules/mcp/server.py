@@ -44,7 +44,7 @@ from app.modules.designs.schemas import (
 )
 from app.modules.firmware import service as firmware
 from app.modules.firmware.pinmap import Lang
-from app.modules.firmware.schemas import PinMapOut
+from app.modules.firmware.schemas import BringupOut, PinMapOut
 from app.modules.parts import service as part_service
 from app.modules.parts.models import Author, LogicVoltage, PartKind
 from app.modules.parts.router import part_detail
@@ -71,7 +71,10 @@ designs carry Shelf-help ids (shelf_item_id, shelf_project_id).
   tied "3V3"); nets include them. Set tie when creating parts with repeated supply pins.
 - Writing firmware for a design (not ESPHome): get_pin_map and save it in the firmware
   as pins.h or pins.py, then use its constants, never bare pin numbers. If a board pin
-  has no code name, say so rather than guessing.
+  has no code name, say so rather than guessing. To check a newly built circuit, offer
+  get_bringup_sketch before writing the real firmware.
+- Part kind actuator means the board drives it (LED, relay, buzzer, servo); buttons and
+  switches are inputs, never actuators (the bring-up sketch drives actuator pins).
 - "Do I have what this design needs?": look up each part's Shelf-help item. Offer to mark
   missing ones as need.
 - Every change you make to a design saves a revision first, so the user can undo it from
@@ -554,6 +557,16 @@ def build_server(open_session: SessionOpener) -> MCPServer:
         `filename` in the firmware and use its constants rather than pin numbers."""
         with open_session() as session:
             return firmware.pin_map(session, design_id, lang, board)
+
+    @tool(READ)
+    def get_bringup_sketch(design_id: int, board: str | None = None) -> BringupOut:
+        """An Arduino sketch (no libraries) that checks the built circuit against the
+        design: I2C parts answer at their addresses, actuator and display pins blink, other
+        parts' pins are watched while the user triggers them, analog pins are read. Only
+        actuator and display pins are driven. files holds bringup.ino and the pins.h it
+        includes; save both in one sketch folder. board: as for get_pin_map."""
+        with open_session() as session:
+            return firmware.bringup_sketch(session, design_id, board)
 
     @tool(READ)
     def list_revisions(design_id: int) -> Revisions:

@@ -82,6 +82,7 @@ def test_tool_list(mcp):
         "disconnect",
         "check_design",
         "get_pin_map",
+        "get_bringup_sketch",
         "list_revisions",
         "restore_revision",
     }
@@ -296,3 +297,25 @@ def test_get_pin_map(mcp, api):
     with pytest.raises(ToolError, match="no board"):
         empty = api.post("/api/designs", json={"name": "Empty"}).json()
         mcp("get_pin_map", design_id=empty["id"])
+
+
+def test_get_bringup_sketch(mcp, api):
+    esp = api.post("/api/parts", json={"name": "ESP", "kind": "board", "pins": ESP_PINS}).json()
+    bme = api.post(
+        "/api/parts",
+        json={"name": "BME", "kind": "sensor", "i2c_addresses": [0x76], "pins": BME_PINS},
+    ).json()
+    design = api.post("/api/designs", json={"name": "Weather"}).json()
+    api.post(
+        f"/api/designs/{design['id']}/placements",
+        json={
+            "parts": [{"part_id": esp["id"], "ref": "esp"}, {"part_id": bme["id"], "ref": "bme"}]
+        },
+    )
+    api.post(
+        f"/api/designs/{design['id']}/wires",
+        json={"wires": [{"a": "esp.GPIO21", "b": "bme.SDA"}, {"a": "esp.GPIO22", "b": "bme.SCL"}]},
+    )
+    out = mcp("get_bringup_sketch", design_id=design["id"])
+    assert [f["filename"] for f in out["files"]] == ["bringup.ino", "pins.h"]
+    assert "Wire.begin(BME_SDA, BME_SCL);" in out["files"][0]["text"]

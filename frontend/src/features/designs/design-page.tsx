@@ -4,6 +4,7 @@ import {
   Bot,
   FileCode,
   History,
+  ListChecks,
   Info,
   Library,
   Lock,
@@ -35,6 +36,7 @@ import { PHONE_QUERY, useMediaQuery } from '@/lib/use-media-query'
 import { DesignCanvas } from './canvas/design-canvas'
 import { ChecksBar } from './checks-bar'
 import { HistoryDialog } from './history-dialog'
+import { BringupDialog } from './bringup-dialog'
 import { PinMapDialog } from './pin-map-dialog'
 import { HighlightContext, HighlightStore, usePinnedNet } from './canvas/highlight'
 import { buildEdges, buildNodes, type PartNodeType, type WireEdgeType } from './canvas/model'
@@ -53,6 +55,7 @@ function DesignEditor({ design }: { design: DesignDetail }) {
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
   const [pinMapOpen, setPinMapOpen] = useState(false)
+  const [bringupOpen, setBringupOpen] = useState(false)
   const [checksOpen, setChecksOpen] = useState(false)
   const changedBy = useOutsideChanges(design, actions)
 
@@ -165,9 +168,14 @@ function DesignEditor({ design }: { design: DesignDetail }) {
                 <FileCode />
                 Pin map
               </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setBringupOpen(true)}>
+                <ListChecks />
+                Bring-up sketch
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
           <PinMapDialog design={design} open={pinMapOpen} onOpenChange={setPinMapOpen} />
+          <BringupDialog design={design} open={bringupOpen} onOpenChange={setBringupOpen} />
           <HistoryDialog
             designId={design.id}
             open={historyOpen}

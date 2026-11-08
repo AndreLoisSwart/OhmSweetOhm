@@ -20,6 +20,8 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  BringupOut,
+  GetBringupSketchParams,
   GetPinMapParams,
   HTTPValidationError,
   PinMapOut
@@ -154,6 +156,123 @@ export function useGetPinMap<TData = Awaited<ReturnType<typeof getPinMap>>, TErr
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getGetPinMapQueryOptions(designId,params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export const getGetBringupSketchUrl = (designId: number,
+    params?: GetBringupSketchParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/designs/${designId}/bringup?${stringifiedParams}` : `/api/designs/${designId}/bringup`
+}
+
+/**
+ * An Arduino sketch that checks the built circuit against the design, with the
+ * pins.h it includes. With more than one board in the design, `board` is its ref.
+ * @summary Get Bringup Sketch
+ */
+export const getBringupSketch = async (designId: number,
+    params?: GetBringupSketchParams, options?: Parameters<typeof apiFetch>[1]): Promise<BringupOut> => {
+
+  return apiFetch<BringupOut>(getGetBringupSketchUrl(designId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetBringupSketchQueryKey = (designId: number,
+    params?: GetBringupSketchParams,) => {
+    return [
+    `/api/designs/${designId}/bringup`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetBringupSketchQueryOptions = <TData = Awaited<ReturnType<typeof getBringupSketch>>, TError = ErrorType<HTTPValidationError>>(designId: number,
+    params?: GetBringupSketchParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getBringupSketch>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetBringupSketchQueryKey(designId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getBringupSketch>>> = ({ signal }) => getBringupSketch(designId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: designId !== null && designId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getBringupSketch>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetBringupSketchQueryResult = NonNullable<Awaited<ReturnType<typeof getBringupSketch>>>
+export type GetBringupSketchQueryError = ErrorType<HTTPValidationError>
+
+
+export function useGetBringupSketch<TData = Awaited<ReturnType<typeof getBringupSketch>>, TError = ErrorType<HTTPValidationError>>(
+ designId: number,
+    params: undefined |  GetBringupSketchParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getBringupSketch>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getBringupSketch>>,
+          TError,
+          Awaited<ReturnType<typeof getBringupSketch>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetBringupSketch<TData = Awaited<ReturnType<typeof getBringupSketch>>, TError = ErrorType<HTTPValidationError>>(
+ designId: number,
+    params?: GetBringupSketchParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getBringupSketch>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getBringupSketch>>,
+          TError,
+          Awaited<ReturnType<typeof getBringupSketch>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetBringupSketch<TData = Awaited<ReturnType<typeof getBringupSketch>>, TError = ErrorType<HTTPValidationError>>(
+ designId: number,
+    params?: GetBringupSketchParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getBringupSketch>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get Bringup Sketch
+ */
+
+export function useGetBringupSketch<TData = Awaited<ReturnType<typeof getBringupSketch>>, TError = ErrorType<HTTPValidationError>>(
+ designId: number,
+    params?: GetBringupSketchParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getBringupSketch>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetBringupSketchQueryOptions(designId,params,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

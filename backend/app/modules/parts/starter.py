@@ -559,7 +559,7 @@ LED = {
 
 PUSH_BUTTON = {
     "name": "Push button (4-leg tactile)",
-    "kind": "actuator",
+    "kind": "other",
     "logic_voltage": "none",
     "description": "6 mm tactile switch.",
     "notes_md": notes(

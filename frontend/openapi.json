@@ -1264,6 +1264,65 @@
         }
       }
     },
+    "/api/designs/{design_id}/bringup": {
+      "get": {
+        "tags": [
+          "firmware"
+        ],
+        "summary": "Get Bringup Sketch",
+        "description": "An Arduino sketch that checks the built circuit against the design, with the\npins.h it includes. With more than one board in the design, `board` is its ref.",
+        "operationId": "get_bringup_sketch",
+        "parameters": [
+          {
+            "name": "design_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Design Id"
+            }
+          },
+          {
+            "name": "board",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Board"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BringupOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/tags": {
       "get": {
         "tags": [
@@ -1693,6 +1752,35 @@
         ],
         "title": "Body_upload_attachment"
       },
+      "BringupOut": {
+        "properties": {
+          "board": {
+            "type": "string",
+            "title": "Board"
+          },
+          "boards": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Boards"
+          },
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/FirmwareFile"
+            },
+            "type": "array",
+            "title": "Files"
+          }
+        },
+        "type": "object",
+        "required": [
+          "board",
+          "boards",
+          "files"
+        ],
+        "title": "BringupOut"
+      },
       "CanvasPart": {
         "properties": {
           "id": {
@@ -2085,6 +2173,24 @@
         "type": "object",
         "title": "DesignUpdate",
         "description": "Only the fields sent are changed. shelf_project_id is cleared with null."
+      },
+      "FirmwareFile": {
+        "properties": {
+          "filename": {
+            "type": "string",
+            "title": "Filename"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "filename",
+          "text"
+        ],
+        "title": "FirmwareFile"
       },
       "HTTPValidationError": {
         "properties": {
