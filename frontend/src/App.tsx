@@ -1,4 +1,4 @@
-import { lazy } from 'react'
+import { lazy, Suspense } from 'react'
 import { Route, Routes } from 'react-router'
 import { AppShell } from '@/components/layout/app-shell'
 import { NotFound } from '@/components/not-found'
@@ -13,11 +13,21 @@ const PartsPage = page(() => import('@/features/parts/parts-page'), 'PartsPage')
 const PartDetailPage = page(() => import('@/features/parts/part-detail-page'), 'PartDetailPage')
 const DesignPage = page(() => import('@/features/designs/design-page'), 'DesignPage')
 const LayoutPage = page(() => import('@/features/layouts/layout-page'), 'LayoutPage')
+const PrintPage = page(() => import('@/features/layouts/print/print-page'), 'PrintPage')
 const SettingsPage = page(() => import('@/features/settings/settings-page'), 'SettingsPage')
 
 export default function App() {
   return (
     <Routes>
+      {/* The build sheet prints on its own, without the app around it. */}
+      <Route
+        path="designs/:id/layouts/:layoutId/print"
+        element={
+          <Suspense>
+            <PrintPage />
+          </Suspense>
+        }
+      />
       <Route element={<AppShell />}>
         <Route index element={<DesignsPage />} />
         <Route path="designs/:id" element={<DesignPage />} />

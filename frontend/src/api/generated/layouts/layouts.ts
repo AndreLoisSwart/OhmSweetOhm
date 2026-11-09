@@ -24,6 +24,7 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  BuildSheetOut,
   ConnectorIn,
   ConnectorUpdate,
   CutsIn,
@@ -1590,7 +1591,110 @@ export const useApplyLayoutSnapshot = <TError = ErrorType<HTTPValidationError>,
       > => {
       return useMutation(getApplyLayoutSnapshotMutationOptions(options), queryClient);
     }
-    export const getListLayoutRevisionsUrl = (layoutId: number,) => {
+    export const getGetBuildSheetUrl = (layoutId: number,) => {
+
+
+
+
+  return `/api/layouts/${layoutId}/build-sheet`
+}
+
+/**
+ * What to do at the bench: cuts (strip by strip, from the copper side), jumpers
+ * with wire lengths, parts, connectors and cables, what to have ready, and the order
+ * of work. Numbered as on the printed drawings.
+ * @summary Get Build Sheet
+ */
+export const getBuildSheet = async (layoutId: number, options?: Parameters<typeof apiFetch>[1]): Promise<BuildSheetOut> => {
+
+  return apiFetch<BuildSheetOut>(getGetBuildSheetUrl(layoutId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetBuildSheetQueryKey = (layoutId: number,) => {
+    return [
+    `/api/layouts/${layoutId}/build-sheet`
+    ] as const;
+    }
+
+
+export const getGetBuildSheetQueryOptions = <TData = Awaited<ReturnType<typeof getBuildSheet>>, TError = ErrorType<HTTPValidationError>>(layoutId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getBuildSheet>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetBuildSheetQueryKey(layoutId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getBuildSheet>>> = ({ signal }) => getBuildSheet(layoutId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: layoutId !== null && layoutId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getBuildSheet>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetBuildSheetQueryResult = NonNullable<Awaited<ReturnType<typeof getBuildSheet>>>
+export type GetBuildSheetQueryError = ErrorType<HTTPValidationError>
+
+
+export function useGetBuildSheet<TData = Awaited<ReturnType<typeof getBuildSheet>>, TError = ErrorType<HTTPValidationError>>(
+ layoutId: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getBuildSheet>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getBuildSheet>>,
+          TError,
+          Awaited<ReturnType<typeof getBuildSheet>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetBuildSheet<TData = Awaited<ReturnType<typeof getBuildSheet>>, TError = ErrorType<HTTPValidationError>>(
+ layoutId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getBuildSheet>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getBuildSheet>>,
+          TError,
+          Awaited<ReturnType<typeof getBuildSheet>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetBuildSheet<TData = Awaited<ReturnType<typeof getBuildSheet>>, TError = ErrorType<HTTPValidationError>>(
+ layoutId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getBuildSheet>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get Build Sheet
+ */
+
+export function useGetBuildSheet<TData = Awaited<ReturnType<typeof getBuildSheet>>, TError = ErrorType<HTTPValidationError>>(
+ layoutId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getBuildSheet>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetBuildSheetQueryOptions(layoutId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export const getListLayoutRevisionsUrl = (layoutId: number,) => {
 
 
 

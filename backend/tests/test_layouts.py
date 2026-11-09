@@ -212,6 +212,32 @@ def test_a_real_layout_from_shorts_to_clean(api, library):
     # Strips carry their nets, for tinting.
     tints = {(s["a_strip"], s["a_hole"]): s["nets"] for s in layout["segments"] if s["nets"]}
     assert tints[(2, 1)] == ["3V3"]
+
+    # The build sheet for it.
+    sheet = ok(api.get(f"/api/layouts/{lid}/build-sheet"))
+    assert sheet["errors"] == 0 and sheet["missing"] == 0
+    # Cuts strip by strip, numbered; one per strip here, at hole 4.
+    assert [c["at"] for c in sheet["cuts"]][:3] == ["A4", "B4", "C4"]
+    assert sheet["cuts"][0]["number"] == 1
+    j1 = sheet["jumpers"][0]
+    assert (j1["a"], j1["b"], j1["holes"], j1["mm"], j1["cut_mm"]) == ("K8", "P8", 5, 12.7, 23)
+    nano = next(p for p in sheet["parts"] if p["ref"] == "nano")
+    assert (nano["at"], nano["mount"]) == ("A1", "socketed")
+    assert sheet["parts"][-1] == {
+        "ref": "bme",
+        "part": "BME280 breakout (4-pin)",
+        "at": None,
+        "rotation": 0,
+        "mount": "soldered",
+        "on_board": False,
+    }
+    con = sheet["connectors"][0]
+    assert con["serves"] == ["bme"] and con["straight"] is True
+    assert con["pins"] == ["bme.VIN", "bme.GND", "bme.SCL", "bme.SDA"]
+    assert "2 × 15-pin female header (sockets)" in sheet["shopping"]
+    assert "1 × 4-pin female header (J1)" in sheet["shopping"]
+    assert sheet["steps"][0].startswith("Turn the board over and make the 15 cuts")
+    assert "- [ ] J1: 4-pin female header, pin 1 at S2 → bme" in sheet["text"]
     assert tints[(16, 1)] == [next(c for c in design["nets"] if "led.A" in c["pins"])["name"]]
 
 

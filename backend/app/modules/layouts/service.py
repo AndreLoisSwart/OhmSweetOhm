@@ -10,6 +10,7 @@ from app.modules.checks.schemas import CheckSummary
 from app.modules.designs import service as designs
 from app.modules.designs.models import Placement, WireColor
 from app.modules.layouts import board as boards
+from app.modules.layouts import build_sheet as sheets
 from app.modules.layouts import checks, revisions
 from app.modules.layouts.board import connector_cells, footprint_sig, label
 from app.modules.layouts.models import (
@@ -28,6 +29,7 @@ from app.modules.layouts.schemas import (
     DEFAULT_SIZE,
     BoardPinOut,
     BodyOut,
+    BuildSheetOut,
     ConnectorIn,
     ConnectorOut,
     ConnectorPinOut,
@@ -782,3 +784,8 @@ def propose_connectors(layout: Layout) -> list[dict]:
             }
         )
     return proposals
+
+
+def build_sheet(layout: Layout) -> BuildSheetOut:
+    sheet = sheets.build(layout)
+    return BuildSheetOut.model_validate({**sheet.__dict__, "text": sheets.as_text(sheet)})

@@ -1,7 +1,14 @@
 from datetime import datetime
 from typing import Annotated
 
-from pydantic import BaseModel, Field, StringConstraints, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    StringConstraints,
+    field_validator,
+    model_validator,
+)
 
 from app.core.schemas import Name, reject_null
 from app.modules.checks.schemas import CheckSummary, Severity
@@ -351,3 +358,74 @@ class LayoutRevisionOut(BaseModel):
     created_at: datetime
     author: Author
     summary: str
+
+
+# The build sheet (step 19) ---------------------------------------------------------------
+
+
+class SheetCutOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    number: int
+    cut_id: int
+    at: str
+    between: bool
+
+
+class SheetJumperOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    number: int
+    jumper_id: int
+    a: str
+    b: str
+    side: str
+    insulated: bool
+    color: str
+    holes: float
+    mm: float
+    cut_mm: float
+
+
+class SheetPartOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    ref: str
+    part: str
+    at: str | None
+    rotation: int
+    mount: str
+    on_board: bool
+
+
+class SheetConnectorOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    ref: str
+    type: str
+    pin_count: int
+    at: str | None
+    pins: list[str | None]
+    serves: list[str]
+    straight: bool
+
+
+class BuildSheetOut(BaseModel):
+    """What to do at the bench, in order. Cuts and jumpers are numbered as on the
+    printed drawings; cuts run strip by strip as seen from the copper side."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    title: str
+    board: str
+    errors: int
+    missing: int
+    warnings: list[str]
+    cuts: list[SheetCutOut]
+    jumpers: list[SheetJumperOut]
+    parts: list[SheetPartOut]
+    connectors: list[SheetConnectorOut]
+    shopping: list[str]
+    steps: list[str]
+    # The same as Markdown, with tick boxes.
+    text: str

@@ -379,6 +379,15 @@ jumpers: 1 B20→F20 (top)   connectors: J1 at T2 (bme)
 - **Cable list:** "J1 → bme: GND, VIN, SCL, SDA (straight)".
 - **Layout parts list:** female headers for socketed parts, connectors by type and pin count, jumper wire length. A later link could add missing ones to Shelf-help as `need`.
 
+**Built in step 19 (2026-11-09):** as described in pages.md (Layout page, Print build sheet).
+- **API:** `GET /layouts/{id}/build-sheet`, built in `layouts/build_sheet.py`, plus the MCP tool `get_build_sheet` with a Markdown version.
+- **Cuts** are numbered strip by strip, falling hole numbers (left to right from the copper side). Jumpers are numbered in the order they were made.
+- **Wire to cut:** length × pitch, plus 10 mm for the legs of a top jumper or insulated link.
+- **Socket headers** come from each socketed part's footprint: its holes grouped into rows.
+- **A cable is "straight"** when each part's pins come in the part's own order.
+- **Printing** uses the browser's dialog (no PDF library). The page forces black on white and A4 with 10 mm margins (`@page`).
+- **Not done:** linking "to have ready" to Shelf-help.
+
 ### Later
 
 - Collapsing a layout's parts on the schematic into one block that shows only its connectors (a view, like focus).

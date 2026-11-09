@@ -107,6 +107,7 @@ def test_tool_list(mcp):
         "trim_dead_copper",
         "list_layout_revisions",
         "restore_layout_revision",
+        "get_build_sheet",
     }
     # Nothing in the library can be deleted.
     assert not [name for name in tools if name.startswith("delete")]
@@ -535,6 +536,9 @@ def test_claude_lays_out_a_board(api, mcp):
     with pytest.raises(ToolError, match="Say where"):
         mcp("place_on_board", layout_id=lid, parts=[{"ref": "led"}])
     assert mcp("list_layouts", design_id=did)["layouts"][0]["name"] == "Stripboard v1"
+    sheet = mcp("get_build_sheet", layout_id=lid)
+    assert sheet["text"].startswith("# Build sheet: Bench: Stripboard v1")
+    assert "- [ ] 1. A4" in sheet["text"]
 
 
 def lines_of(layout) -> list[str]:

@@ -8,6 +8,7 @@ import {
   Library,
   Lock,
   MoreHorizontal,
+  Printer,
   Redo2,
   Undo2,
   X,
@@ -370,6 +371,12 @@ function LayoutEditor({ layout, design }: { layout: LayoutDetail; design: Design
             <DropdownMenuItem onSelect={() => setHistoryOpen(true)}>
               <History />
               History
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link to={`/designs/${design.id}/layouts/${layout.id}/print`}>
+                <Printer />
+                Print build sheet
+              </Link>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

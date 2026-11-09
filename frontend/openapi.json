@@ -2591,6 +2591,49 @@
         }
       }
     },
+    "/api/layouts/{layout_id}/build-sheet": {
+      "get": {
+        "tags": [
+          "layouts"
+        ],
+        "summary": "Get Build Sheet",
+        "description": "What to do at the bench: cuts (strip by strip, from the copper side), jumpers\nwith wire lengths, parts, connectors and cables, what to have ready, and the order\nof work. Numbered as on the printed drawings.",
+        "operationId": "get_build_sheet",
+        "parameters": [
+          {
+            "name": "layout_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Layout Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildSheetOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/layouts/{layout_id}/revisions": {
       "get": {
         "tags": [
@@ -3219,6 +3262,96 @@
           "file"
         ],
         "title": "Body_upload_attachment"
+      },
+      "BuildSheetOut": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "board": {
+            "type": "string",
+            "title": "Board"
+          },
+          "errors": {
+            "type": "integer",
+            "title": "Errors"
+          },
+          "missing": {
+            "type": "integer",
+            "title": "Missing"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings"
+          },
+          "cuts": {
+            "items": {
+              "$ref": "#/components/schemas/SheetCutOut"
+            },
+            "type": "array",
+            "title": "Cuts"
+          },
+          "jumpers": {
+            "items": {
+              "$ref": "#/components/schemas/SheetJumperOut"
+            },
+            "type": "array",
+            "title": "Jumpers"
+          },
+          "parts": {
+            "items": {
+              "$ref": "#/components/schemas/SheetPartOut"
+            },
+            "type": "array",
+            "title": "Parts"
+          },
+          "connectors": {
+            "items": {
+              "$ref": "#/components/schemas/SheetConnectorOut"
+            },
+            "type": "array",
+            "title": "Connectors"
+          },
+          "shopping": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Shopping"
+          },
+          "steps": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Steps"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "board",
+          "errors",
+          "missing",
+          "warnings",
+          "cuts",
+          "jumpers",
+          "parts",
+          "connectors",
+          "shopping",
+          "steps",
+          "text"
+        ],
+        "title": "BuildSheetOut",
+        "description": "What to do at the bench, in order. Cuts and jumpers are numbered as on the\nprinted drawings; cuts run strip by strip as seen from the copper side."
       },
       "CanvasPart": {
         "properties": {
@@ -7022,6 +7155,200 @@
           "note"
         ],
         "title": "Severity"
+      },
+      "SheetConnectorOut": {
+        "properties": {
+          "ref": {
+            "type": "string",
+            "title": "Ref"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "pin_count": {
+            "type": "integer",
+            "title": "Pin Count"
+          },
+          "at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "At"
+          },
+          "pins": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Pins"
+          },
+          "serves": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Serves"
+          },
+          "straight": {
+            "type": "boolean",
+            "title": "Straight"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ref",
+          "type",
+          "pin_count",
+          "at",
+          "pins",
+          "serves",
+          "straight"
+        ],
+        "title": "SheetConnectorOut"
+      },
+      "SheetCutOut": {
+        "properties": {
+          "number": {
+            "type": "integer",
+            "title": "Number"
+          },
+          "cut_id": {
+            "type": "integer",
+            "title": "Cut Id"
+          },
+          "at": {
+            "type": "string",
+            "title": "At"
+          },
+          "between": {
+            "type": "boolean",
+            "title": "Between"
+          }
+        },
+        "type": "object",
+        "required": [
+          "number",
+          "cut_id",
+          "at",
+          "between"
+        ],
+        "title": "SheetCutOut"
+      },
+      "SheetJumperOut": {
+        "properties": {
+          "number": {
+            "type": "integer",
+            "title": "Number"
+          },
+          "jumper_id": {
+            "type": "integer",
+            "title": "Jumper Id"
+          },
+          "a": {
+            "type": "string",
+            "title": "A"
+          },
+          "b": {
+            "type": "string",
+            "title": "B"
+          },
+          "side": {
+            "type": "string",
+            "title": "Side"
+          },
+          "insulated": {
+            "type": "boolean",
+            "title": "Insulated"
+          },
+          "color": {
+            "type": "string",
+            "title": "Color"
+          },
+          "holes": {
+            "type": "number",
+            "title": "Holes"
+          },
+          "mm": {
+            "type": "number",
+            "title": "Mm"
+          },
+          "cut_mm": {
+            "type": "number",
+            "title": "Cut Mm"
+          }
+        },
+        "type": "object",
+        "required": [
+          "number",
+          "jumper_id",
+          "a",
+          "b",
+          "side",
+          "insulated",
+          "color",
+          "holes",
+          "mm",
+          "cut_mm"
+        ],
+        "title": "SheetJumperOut"
+      },
+      "SheetPartOut": {
+        "properties": {
+          "ref": {
+            "type": "string",
+            "title": "Ref"
+          },
+          "part": {
+            "type": "string",
+            "title": "Part"
+          },
+          "at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "At"
+          },
+          "rotation": {
+            "type": "integer",
+            "title": "Rotation"
+          },
+          "mount": {
+            "type": "string",
+            "title": "Mount"
+          },
+          "on_board": {
+            "type": "boolean",
+            "title": "On Board"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ref",
+          "part",
+          "at",
+          "rotation",
+          "mount",
+          "on_board"
+        ],
+        "title": "SheetPartOut"
       },
       "Snapshot": {
         "properties": {

@@ -70,6 +70,7 @@ Positions are the board's labels: `C14` is strip C, hole 14; `C9-10` is a cut be
 | `propose_connectors(layout_id)` | Read-only. One per off-board part whose connections reach the board: `{for_part, type, pins, why}`, pins in the part's own order, a screw terminal for a power part where it fits |
 | `add_connectors(layout_id, connectors: [{pins, type?, at?, rotation?, pin_count?, ref?}])`, `update_connector(layout_id, ref, at?, rotation?, type?, pin_count?, pins?)`, `remove_connector(layout_id, ref)` | Named J1, J2… unless given a ref |
 | `cut_between_rows(layout_id, ref)`, `trim_dead_copper(layout_id)` | The canvas's helpers |
+| `get_build_sheet(layout_id)` | From step 19. The printed sheet's lists: order of work, numbered cuts and jumpers, parts, connectors and cables, what to have ready, `errors` and `missing`, and `text`, the same as Markdown with tick boxes, to walk the user through or save next to the firmware |
 | `list_layout_revisions(layout_id)`, `restore_layout_revision(layout_id, revision_id)` | History and undo |
 
 **The text picture** (`layouts/picture.py`):

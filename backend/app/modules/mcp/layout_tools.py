@@ -28,6 +28,7 @@ from app.modules.layouts.models import (
     Mount,
 )
 from app.modules.layouts.schemas import (
+    BuildSheetOut,
     ConnectorIn,
     ConnectorUpdate,
     JumperIn,
@@ -558,6 +559,16 @@ def register_layout_tools(tool: Callable, open_session: Callable, READ, WRITE, R
             return layout_view(
                 layouts.trim_dead_copper(session, layout_id, claude="Trimmed dead copper")
             )
+
+    @tool(READ)
+    def get_build_sheet(layout_id: int) -> BuildSheetOut:
+        """The build sheet: the order of work, the cuts (strip by strip as seen from the
+        copper side), jumpers with the wire length to cut, parts with pin 1's hole,
+        connectors and their cables, and what to have ready. `text` is the same as
+        Markdown with tick boxes: walk the user through it, or save it next to the
+        firmware. errors and missing above 0 mean the layout isn't finished."""
+        with open_session() as session:
+            return layouts.build_sheet(layouts.get_layout(session, layout_id))
 
     @tool(READ)
     def list_layout_revisions(layout_id: int) -> LayoutRevisions:

@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from app.core.db import SessionDep
 from app.modules.layouts import revisions, service
 from app.modules.layouts.schemas import (
+    BuildSheetOut,
     ConnectorIn,
     ConnectorUpdate,
     CutsIn,
@@ -128,6 +129,14 @@ def apply_layout_snapshot(
 ) -> LayoutDetail:
     """Sets the whole layout at once: the board canvas's undo and redo."""
     return service.detail(service.apply_snapshot(session, layout_id, data))
+
+
+@router.get("/layouts/{layout_id}/build-sheet")
+def get_build_sheet(layout_id: int, session: SessionDep) -> BuildSheetOut:
+    """What to do at the bench: cuts (strip by strip, from the copper side), jumpers
+    with wire lengths, parts, connectors and cables, what to have ready, and the order
+    of work. Numbered as on the printed drawings."""
+    return service.build_sheet(service.get_layout(session, layout_id))
 
 
 @router.get("/layouts/{layout_id}/revisions")
