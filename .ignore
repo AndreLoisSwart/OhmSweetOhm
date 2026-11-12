@@ -1,0 +1,8 @@
+# Kept out of searches (ripgrep, and Claude Code's Grep and Glob), not out of git.
+# Generated or lock files: read them by path when needed, never search them.
+frontend/openapi.json
+frontend/src/api/generated/
+frontend/package-lock.json
+backend/uv.lock
+frontend/dist/
+docs/screenshots/

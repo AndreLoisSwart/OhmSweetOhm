@@ -14,6 +14,24 @@ Ohm Sweet Ohm is a personal electronics workbench: a library of off-the-shelf mo
 | `docs/mvp.md` | Phase 1 scope, build order, decisions |
 | `docs/future-enhancements.md` | Phase 2 (Wokwi simulation, firmware) and ideas |
 
+## Where things live
+
+Go straight to these instead of searching. Backend modules are in `backend/app/modules/`, frontend features in `frontend/src/features/`.
+
+| Feature | Backend | Frontend |
+|---|---|---|
+| Parts library, pins, footprints | `parts/` (`footprint.py`, `starter.py`) | `parts/` (`card/layout.ts` sizes cards and places pins, `pins/`, `footprint/`) |
+| Designs, wires, nets, revisions | `designs/` (`nets.py`, `revisions.py`, `suggest.py` for suggest wiring) | `designs/` (`design-page.tsx`, `inspector.tsx`, `library-panel.tsx`) |
+| Design canvas | — | `designs/canvas/`: `model.ts` (API → nodes, edges), `routing.ts` (wires), `labels.ts` (wire labels), `focus.ts`, `highlight.ts`, `wire-edge.tsx`, `part-node.tsx` |
+| Design checks | `checks/rules.py` (one function per rule) | `designs/checks-bar.tsx` |
+| Protoboard layouts | `layouts/` (`board.py` geometry and copper, `checks.py`, `picture.py` for MCP's text picture, `build_sheet.py`) | `layouts/` (`board/geometry.ts`, `board/tools.ts`, `print/`) |
+| Firmware, Wokwi | `firmware/` (`pinmap.py`, `bringup.py`, `platformio.py`, `wokwi.py`) | `designs/pin-map-dialog.tsx`, `designs/firmware-files*.tsx` |
+| MCP tools | `mcp/server.py` (designs and parts), `mcp/layout_tools.py` | `settings/mcp-setting.tsx` |
+| Tags, attachments | `tags/`, `attachments/` | `tags/`, `attachments/` |
+| Access, config, DB, serving the frontend | `backend/app/core/` (`access.py`, `config.py`, `frontend.py`) | `frontend/src/lib/` (`base-path.ts`, `connection.ts`) |
+
+Tests sit next to the code in the frontend (`*.test.ts`) and in `backend/tests/test_<feature>.py`. `.ignore` keeps generated files (`openapi.json`, `src/api/generated/`) and lock files out of searches; read them by path.
+
 ## Ground rules
 
 - **Stay inside `docs/mvp.md`.** Don't build phase 2 or ideas unless asked. If a change alters a decision, update the relevant doc in the same change.
