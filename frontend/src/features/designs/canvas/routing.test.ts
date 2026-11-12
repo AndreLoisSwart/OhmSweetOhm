@@ -166,10 +166,14 @@ describe('same-net wires', () => {
       { id: 'p', a: { x: 200, y: 90, side: 'right' }, b: { x: 400, y: 170, side: 'left' }, net },
       { id: 'q', a: { x: 200, y: 110, side: 'right' }, b: { x: 400, y: 170, side: 'left' }, net },
     ]
-    const apart = routeWires([A, B], wires())
-    const stubOnly = shared(apart.get('p')!, apart.get('q')!)
-    const { routes, junctions } = route([A, B], wires('GND'))
-    expect(shared(routes.get('p')!, routes.get('q')!)).toBeGreaterThan(stubOnly + 2)
+    // They share B's pin, so they're one tree even without a net: p joins q's route
+    // just outside A and runs on it the rest of the way.
+    for (const net of [undefined, 'GND']) {
+      const routes = routeWires([A, B], wires(net))
+      const q = routes.get('q')!
+      expect(shared(routes.get('p')!, q)).toBe(steps(q).size - 2) // all but q's own stub
+    }
+    const { junctions } = route([A, B], wires('GND'))
     expect(junctions.length).toBeGreaterThanOrEqual(1)
     expect(junctions.every((j) => j.net === 'GND' && j.x % 10 === 0 && j.y % 10 === 0)).toBe(true)
   })
@@ -201,5 +205,54 @@ describe('same-net wires', () => {
       ],
     )
     expect(junctions.length).toBeGreaterThanOrEqual(1)
+  })
+})
+
+describe('wire groups as trees', () => {
+  it('joins a branch to the nearest point of the trunk', () => {
+    // p runs straight from A to B; q leaves a pin lower down A for the same B pin. The
+    // shortest way to join is straight up to p's stub, not a track of its own to B.
+    const wires: WireToRoute[] = [
+      {
+        id: 'p',
+        a: { x: 200, y: 90, side: 'right' },
+        b: { x: 400, y: 90, side: 'left' },
+        net: 'V',
+      },
+      {
+        id: 'q',
+        a: { x: 200, y: 190, side: 'right' },
+        b: { x: 400, y: 90, side: 'left' },
+        net: 'V',
+      },
+    ]
+    const { routes, junctions } = route([A, B], wires)
+    const p = routes.get('p')!
+    const q = routes.get('q')!
+    expect(q[0]).toEqual({ x: 200, y: 190 })
+    expect(q.at(-1)).toEqual({ x: 400, y: 90 })
+    const extra = [...steps(q)].filter((s) => !steps(p).has(s)).length
+    expect(extra).toBe(12) // 2 for the stub, 10 up to the trunk
+    expect(junctions).toContainEqual({ x: 220, y: 90, net: 'V' })
+  })
+
+  it('draws each wire as its own path through the tree', () => {
+    // One pin on A feeding three pins on B: every wire still runs pin to pin, and the
+    // tree is drawn no longer than three separate branches off one trunk.
+    const wires: WireToRoute[] = [90, 130, 170].map((y, i) => ({
+      id: `w${i}`,
+      a: { x: 200, y: 130, side: 'right' as const },
+      b: { x: 400, y, side: 'left' as const },
+      net: 'G',
+    }))
+    const { routes } = route([A, B], wires)
+    expect(routes.size).toBe(3)
+    for (const [i, y] of [90, 130, 170].entries()) {
+      expect(routes.get(`w${i}`)![0]).toEqual({ x: 200, y: 130 })
+      expect(routes.get(`w${i}`)!.at(-1)).toEqual({ x: 400, y })
+    }
+    const all = new Set([...routes.values()].flatMap((r) => [...steps(r)]))
+    // 18 steps across, 8 up and down the far side, and three of B's stubs: the minimum.
+    expect(all.size).toBe(32)
   })
 })

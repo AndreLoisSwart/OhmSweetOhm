@@ -7,8 +7,11 @@ export const PinEventsContext = createContext<{
   tap: (key: string) => void
 }>({ hover: () => {}, tap: () => {} })
 
-/** Each wire's routed corner points, by edge id. */
-export const RoutesContext = createContext<Map<string, Point[]>>(new Map())
+/** Each wire's routed corner points, and where its label goes (labels.ts), by edge id. */
+export const RoutesContext = createContext<{
+  routes: Map<string, Point[]>
+  labels: Map<string, Point>
+}>({ routes: new Map(), labels: new Map() })
 
 /** Fit, but never past 1.25×: labels are sized to be read at 1×. The padding leaves
  * room for wires that loop round the outside of the cards. */

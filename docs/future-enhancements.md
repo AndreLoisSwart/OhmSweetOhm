@@ -404,6 +404,11 @@ Built: focus, and same-net wires sharing tracks with junction dots (pages.md, De
 - **Export the canvas** as PNG or SVG.
 - **Wire hover tooltip** with the net and both ends.
 
+To do (added 2026-11-10), still to be discussed:
+- **Wire polish:** branches now join their trunk at the nearest point (wires sharing pins are routed as a tree, 2026-11-12; pages.md, Wire routing). Labels now keep clear of each other and of cards (canvas/labels.ts). More polish as it comes up.
+- **Focus and wires leaving the selection (discussion point):** focus greys a wire running from a focused part to one that isn't. Decide whether that's the right treatment.
+- **Build order:** number the parts on the canvas in the order that's easiest to wire them up, so a busy design can be followed one part at a time (focus alone isn't enough). Nothing fancy; the idea needs working out first.
+
 ## Ideas (not decided)
 
 - **Stock status from Shelf-help:** show have/low/out next to parts, and a "ready to build" bar on designs like Shelf-help's readiness. This needs a separate read-only token on Shelf-help that reaches only a narrow stock endpoint, never its full API.

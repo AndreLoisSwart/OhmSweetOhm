@@ -37,6 +37,7 @@ import { FocusContext, focusClass, focusOf, netLevels } from './focus'
 import { HighlightContext } from './highlight'
 import { netsByPin, type PartNodeType, routeInput, turned, type WireEdgeType } from './model'
 import { PartNode } from './part-node'
+import { placeLabels } from './labels'
 import { route } from './routing'
 import { WireEdge } from './wire-edge'
 
@@ -101,9 +102,16 @@ export function DesignCanvas({
 
   // Routes from the saved positions. A card being dragged isn't saved yet, so its wires
   // fall back to plain paths until it is dropped and saved.
-  const { routes, junctions } = useMemo(() => {
+  // Labels are placed after routing, all together, so they keep clear of each other.
+  const { routing, junctions } = useMemo(() => {
     const { cards, wires } = routeInput(design)
-    return route(cards, wires)
+    const { routes, junctions } = route(cards, wires)
+    const labels = placeLabels(
+      routes,
+      design.wires.filter((w) => w.label).map((w) => ({ id: String(w.id), text: w.label })),
+      cards,
+    )
+    return { routing: { routes, labels }, junctions }
   }, [design])
 
   // Focus (focus.ts): the chosen parts and their wires; everything else greyed or faded.
@@ -259,7 +267,7 @@ export function DesignCanvas({
   return (
     <PinEventsContext.Provider value={pinEvents}>
       <FocusContext.Provider value={focus}>
-        <RoutesContext.Provider value={routes}>
+        <RoutesContext.Provider value={routing}>
           <ReactFlow
             className={cn('ohm-canvas', readOnly && 'read-only')}
             colorMode="system"

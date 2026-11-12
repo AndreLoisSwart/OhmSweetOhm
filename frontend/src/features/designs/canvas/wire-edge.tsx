@@ -13,7 +13,7 @@ import { midpoint, roundedPath, routeFor } from './routing'
  * dragged (the route no longer meets the pins) it falls back to a plain square path.
  */
 function WireEdgeComponent(props: EdgeProps<WireEdgeType>) {
-  const routes = useContext(RoutesContext)
+  const { routes, labels } = useContext(RoutesContext)
   const { sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition } = props
   const wire = props.data!.wire
   const lit = useIsLit(wire.a)
@@ -28,7 +28,7 @@ function WireEdgeComponent(props: EdgeProps<WireEdgeType>) {
   let labelAt: { x: number; y: number }
   if (route) {
     path = roundedPath(route)
-    labelAt = midpoint(route)
+    labelAt = labels.get(props.id) ?? midpoint(route)
   } else {
     const [smooth, x, y] = getSmoothStepPath({
       sourceX,
