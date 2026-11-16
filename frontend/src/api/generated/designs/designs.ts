@@ -24,6 +24,7 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  BuildOrder,
   DesignChecks,
   DesignCreate,
   DesignDetail,
@@ -1244,6 +1245,197 @@ export function useSuggestWiring<TData = Awaited<ReturnType<typeof suggestWiring
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getSuggestWiringQueryOptions(designId,params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export const getSetBuildOrderUrl = (designId: number,) => {
+
+
+
+
+  return `/api/designs/${designId}/build-order`
+}
+
+/**
+ * Sets the named parts' build steps (null: not ordered); the rest keep theirs.
+ * @summary Set Build Order
+ */
+export const setBuildOrder = async (designId: number,
+    buildOrder: BuildOrder, options?: Parameters<typeof apiFetch>[1]): Promise<DesignDetail> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<DesignDetail>(getSetBuildOrderUrl(designId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(buildOrder)
+  }
+);}
+
+
+
+
+
+export const getSetBuildOrderMutationKey = () => ['setBuildOrder'] as const;
+
+export const getSetBuildOrderMutationOptions = <TError = ErrorType<HTTPValidationError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setBuildOrder>>, TError,SetBuildOrderMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof setBuildOrder>>, TError,SetBuildOrderMutationVariables, TContext> => {
+
+const mutationKey = getSetBuildOrderMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof setBuildOrder>>, SetBuildOrderMutationVariables> = (props) => {
+          const {designId,data} = props ?? {};
+
+          return  setBuildOrder(designId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SetBuildOrderMutationResult = NonNullable<Awaited<ReturnType<typeof setBuildOrder>>>
+    export type SetBuildOrderMutationBody = BuildOrder
+    export type SetBuildOrderMutationError = ErrorType<HTTPValidationError>
+    export type SetBuildOrderMutationVariables = {designId: number;data: BuildOrder}
+
+    /**
+ * @summary Set Build Order
+ */
+export const useSetBuildOrder = <TError = ErrorType<HTTPValidationError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setBuildOrder>>, TError,SetBuildOrderMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof setBuildOrder>>,
+        TError,
+        SetBuildOrderMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSetBuildOrderMutationOptions(options), queryClient);
+    }
+    export const getSuggestBuildOrderUrl = (designId: number,) => {
+
+
+
+
+  return `/api/designs/${designId}/build-order/suggestion`
+}
+
+/**
+ * Boards first, then power, then each part with the passives that serve it.
+ * Read-only: send the order wanted to set it.
+ * @summary Suggest Build Order
+ */
+export const suggestBuildOrder = async (designId: number, options?: Parameters<typeof apiFetch>[1]): Promise<BuildOrder> => {
+
+  return apiFetch<BuildOrder>(getSuggestBuildOrderUrl(designId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getSuggestBuildOrderQueryKey = (designId: number,) => {
+    return [
+    `/api/designs/${designId}/build-order/suggestion`
+    ] as const;
+    }
+
+
+export const getSuggestBuildOrderQueryOptions = <TData = Awaited<ReturnType<typeof suggestBuildOrder>>, TError = ErrorType<HTTPValidationError>>(designId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof suggestBuildOrder>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getSuggestBuildOrderQueryKey(designId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof suggestBuildOrder>>> = ({ signal }) => suggestBuildOrder(designId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: designId !== null && designId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof suggestBuildOrder>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type SuggestBuildOrderQueryResult = NonNullable<Awaited<ReturnType<typeof suggestBuildOrder>>>
+export type SuggestBuildOrderQueryError = ErrorType<HTTPValidationError>
+
+
+export function useSuggestBuildOrder<TData = Awaited<ReturnType<typeof suggestBuildOrder>>, TError = ErrorType<HTTPValidationError>>(
+ designId: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof suggestBuildOrder>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof suggestBuildOrder>>,
+          TError,
+          Awaited<ReturnType<typeof suggestBuildOrder>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useSuggestBuildOrder<TData = Awaited<ReturnType<typeof suggestBuildOrder>>, TError = ErrorType<HTTPValidationError>>(
+ designId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof suggestBuildOrder>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof suggestBuildOrder>>,
+          TError,
+          Awaited<ReturnType<typeof suggestBuildOrder>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useSuggestBuildOrder<TData = Awaited<ReturnType<typeof suggestBuildOrder>>, TError = ErrorType<HTTPValidationError>>(
+ designId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof suggestBuildOrder>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Suggest Build Order
+ */
+
+export function useSuggestBuildOrder<TData = Awaited<ReturnType<typeof suggestBuildOrder>>, TError = ErrorType<HTTPValidationError>>(
+ designId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof suggestBuildOrder>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getSuggestBuildOrderQueryOptions(designId,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

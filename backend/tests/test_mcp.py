@@ -88,6 +88,8 @@ def test_tool_list(mcp):
         "compare_pin_map",
         "get_wokwi_export",
         "suggest_wiring",
+        "set_build_order",
+        "suggest_build_order",
         "list_revisions",
         "restore_revision",
         "list_layouts",

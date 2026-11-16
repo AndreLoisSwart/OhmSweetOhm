@@ -33,6 +33,8 @@ import { type DesignActions, quietly } from '../use-design-actions'
 import { FIT, PART_DRAG_TYPE, PHONE_FIT, PinEventsContext, RoutesContext } from './context'
 import { Focus as FocusIcon, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { BuildOrderBar } from '../build-order-bar'
+import type { BuildOrder } from '../use-build-order'
 import { FocusContext, focusClass, focusOf, netLevels } from './focus'
 import { HighlightContext } from './highlight'
 import { netsByPin, type PartNodeType, routeInput, turned, type WireEdgeType } from './model'
@@ -52,6 +54,8 @@ type Props = {
   onEdgesChange: OnEdgesChange<WireEdgeType>
   actions: DesignActions
   readOnly: boolean
+  /** The build order view (build-order-bar.tsx). */
+  build: BuildOrder
   /** Overlays on the canvas (the library button, an empty-design hint). */
   children?: ReactNode
 }
@@ -64,6 +68,7 @@ export function DesignCanvas({
   onEdgesChange,
   actions,
   readOnly,
+  build,
   children,
 }: Props) {
   const store = useContext(HighlightContext)
@@ -117,6 +122,14 @@ export function DesignCanvas({
   // Focus (focus.ts): the chosen parts and their wires; everything else greyed or faded.
   const [focusIds, setFocusIds] = useState<string[] | null>(null)
   const focus = useMemo(() => (focusIds ? focusOf(design, focusIds) : null), [design, focusIds])
+  // The build order's step, while it's open, in place of focus.
+  const shading = build.open ? build.shading : focus
+  // Opening the build order ends any focus.
+  const [buildWasOpen, setBuildWasOpen] = useState(build.open)
+  if (build.open !== buildWasOpen) {
+    setBuildWasOpen(build.open)
+    if (build.open) setFocusIds(null)
+  }
   const selectedIds = nodes.filter((n) => n.selected).map((n) => n.id)
   const focusSelection = useCallback(() => {
     if (selectedIds.length) setFocusIds(selectedIds)
@@ -133,8 +146,8 @@ export function DesignCanvas({
       const net = nets.get(wire.a)?.name
       if (net && !color.has(net)) color.set(net, wire.color)
     }
-    return { color, level: netLevels(focus, design, (key) => nets.get(key)?.name) }
-  }, [design, nets, focus])
+    return { color, level: netLevels(shading, design, (key) => nets.get(key)?.name) }
+  }, [design, nets, shading])
 
   const endOf = useCallback(
     (nodeId: string, handle: string | null | undefined) => {
@@ -206,6 +219,23 @@ export function DesignCanvas({
     [actions],
   )
 
+  // Build order keys, on a phone too: B opens and closes it; arrows step; Esc closes.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.target as HTMLElement).closest('input, textarea, select, [contenteditable=true]'))
+        return
+      if (e.ctrlKey || e.metaKey || e.altKey) return
+      const key = e.key.toLowerCase()
+      if (key === 'b') build.toggle()
+      else if (!build.open) return
+      else if (key === 'escape') build.close()
+      else if (key === 'arrowleft' && !build.numbering) build.prev()
+      else if (key === 'arrowright' && !build.numbering) build.next()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [build])
+
   // Keys: undo and redo, and R to rotate.
   useEffect(() => {
     if (readOnly) return
@@ -214,7 +244,8 @@ export function DesignCanvas({
         return
       const mod = e.ctrlKey || e.metaKey
       const key = e.key.toLowerCase()
-      // F focuses the selected parts (or ends focus); Esc ends it.
+      // F focuses the selected parts (or ends focus); Esc ends it. Not in build order.
+      if (build.open && (key === 'f' || key === 'escape')) return
       if (key === 'escape' && focusIds) {
         setFocusIds(null)
         return
@@ -246,7 +277,7 @@ export function DesignCanvas({
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [readOnly, nodes, actions, focusIds, focusSelection])
+  }, [readOnly, nodes, actions, focusIds, focusSelection, build.open])
 
   const onDragOver = (e: DragEvent) => {
     if (!e.dataTransfer.types.includes(PART_DRAG_TYPE)) return
@@ -266,7 +297,7 @@ export function DesignCanvas({
 
   return (
     <PinEventsContext.Provider value={pinEvents}>
-      <FocusContext.Provider value={focus}>
+      <FocusContext.Provider value={shading}>
         <RoutesContext.Provider value={routing}>
           <ReactFlow
             className={cn('ohm-canvas', readOnly && 'read-only')}
@@ -302,6 +333,10 @@ export function DesignCanvas({
             }}
             // While focusing, Ctrl/Cmd-click adds a part to the focus or takes it out.
             onNodeClick={(e, node) => {
+              if (build.numbering) {
+                build.numberPart(node.id, e.shiftKey)
+                return
+              }
               if (!focusIds || !(e.ctrlKey || e.metaKey)) return
               setFocusIds((ids) =>
                 ids?.includes(node.id)
@@ -329,7 +364,9 @@ export function DesignCanvas({
               ))}
             </ViewportPortal>
             <Panel position="top-center">
-              {focus ? (
+              {build.open ? (
+                <BuildOrderBar build={build} readOnly={readOnly} />
+              ) : focus ? (
                 <div className="flex items-center gap-2 rounded-full border bg-card py-1 pr-1 pl-3 text-xs shadow-sm">
                   <FocusIcon className="size-3.5 text-primary" />
                   <span>

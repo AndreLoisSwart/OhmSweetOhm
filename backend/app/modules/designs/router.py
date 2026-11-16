@@ -7,6 +7,7 @@ from app.modules.checks.schemas import DesignChecks
 from app.modules.checks.service import run_checks
 from app.modules.designs import revisions, service
 from app.modules.designs.schemas import (
+    BuildOrder,
     DesignCreate,
     DesignDetail,
     DesignSummary,
@@ -105,6 +106,19 @@ def suggest_wiring(
     them: shared buses, a matching supply, GPIOs away from flash, strapping and
     input-only pins. Read-only: send the ones wanted to add wires."""
     return service.suggest_wiring(service.get_design(session, design_id), ref, board)
+
+
+@router.put("/{design_id}/build-order")
+def set_build_order(design_id: int, data: BuildOrder, session: SessionDep) -> DesignDetail:
+    """Sets the named parts' build steps (null: not ordered); the rest keep theirs."""
+    return service.detail(service.set_build_order(session, design_id, data))
+
+
+@router.get("/{design_id}/build-order/suggestion")
+def suggest_build_order(design_id: int, session: SessionDep) -> BuildOrder:
+    """Boards first, then power, then each part with the passives that serve it.
+    Read-only: send the order wanted to set it."""
+    return service.suggest_build_order(service.get_design(session, design_id))
 
 
 @router.put("/{design_id}/layout")

@@ -8,16 +8,18 @@ from app.core.errors import ConflictError, NotFoundError
 from app.modules.attachments import storage
 from app.modules.attachments.models import Attachment
 from app.modules.checks.service import run_checks
-from app.modules.designs import revisions, suggest
+from app.modules.designs import build_order, revisions, suggest
 from app.modules.designs.models import Design, Placement, Wire, WireColor
 from app.modules.designs.nets import compute_nets
 from app.modules.designs.schemas import (
+    BuildOrder,
     CanvasPart,
     DesignCreate,
     DesignDetail,
     DesignSummary,
     DesignUpdate,
     NetOut,
+    PartStep,
     PlacementIn,
     PlacementOut,
     PlacementUpdate,
@@ -218,6 +220,7 @@ def add_placements(
             y=_snap(item.y) if item.y is not None else 0,
             rotation=item.rotation,
             note=item.note,
+            build_step=item.build_step,
         )
         design.placements.append(placement)
     _touch(design)
@@ -270,6 +273,36 @@ def remove_placement(
     _touch(design)
     session.commit()
     return design
+
+
+# Build order
+
+
+def set_build_order(
+    session: Session, design_id: int, data: BuildOrder, claude: str | None = None
+) -> Design:
+    """Sets the named parts' build steps; the rest keep theirs. All or none."""
+    design = get_design(session, design_id)
+    by_ref = {p.ref: p for p in design.placements}
+    missing = [item.ref for item in data.steps if item.ref not in by_ref]
+    if missing:
+        raise NotFoundError(f"No part {', '.join(repr(r) for r in missing)} in this design")
+    revisions.before_change(session, design, claude)
+    for item in data.steps:
+        by_ref[item.ref].build_step = item.step
+    _touch(design)
+    session.commit()
+    return design
+
+
+def suggest_build_order(design: Design) -> BuildOrder:
+    """Every part's suggested step (docs/data-model.md). Nothing is saved."""
+    steps = build_order.suggest(design)
+    return BuildOrder(
+        steps=[
+            PartStep(ref=ref, step=step) for ref, step in sorted(steps.items(), key=lambda s: s[1])
+        ]
+    )
 
 
 # Wires

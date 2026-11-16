@@ -50,6 +50,16 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   )
 }
 
+/** A build step: blank for not ordered, else a whole number from 1 to 999. */
+function parseBuildStep(text: string): { value: number | null } | { error: string } {
+  const trimmed = text.trim()
+  if (!trimmed) return { value: null }
+  const step = Number(trimmed)
+  return Number.isInteger(step) && step >= 1 && step <= 999
+    ? { value: step }
+    : { error: 'A build step is a whole number from 1 to 999, or blank' }
+}
+
 /** A `ref.PIN` that highlights its net when tapped. */
 function PinButton({ pin, net }: { pin: string; net?: NetOut }) {
   const store = useContext(HighlightContext)
@@ -184,6 +194,23 @@ function PartInspector({
         </>
       )}
       <OnBoards designId={design.id} placementId={placement.id} />
+      <Section title="Build step">
+        {readOnly ? (
+          <p className="text-sm">{placement.build_step ?? 'Not ordered'}</p>
+        ) : (
+          <CommitInput
+            value={placement.build_step ?? null}
+            format={(step) => (step === null ? '' : String(step))}
+            parse={parseBuildStep}
+            onSave={(build_step) => save({ build_step })}
+            inputMode="numeric"
+            placeholder="Not ordered"
+            aria-label="Build step"
+            title="Parts sharing a number are one step"
+            className="w-28"
+          />
+        )}
+      </Section>
       <Section title="Note">
         {readOnly ? (
           <p className="text-sm whitespace-pre-wrap">{placement.note || '—'}</p>

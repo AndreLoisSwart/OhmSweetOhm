@@ -14,4 +14,5 @@ export interface PlacementOut {
   y: number;
   rotation: PlacementOutRotation;
   note: string;
+  build_step: number | null;
 }

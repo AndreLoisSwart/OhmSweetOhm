@@ -12,4 +12,5 @@ export interface PlacementUpdate {
   y?: number | null;
   rotation?: PlacementUpdateRotation;
   note?: string | null;
+  build_step?: number | null;
 }

@@ -21,6 +21,8 @@ Rotation = Literal[0, 90, 180, 270]
 # A pin on the canvas, `ref.PIN`, e.g. `esp.GPIO21`.
 PinRef = Annotated[str, StringConstraints(strip_whitespace=True, pattern=r"^[^.\s]+\.[^.\s]+$")]
 Coordinate = Annotated[int, Field(ge=-100_000, le=100_000)]
+# Build order: parts sharing a number are one step (docs/data-model.md).
+BuildStep = Annotated[int, Field(ge=1, le=999)]
 
 
 class CanvasPart(BaseModel):
@@ -46,6 +48,7 @@ class PlacementOut(BaseModel):
     y: int
     rotation: Rotation
     note: str
+    build_step: int | None
 
 
 class WireOut(BaseModel):
@@ -143,6 +146,7 @@ class PlacementIn(BaseModel):
     y: Coordinate | None = None
     rotation: Rotation = 0
     note: str = ""
+    build_step: BuildStep | None = None
 
 
 class PlacementsAdd(BaseModel):
@@ -155,6 +159,8 @@ class PlacementUpdate(BaseModel):
     y: Coordinate | None = None
     rotation: Rotation | None = None
     note: str | None = None
+    # null takes the part out of the build order.
+    build_step: BuildStep | None = None
 
     _not_null = field_validator("ref", "x", "y", "rotation", "note")(reject_null)
 
@@ -188,6 +194,7 @@ class PlacementSnapshot(BaseModel):
     y: Coordinate
     rotation: Rotation = 0
     note: str = ""
+    build_step: BuildStep | None = None
 
 
 class WireSnapshot(BaseModel):
@@ -205,6 +212,19 @@ class Snapshot(BaseModel):
 
     placements: Annotated[list[PlacementSnapshot], Field(max_length=500)]
     wires: Annotated[list[WireSnapshot], Field(max_length=2000)]
+
+
+class PartStep(BaseModel):
+    ref: Ref
+    # null: not ordered.
+    step: BuildStep | None
+
+
+class BuildOrder(BaseModel):
+    """Build steps by ref. Sent to set them, the parts named change and the rest keep
+    theirs; as a suggestion, every part is named."""
+
+    steps: Annotated[list[PartStep], Field(max_length=500)]
 
 
 class RevisionOut(BaseModel):

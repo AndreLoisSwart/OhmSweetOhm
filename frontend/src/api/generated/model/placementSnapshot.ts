@@ -22,4 +22,5 @@ export interface PlacementSnapshot {
   y: number;
   rotation?: PlacementSnapshotRotation;
   note?: string;
+  build_step?: number | null;
 }

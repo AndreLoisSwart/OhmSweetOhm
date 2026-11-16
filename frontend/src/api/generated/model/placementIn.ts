@@ -13,4 +13,5 @@ export interface PlacementIn {
   y?: number | null;
   rotation?: PlacementInRotation;
   note?: string;
+  build_step?: number | null;
 }

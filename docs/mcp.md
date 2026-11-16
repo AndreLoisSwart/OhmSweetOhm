@@ -35,12 +35,14 @@ These are the same as Shelf-help's:
 | Tool | What it does |
 |---|---|
 | `list_designs(query?)` | Designs with part count, Shelf-help project id and last change |
-| `get_design(design_id)` | Placements (ref, part, position), wires (`esp.GPIO21 → bme.SDA`, colour) and computed nets. Readable as a netlist |
+| `get_design(design_id)` | Placements (ref, part, position, build step), wires (`esp.GPIO21 → bme.SDA`, colour) and computed nets. Readable as a netlist |
 | `create_design(name, description_md?, shelf_project_id?, firmware_repo?, tag_ids?)` | A new, empty design |
 | `update_design(design_id, name?, shelf_project_id?, firmware_repo?, tag_ids?)` | Rename, link to Shelf-help or the firmware repo (step 13; an empty string clears it), or set tags |
 | `append_design_description(design_id, text)` | Add to the description |
 | `add_parts(design_id, parts: [{part_id, ref?, x?, y?, rotation?, note?}])` | Place one or more parts. Without a ref one is made from the part's name; without a position the part goes to the right of the others |
-| `update_placement(design_id, ref, new_ref?, x?, y?, rotation?, note?)` | Move, rename or annotate |
+| `update_placement(design_id, ref, new_ref?, x?, y?, rotation?, note?, build_step?)` | Move, rename, annotate or give a build step |
+| `set_build_order(design_id, steps: {ref: step})` | Set several parts' build steps at once (one revision). Parts sharing a number are one step; 0 takes a part out of the order. Parts not named keep theirs |
+| `suggest_build_order(design_id)` | A proposed build order, `{steps: {ref: step}}` (rules in data-model.md). Read-only: Claude shows it and sets the agreed order with `set_build_order` |
 | `remove_placement(design_id, ref)` | Remove a part and its wires (revision saved first) |
 | `connect(design_id, wires: [{a: "esp.GPIO21", b: "bme.SDA", color?, label?}])` | Add one or more wires |
 | `update_wire(design_id, a, b, color?, label?)` | Change a wire's colour or label |

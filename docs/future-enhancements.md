@@ -407,7 +407,7 @@ Built: focus, and same-net wires sharing tracks with junction dots (pages.md, De
 To do (added 2026-11-10), still to be discussed:
 - **Wire polish:** branches now join their trunk at the nearest point (wires sharing pins are routed as a tree, 2026-11-12; pages.md, Wire routing). Labels now keep clear of each other and of cards (canvas/labels.ts). More polish as it comes up.
 - **Focus and wires leaving the selection (discussion point):** focus greys a wire running from a focused part to one that isn't. Decide whether that's the right treatment.
-- **Build order:** number the parts on the canvas in the order that's easiest to wire them up, so a busy design can be followed one part at a time (focus alone isn't enough). Nothing fancy; the idea needs working out first.
+- **Build order (built 2026-11-16):** number the parts in the order that's easiest to wire them up, then step through the design one step at a time. Decided: parts that depend on each other share a number (a display and its capacitor); later steps are hidden by default, with a switch to ghost them instead; the protoboard build sheet lists parts in build order too. See data-model.md (Build order), pages.md (Design page, Build order) and mcp.md.
 
 ## Ideas (not decided)
 

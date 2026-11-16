@@ -8,6 +8,7 @@ import {
   useRemovePlacement,
   useRemoveWire,
   useRestoreRevision,
+  useSetBuildOrder,
   useUpdateDesign,
   useUpdatePlacement,
   useUpdateWire,
@@ -15,6 +16,7 @@ import {
 import type {
   DesignDetail,
   DesignUpdate,
+  PartStep,
   PlacementIn,
   PlacementUpdate,
   Snapshot,
@@ -57,6 +59,7 @@ export function useDesignActions(designId: number) {
   const removeWire = useRemoveWire(options)
   const applyLayout = useApplyLayout(options)
   const restoreRevision = useRestoreRevision(options)
+  const setBuildOrder = useSetBuildOrder(options)
 
   const stacks = useRef<{ undo: Snapshot[]; redo: Snapshot[] }>({ undo: [], redo: [] })
   // The stacks' sizes, as state, so the Undo and Redo buttons re-render.
@@ -99,6 +102,8 @@ export function useDesignActions(designId: number) {
       updateWire: (wireId: number, data: WireUpdate) =>
         updateWire.mutateAsync({ designId, wireId, data }),
       removeWire: (wireId: number) => removeWire.mutateAsync({ designId, wireId }),
+      setBuildOrder: (steps: PartStep[]) =>
+        setBuildOrder.mutateAsync({ designId, data: { steps } }),
     }
     type Raw = typeof raw
 
@@ -113,6 +118,9 @@ export function useDesignActions(designId: number) {
       connect: (...args: Parameters<Raw['connect']>) => step(() => raw.connect(...args)),
       updateWire: (...args: Parameters<Raw['updateWire']>) => step(() => raw.updateWire(...args)),
       removeWire: (...args: Parameters<Raw['removeWire']>) => step(() => raw.removeWire(...args)),
+      /** Build steps by ref (null: not ordered); parts not named keep theirs. */
+      setBuildOrder: (...args: Parameters<Raw['setBuildOrder']>) =>
+        step(() => raw.setBuildOrder(...args)),
       /** Several changes as one undo step, e.g. deleting a selection. */
       together: (run: (actions: Raw) => Promise<unknown>) => step(() => run(raw)),
       restore: (revisionId: number) =>

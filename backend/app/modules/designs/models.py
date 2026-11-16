@@ -100,6 +100,8 @@ class Placement(Base):
     # Degrees clockwise, as Wokwi's `rotate`.
     rotation: Mapped[int] = mapped_column(default=0)
     note: Mapped[str] = mapped_column(Text, default="")
+    # Build order: parts sharing a number are one step; null is not ordered.
+    build_step: Mapped[int | None]
 
     design: Mapped[Design] = relationship(back_populates="placements")
     part: Mapped[Part] = relationship(lazy="selectin")

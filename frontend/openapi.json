@@ -1238,6 +1238,102 @@
         }
       }
     },
+    "/api/designs/{design_id}/build-order": {
+      "put": {
+        "tags": [
+          "designs"
+        ],
+        "summary": "Set Build Order",
+        "description": "Sets the named parts' build steps (null: not ordered); the rest keep theirs.",
+        "operationId": "set_build_order",
+        "parameters": [
+          {
+            "name": "design_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Design Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BuildOrder"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DesignDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/designs/{design_id}/build-order/suggestion": {
+      "get": {
+        "tags": [
+          "designs"
+        ],
+        "summary": "Suggest Build Order",
+        "description": "Boards first, then power, then each part with the passives that serve it.\nRead-only: send the order wanted to set it.",
+        "operationId": "suggest_build_order",
+        "parameters": [
+          {
+            "name": "design_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Design Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildOrder"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/designs/{design_id}/layout": {
       "put": {
         "tags": [
@@ -3262,6 +3358,24 @@
           "file"
         ],
         "title": "Body_upload_attachment"
+      },
+      "BuildOrder": {
+        "properties": {
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/PartStep"
+            },
+            "type": "array",
+            "maxItems": 500,
+            "title": "Steps"
+          }
+        },
+        "type": "object",
+        "required": [
+          "steps"
+        ],
+        "title": "BuildOrder",
+        "description": "Build steps by ref. Sent to set them, the parts named change and the rest keep\ntheirs; as a suggestion, every part is named."
       },
       "BuildSheetOut": {
         "properties": {
@@ -6048,6 +6162,34 @@
         ],
         "title": "PartSnapshot"
       },
+      "PartStep": {
+        "properties": {
+          "ref": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_]{0,19}$",
+            "title": "Ref"
+          },
+          "step": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 999.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Step"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ref",
+          "step"
+        ],
+        "title": "PartStep"
+      },
       "PartSummary": {
         "properties": {
           "id": {
@@ -6861,6 +7003,19 @@
             "type": "string",
             "title": "Note",
             "default": ""
+          },
+          "build_step": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 999.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Build Step"
           }
         },
         "type": "object",
@@ -6904,6 +7059,17 @@
           "note": {
             "type": "string",
             "title": "Note"
+          },
+          "build_step": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Build Step"
           }
         },
         "type": "object",
@@ -6914,7 +7080,8 @@
           "x",
           "y",
           "rotation",
-          "note"
+          "note",
+          "build_step"
         ],
         "title": "PlacementOut"
       },
@@ -6956,6 +7123,19 @@
             "type": "string",
             "title": "Note",
             "default": ""
+          },
+          "build_step": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 999.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Build Step"
           }
         },
         "type": "object",
@@ -7034,6 +7214,19 @@
               }
             ],
             "title": "Note"
+          },
+          "build_step": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 999.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Build Step"
           }
         },
         "type": "object",
@@ -7337,6 +7530,17 @@
           "on_board": {
             "type": "boolean",
             "title": "On Board"
+          },
+          "step": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Step"
           }
         },
         "type": "object",
@@ -7346,7 +7550,8 @@
           "at",
           "rotation",
           "mount",
-          "on_board"
+          "on_board",
+          "step"
         ],
         "title": "SheetPartOut"
       },

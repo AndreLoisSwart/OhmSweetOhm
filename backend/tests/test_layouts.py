@@ -230,6 +230,7 @@ def test_a_real_layout_from_shorts_to_clean(api, library):
         "rotation": 0,
         "mount": "soldered",
         "on_board": False,
+        "step": None,
     }
     con = sheet["connectors"][0]
     assert con["serves"] == ["bme"] and con["straight"] is True

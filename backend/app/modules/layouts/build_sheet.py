@@ -54,6 +54,8 @@ class SheetPart:
     rotation: int
     mount: str
     on_board: bool
+    # The design's build step (null: not ordered).
+    step: int | None = None
 
 
 @dataclass
@@ -142,9 +144,20 @@ def build(layout: Layout) -> Sheet:
             rotation=lp.rotation,
             mount=lp.mount.value,
             on_board=lp.on_board,
+            step=lp.placement.build_step,
         )
-        for lp in sorted(layout.parts, key=lambda p: (not p.on_board, p.placement.ref))
+        # In the design's build order, unordered parts last.
+        for lp in sorted(
+            layout.parts,
+            key=lambda p: (
+                p.placement.build_step is None,
+                p.placement.build_step or 0,
+                not p.on_board,
+                p.placement.ref,
+            ),
+        )
     ]
+    ordered = any(p.step is not None for p in parts)
 
     connectors = []
     for c in layout.connectors:
@@ -213,7 +226,10 @@ def build(layout: Layout) -> Sheet:
         steps.append("Solder the female headers for the socketed modules")
     if connectors:
         steps.append("Solder the connectors, pin 1 where marked")
-    steps.append("Check for solder bridges between strips, then plug in the modules")
+    steps.append(
+        "Check for solder bridges between strips, then plug in the modules"
+        + (" step by step in build order, testing each step" if ordered else "")
+    )
 
     errors = sum(1 for r in checked.results if r.severity.value == "error")
     warnings = [r.message for r in checked.results if r.severity.value == "error"][:5]
@@ -257,9 +273,11 @@ def as_text(sheet: Sheet) -> str:
             for j in sheet.jumpers
         ]
         out.append("")
-    out += ["## Parts"]
+    out += ["## Parts (in build order)" if any(p.step for p in sheet.parts) else "## Parts"]
     out += [
-        f"- [ ] {p.ref} ({p.part}): "
+        "- [ ] "
+        + (f"Step {p.step}: " if p.step is not None else "")
+        + f"{p.ref} ({p.part}): "
         + (f"pin 1 at {p.at}, turned {p.rotation}°, {p.mount}" if p.on_board else "off the board")
         for p in sheet.parts
     ]

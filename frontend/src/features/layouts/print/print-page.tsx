@@ -192,6 +192,7 @@ export function PrintPage() {
               {s.parts.map((p) => (
                 <li key={p.ref}>
                   <Tick />
+                  {p.step != null && <span className="font-semibold">Step {p.step}: </span>}
                   <span className="font-mono font-bold">{p.ref}</span> {p.part}:{' '}
                   {p.on_board
                     ? `pin 1 at ${p.at}, turned ${p.rotation}°, ${p.mount}`

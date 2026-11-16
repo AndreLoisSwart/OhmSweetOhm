@@ -396,6 +396,8 @@ class SheetPartOut(BaseModel):
     rotation: int
     mount: str
     on_board: bool
+    # The design's build step (null: not ordered); parts come in build order.
+    step: int | None
 
 
 class SheetConnectorOut(BaseModel):

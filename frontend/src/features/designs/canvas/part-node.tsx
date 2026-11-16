@@ -46,14 +46,26 @@ function PartNodeComponent({ id, data, selected }: NodeProps<PartNodeType>) {
       selected={selected}
       lit={lit}
       badge={
-        boards.length > 0 && (
-          <CircuitBoard className="size-3 text-muted-foreground" aria-label="On a board layout">
-            <title>
-              {boards
-                .map((b) => `${b.layout}: ${b.at ? `first pin at ${b.at}` : 'off the board'}`)
-                .join('\n')}
-            </title>
-          </CircuitBoard>
+        (boards.length > 0 || placement.build_step != null) && (
+          <div className="flex items-center gap-1">
+            {boards.length > 0 && (
+              <CircuitBoard className="size-3 text-muted-foreground" aria-label="On a board layout">
+                <title>
+                  {boards
+                    .map((b) => `${b.layout}: ${b.at ? `first pin at ${b.at}` : 'off the board'}`)
+                    .join('\n')}
+                </title>
+              </CircuitBoard>
+            )}
+            {placement.build_step != null && (
+              <span
+                className="rounded-full bg-primary px-1.5 text-[10px] leading-4 font-semibold text-primary-foreground tabular-nums"
+                title={`Build step ${placement.build_step}`}
+              >
+                {placement.build_step}
+              </span>
+            )}
+          </div>
         )
       }
       // Unverified parts get a dashed edge, a hint to check their pinout.

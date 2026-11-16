@@ -31,7 +31,13 @@ def snapshot_of(design: Design) -> Snapshot:
     return Snapshot(
         placements=[
             PlacementSnapshot(
-                ref=p.ref, part_id=p.part_id, x=p.x, y=p.y, rotation=p.rotation, note=p.note
+                ref=p.ref,
+                part_id=p.part_id,
+                x=p.x,
+                y=p.y,
+                rotation=p.rotation,
+                note=p.note,
+                build_step=p.build_step,
             )
             for p in design.placements
         ],
@@ -111,6 +117,7 @@ def apply_snapshot(session: Session, design: Design, snapshot: Snapshot) -> None
             by_ref[ref] = placement
         placement.x, placement.y = item.x, item.y
         placement.rotation, placement.note = item.rotation, item.note
+        placement.build_step = item.build_step
     session.flush()
 
     joined: set[frozenset] = set()

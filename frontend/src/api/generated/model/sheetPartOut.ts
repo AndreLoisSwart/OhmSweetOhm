@@ -12,4 +12,5 @@ export interface SheetPartOut {
   rotation: number;
   mount: string;
   on_board: boolean;
+  step: number | null;
 }

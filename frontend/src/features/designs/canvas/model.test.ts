@@ -43,8 +43,8 @@ const design: DesignDetail = {
   description_md: '',
   parts: [canvasPart(1, ESP32_DEVKIT_V1), canvasPart(2, BME280)],
   placements: [
-    { id: 10, ref: 'esp', part_id: 1, x: 0, y: 0, rotation: 0, note: '' },
-    { id: 11, ref: 'bme', part_id: 2, x: 360, y: 60, rotation: 0, note: '' },
+    { id: 10, ref: 'esp', part_id: 1, x: 0, y: 0, rotation: 0, note: '', build_step: null },
+    { id: 11, ref: 'bme', part_id: 2, x: 360, y: 60, rotation: 0, note: '', build_step: null },
   ],
   wires: [
     {
@@ -122,6 +122,7 @@ describe('snapshotOf', () => {
       y: 60,
       rotation: 0,
       note: '',
+      build_step: null,
     })
     expect(snap.wires[0]).toMatchObject({ a: 'esp.GPIO21', b: 'bme.SDA', color: 'blue' })
   })

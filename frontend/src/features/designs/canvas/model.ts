@@ -134,13 +134,14 @@ export function freeSpot(
 /** The design's placements and wires, as undo sends them back (PUT /layout). */
 export function snapshotOf(design: DesignDetail): Snapshot {
   return {
-    placements: design.placements.map(({ ref, part_id, x, y, rotation, note }) => ({
+    placements: design.placements.map(({ ref, part_id, x, y, rotation, note, build_step }) => ({
       ref,
       part_id,
       x,
       y,
       rotation,
       note,
+      build_step,
     })),
     wires: design.wires.map(({ a, b, a_pin_id, b_pin_id, color, label }) => ({
       a,

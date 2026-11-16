@@ -28,7 +28,8 @@ Design       id, name, description_md,
              created_at, updated_at
 
 Placement    id, design_id → Design, part_id → Part,
-             ref (unique within the design), x, y, rotation, note
+             ref (unique within the design), x, y, rotation, note,
+             build_step (nullable, 1–999)
 
 Wire         id, design_id → Design,
              a_placement_id, a_pin_id, b_placement_id, b_pin_id,
@@ -93,6 +94,8 @@ Attachment   id, original_filename, mime_type, size, stored_path, created_at,
 - **Positions when Claude adds a part:** a placement added without a position goes to the right of the existing parts, on the grid. Positions are snapped to the grid on save.
 - **Automatic refs:** a placement added without a ref gets the first letters of its part's name (`bme` from "BME280 breakout", `esp` from "ESP32 DevKit"), then `bme2`, `bme3`. Refs are stored in lower case.
 - **Wire ends in the API** are `ref.PIN`; pin names match ignoring case.
+- **Build order** (2026-11-16): `build_step` numbers the parts in the order they're built and wired. Parts sharing a number are one step (a display and the capacitor it needs). Numbers may have gaps and are shown as stored; stepping goes through the numbers in use. A part with no number is "not ordered": once any part is ordered, those parts form one last step. A wire isn't numbered: it belongs to the later of its two parts' steps, so each step shows exactly the wires to add then. Revisions and undo carry `build_step`; the Wokwi export ignores it.
+- **Suggested build order** (`designs/build_order.py`): boards first (step 1), then power parts (one step), then each other part in its own step, top to bottom and left to right on the canvas, wired parts before unwired ones. A passive part (kind `passive`) joins the step of the non-board, non-passive part it has the most wires to (ties: the lower ref); with none, it gets its own step. Steps are numbered 1, 2, 3…, and nothing is saved until the order is set.
 
 **Revisions**
 - **Changes from Claude:** before each MCP tool call that changes a design, the server saves a revision (`author = claude`) with a one-line summary, e.g. "Removed led1 and its 2 wires".

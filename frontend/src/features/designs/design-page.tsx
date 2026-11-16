@@ -9,6 +9,7 @@ import {
   Play,
   Info,
   Library,
+  ListOrdered,
   Lock,
   MoreHorizontal,
   Redo2,
@@ -37,6 +38,7 @@ import {
 import { plural } from '@/lib/format'
 import { PHONE_QUERY, useMediaQuery } from '@/lib/use-media-query'
 import { ViewSwitcher } from '@/features/layouts/view-switcher'
+import { useBuildOrder } from './use-build-order'
 import { BoardsContext, type OnBoard } from './canvas/context'
 import { DesignCanvas } from './canvas/design-canvas'
 import { ChecksBar } from './checks-bar'
@@ -63,15 +65,18 @@ function DesignEditor({ design }: { design: DesignDetail }) {
   const [filesOpen, setFilesOpen] = useState<FirmwareFilesKind | null>(null)
   const [checksOpen, setChecksOpen] = useState(false)
   const changedBy = useOutsideChanges(design, actions)
+  // While stepping through the build order, later steps can be left out of the canvas.
+  const build = useBuildOrder(design, actions)
+  const shown = build.shown
 
   // React Flow keeps its own copy (positions while dragging, selection); it is rebuilt
   // from every answer the server gives.
   const [nodes, setNodes, onNodesChange] = useNodesState<PartNodeType>([])
   const [edges, setEdges, onEdgesChange] = useEdgesState<WireEdgeType>([])
   useEffect(() => {
-    setNodes((previous) => buildNodes(design, previous))
-    setEdges((previous) => buildEdges(design, previous))
-  }, [design, setNodes, setEdges])
+    setNodes((previous) => buildNodes(shown, previous))
+    setEdges((previous) => buildEdges(shown, previous))
+  }, [shown, setNodes, setEdges])
 
   // Where each part is on the design's board layouts: a badge on its card.
   const { data: layouts } = useListLayouts(design.id)
@@ -158,6 +163,17 @@ function DesignEditor({ design }: { design: DesignDetail }) {
                 Read-only
               </span>
             )}
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Build order"
+              title="Build order (B)"
+              aria-pressed={build.open}
+              className={build.open ? 'bg-muted' : undefined}
+              onClick={build.toggle}
+            >
+              <ListOrdered />
+            </Button>
             {!readOnly && (
               <>
                 <Button
@@ -275,13 +291,14 @@ function DesignEditor({ design }: { design: DesignDetail }) {
             <div className="flex min-w-0 flex-1 flex-col">
               <div className="relative min-h-0 flex-1">
                 <DesignCanvas
-                  design={design}
+                  design={shown}
                   nodes={nodes}
                   edges={edges}
                   onNodesChange={onNodesChange}
                   onEdgesChange={onEdgesChange}
                   actions={actions}
                   readOnly={readOnly}
+                  build={build}
                 />
                 {design.placements.length === 0 && (
                   <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-6">

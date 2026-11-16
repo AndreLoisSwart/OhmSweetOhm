@@ -29,10 +29,12 @@ from app.modules.designs import revisions as revisions_service
 from app.modules.designs import service as designs
 from app.modules.designs.models import Design, WireColor
 from app.modules.designs.schemas import (
+    BuildOrder,
     DesignCreate,
     DesignSummary,
     DesignUpdate,
     NetOut,
+    PartStep,
     PinRef,
     PlacementIn,
     PlacementUpdate,
@@ -101,6 +103,9 @@ designs carry Shelf-help ids (shelf_item_id, shelf_project_id).
   part (update_part libraries) so the next design gets it too.
 - Adding a part to a design: place it, run suggest_wiring for it, show the user the
   proposed wires (with any warnings), then connect the ones they agree to.
+- Build order (build_step) numbers the parts in the order to build and wire them; parts
+  sharing a number are one step. To order a design, start from suggest_build_order,
+  agree it with the user, then set_build_order.
 - To simulate a design, use get_wokwi_export: save diagram.json and wokwi.toml next to
   platformio.ini. A part with no wokwi_type is left out; if Wokwi has that part, set
   wokwi_type (and wokwi_name on pins Wokwi names differently) with update_part.
@@ -162,6 +167,8 @@ class PlacedPart(BaseModel):
     y: int
     rotation: int
     note: str
+    # Build order: parts sharing a number are one step; null is not ordered.
+    build_step: int | None
 
 
 class WireView(BaseModel):
@@ -256,6 +263,7 @@ def _view(design: Design) -> DesignView:
                 y=p.y,
                 rotation=p.rotation,
                 note=p.note,
+                build_step=p.build_step,
             )
             for p in detail.placements
         ],
@@ -299,12 +307,19 @@ def _set(**fields) -> dict:
 
 
 def _placement_summary(
-    ref: str, new_ref: str | None, moved: bool, rotated: bool, noted: bool
+    ref: str,
+    new_ref: str | None,
+    moved: bool,
+    rotated: bool,
+    noted: bool,
+    stepped: bool = False,
 ) -> str:
     """e.g. "Moved and rotated esp", "Renamed bme to sensor", "Moved bme (now sensor)"."""
     verbs = [v for v, done in (("moved", moved), ("rotated", rotated)) if done]
     if noted:
         verbs.append("changed the note of")
+    if stepped:
+        verbs.append("set the build step of")
     if not verbs:
         return f"Renamed {ref} to {new_ref}" if new_ref else f"Changed {ref}"
     text = " and ".join([", ".join(verbs[:-1]), verbs[-1]] if len(verbs) > 1 else verbs)
@@ -615,8 +630,11 @@ def build_server(open_session: SessionOpener) -> MCPServer:
         y: int | None = None,
         rotation: Rotation | None = None,
         note: str | None = None,
+        build_step: Annotated[int, Field(ge=0, le=999)] | None = None,
     ) -> DesignView:
-        """Moves, rotates, renames or annotates a placed part, found by its ref."""
+        """Moves, rotates, renames or annotates a placed part, found by its ref, or sets
+        its build step (parts sharing a number are one step; 0 takes it out of the
+        order)."""
         with open_session() as session:
             design = designs.get_design(session, design_id)
             placement = designs.placement_by_ref(design, ref)
@@ -626,8 +644,11 @@ def build_server(open_session: SessionOpener) -> MCPServer:
                 moved=x is not None or y is not None,
                 rotated=rotation is not None,
                 noted=note is not None,
+                stepped=build_step is not None,
             )
             data = PlacementUpdate(**_set(ref=new_ref, x=x, y=y, rotation=rotation, note=note))
+            if build_step is not None:
+                data.build_step = build_step or None
             return _view(
                 designs.update_placement(session, design.id, placement.id, data, claude=summary)
             )
@@ -750,6 +771,30 @@ def build_server(open_session: SessionOpener) -> MCPServer:
         ones they want. board: needed when the design has more than one."""
         with open_session() as session:
             return designs.suggest_wiring(designs.get_design(session, design_id), ref, board)
+
+    @tool(WRITE)
+    def set_build_order(
+        design_id: int, steps: dict[str, Annotated[int, Field(ge=0, le=999)]]
+    ) -> DesignView:
+        """Sets build steps by ref, e.g. {"esp": 1, "oled": 2, "c1": 2}: the order to
+        build and wire the parts in. Parts sharing a number are one step (a display and
+        the capacitor it needs); 0 takes a part out of the order. Parts not named keep
+        theirs. A wire belongs to the later of its two parts' steps."""
+        order = BuildOrder(
+            steps=[PartStep(ref=ref, step=step or None) for ref, step in steps.items()]
+        )
+        summary = f"Set the build order of {_listed(list(steps))}"
+        with open_session() as session:
+            return _view(designs.set_build_order(session, design_id, order, claude=summary))
+
+    @tool(READ)
+    def suggest_build_order(design_id: int) -> BuildOrder:
+        """A proposed build order for every part: boards first, then power parts, then
+        each other part top to bottom and left to right, with the passives that serve it
+        in its step. Read-only: show the user, then set_build_order with what they
+        agree to."""
+        with open_session() as session:
+            return designs.suggest_build_order(designs.get_design(session, design_id))
 
     @tool(READ)
     def list_revisions(design_id: int) -> Revisions:
