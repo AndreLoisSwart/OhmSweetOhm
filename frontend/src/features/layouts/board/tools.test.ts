@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { LayoutDetail, PinOut } from '@/api/generated/model'
 import { type BoardView, footprintOffsets, holeX, STEP, stripY } from './geometry'
-import { connectorStep, cutTarget, takenHoles } from './tools'
+import { connectorStep, cutTarget, straightEnd, takenHoles } from './tools'
 
 const top: BoardView = { strips: 24, holes: 37, flipped: false }
 const bottom: BoardView = { ...top, flipped: true }
@@ -63,5 +63,17 @@ describe('hole pitch', () => {
     ] as PinOut[]
     expect(footprintOffsets(pins, 0, 2).map((p) => p.name)).toEqual(['A', 'B'])
     expect(footprintOffsets(pins, 0).map((p) => p.name)).toEqual(['A', 'C'])
+  })
+})
+
+describe('straightEnd', () => {
+  const start = { strip: 3, hole: 5 }
+  it('keeps to the row or column the pointer is further along', () => {
+    expect(straightEnd(start, { strip: 4, hole: 9 })).toEqual({ strip: 3, hole: 9 })
+    expect(straightEnd(start, { strip: 8, hole: 6 })).toEqual({ strip: 8, hole: 5 })
+    expect(straightEnd(start, { strip: 3, hole: 1 })).toEqual({ strip: 3, hole: 1 })
+  })
+  it('stays put on a tie at the start', () => {
+    expect(straightEnd(start, start)).toEqual(start)
   })
 })

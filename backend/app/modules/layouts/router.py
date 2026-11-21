@@ -16,6 +16,8 @@ from app.modules.layouts.schemas import (
     LayoutSummary,
     LayoutUpdate,
     PartsPlace,
+    TraceIn,
+    TraceUpdate,
 )
 
 router = APIRouter(tags=["layouts"])
@@ -102,6 +104,23 @@ def update_jumper(
 @router.delete("/layouts/{layout_id}/jumpers/{jumper_id}")
 def remove_jumper(layout_id: int, jumper_id: int, session: SessionDep) -> LayoutDetail:
     return service.detail(service.remove_jumper(session, layout_id, jumper_id))
+
+
+@router.post("/layouts/{layout_id}/traces")
+def add_trace(layout_id: int, data: TraceIn, session: SessionDep) -> LayoutDetail:
+    return service.detail(service.add_traces(session, layout_id, [data]))
+
+
+@router.patch("/layouts/{layout_id}/traces/{trace_id}")
+def update_trace(
+    layout_id: int, trace_id: int, data: TraceUpdate, session: SessionDep
+) -> LayoutDetail:
+    return service.detail(service.update_trace(session, layout_id, trace_id, data))
+
+
+@router.delete("/layouts/{layout_id}/traces/{trace_id}")
+def remove_trace(layout_id: int, trace_id: int, session: SessionDep) -> LayoutDetail:
+    return service.detail(service.remove_trace(session, layout_id, trace_id))
 
 
 @router.post("/layouts/{layout_id}/connectors")

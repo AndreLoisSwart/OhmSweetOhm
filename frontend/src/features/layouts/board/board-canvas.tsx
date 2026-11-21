@@ -12,6 +12,7 @@ import type {
   ConnectorOut,
   DesignDetail,
   JumperOut,
+  TraceOut,
   LayoutDetail,
   LayoutPartOut,
 } from '@/api/generated/model'
@@ -33,8 +34,8 @@ import {
   stripLabel,
   stripY,
 } from './geometry'
-import { type CutTarget, cutTarget, type Selection, type Tool } from './tools'
-import { type Grab, type JumperEnds, movedJumper, sameEnds } from './jumper-move'
+import { type CutTarget, cutTarget, type Selection, straightEnd, type Tool } from './tools'
+import { type Grab, type JumperEnds, movedJumper, movedTrace, sameEnds } from './jumper-move'
 
 interface Viewport {
   x: number
@@ -58,19 +59,23 @@ function capture(event: ReactPointerEvent) {
   }
 }
 
+/** Bare copper, carrying no net. */
+const COPPER = 'oklch(0.72 0.11 60)'
+
 const MIN_ZOOM = 0.25
 const MAX_ZOOM = 4
 
-/** A part, connector or jumper being dragged: it moves by whole holes. */
+/** A part, connector, jumper or trace being dragged: it moves by whole holes. */
 interface Drag {
-  kind: 'part' | 'connector' | 'jumper'
+  kind: 'part' | 'connector' | 'jumper' | 'trace'
   id: number
   startX: number
   startY: number
   dStrip: number
   dHole: number
   moved: boolean
-  /** A jumper's: an end, or the whole of it, turned (R) about the hole it was grabbed by. */
+  /** A jumper's or trace's: an end, or the whole of it, turned (R) about the hole it was
+   * grabbed by. */
   grab?: Grab
   pivot?: Cell
   turns?: number
@@ -89,6 +94,7 @@ export function BoardCanvas({
   onMove,
   onMoveConnector,
   onMoveJumper,
+  onMoveTrace,
   onCut,
   jumperStart,
   onJumperPoint,
@@ -111,8 +117,9 @@ export function BoardCanvas({
   onMoveConnector: (connector: ConnectorOut, at: Cell) => void
   /** Settles once the move is saved (or refused), so the canvas can stop drawing it. */
   onMoveJumper: (jumperId: number, ends: JumperEnds) => Promise<unknown>
+  onMoveTrace: (traceId: number, ends: JumperEnds) => Promise<unknown>
   onCut: (target: CutTarget) => void
-  /** The jumper tool's first hole, once picked. */
+  /** The jumper or trace tool's first hole (a trace's: where the next run starts). */
   jumperStart: Cell | null
   onJumperPoint: (cell: Cell) => void
   /** The connector tool's pins, for the preview: how many, and holes between them. */
@@ -130,7 +137,11 @@ export function BoardCanvas({
   const [drag, setDrag] = useState<Drag | null>(null)
   // A dropped jumper, drawn where it was dropped until the server answers: otherwise it
   // shows at its old place for a moment in between.
-  const [settling, setSettling] = useState<{ id: number; ends: JumperEnds } | null>(null)
+  const [settling, setSettling] = useState<{
+    kind: 'jumper' | 'trace'
+    id: number
+    ends: JumperEnds
+  } | null>(null)
   const pan = useRef<{ x: number; y: number; vx: number; vy: number } | null>(null)
   // Where the pointer is on the drawing, for the tools' previews.
   const [hover, setHover] = useState<{ x: number; y: number } | null>(null)
@@ -207,7 +218,7 @@ export function BoardCanvas({
       const p = toBoard(event.clientX, event.clientY)
       if (armed !== null) return onPlace(armed, cellAt(p.x, p.y, view))
       if (tool === 'cut') return onCut(cutTarget(p.x, p.y, view))
-      if (tool === 'jumper') return onJumperPoint(cellAt(p.x, p.y, view))
+      if (tool === 'jumper' || tool === 'trace') return onJumperPoint(cellAt(p.x, p.y, view))
       if (tool === 'connector') return onConnectorAt(cellAt(p.x, p.y, view))
     }
     touched.current = true
@@ -251,16 +262,24 @@ export function BoardCanvas({
     })
   }
 
-  /** A jumper is dragged by an end (its handles, once selected) or by its middle. */
-  const onJumperDown = (event: ReactPointerEvent, jumperId: number, grab: Grab = 'body') => {
+  /**
+   * A jumper or trace is dragged by an end (its handles, once selected) or by its
+   * middle.
+   */
+  const onLinkDown = (
+    event: ReactPointerEvent,
+    kind: 'jumper' | 'trace',
+    id: number,
+    grab: Grab = 'body',
+  ) => {
     if (event.button !== 0 || !selecting) return
     event.stopPropagation()
-    onSelect({ kind: 'jumper', id: jumperId })
+    onSelect({ kind, id })
     if (readOnly) return
     capture(event)
     setDrag({
-      kind: 'jumper',
-      id: jumperId,
+      kind,
+      id,
       startX: event.clientX,
       startY: event.clientY,
       dStrip: 0,
@@ -272,20 +291,25 @@ export function BoardCanvas({
     })
   }
 
-  /** Where a jumper is drawn: where it's being dragged to, or where it is. */
-  const jumperEnds = (j: JumperOut): JumperEnds =>
-    drag?.kind === 'jumper' && drag.id === j.id
-      ? movedJumper(j, drag.grab ?? 'body', drag, drag.turns, drag.pivot, flipped)
-      : settling?.id === j.id
-        ? settling.ends
-        : j
+  /** Where a jumper or trace is drawn: where it's being dragged to, or where it is. */
+  const linkEnds = (kind: 'jumper' | 'trace', j: JumperEnds & { id: number }): JumperEnds => {
+    if (drag?.kind === kind && drag.id === j.id) {
+      const move = kind === 'trace' ? movedTrace : movedJumper
+      return move(j, drag.grab ?? 'body', drag, drag.turns, drag.pivot, flipped)
+    }
+    return settling?.kind === kind && settling.id === j.id ? settling.ends : j
+  }
+  const jumperEnds = (j: JumperOut) => linkEnds('jumper', j)
+  const traceEnds = (t: TraceOut) => linkEnds('trace', t)
 
   const selectedJumper =
     selected?.kind === 'jumper' ? layout.jumpers.find((j) => j.id === selected.id) : undefined
+  const selectedTrace =
+    selected?.kind === 'trace' ? layout.traces.find((t) => t.id === selected.id) : undefined
 
-  // R turns a jumper dragged by its middle, a quarter clockwise each time. Caught before
-  // the page's own keys, which would otherwise act on the selection too.
-  const turning = drag?.kind === 'jumper' && drag.grab === 'body'
+  // R turns a jumper or trace dragged by its middle, a quarter clockwise each time.
+  // Caught before the page's own keys, which would otherwise act on the selection too.
+  const turning = (drag?.kind === 'jumper' || drag?.kind === 'trace') && drag.grab === 'body'
   useEffect(() => {
     if (!turning) return
     const onKey = (event: KeyboardEvent) => {
@@ -327,18 +351,23 @@ export function BoardCanvas({
         const part = layout.parts.find((p) => p.placement_id === drag.id)
         if (part && moved && part.strip != null && part.hole != null)
           onMove(part, { strip: part.strip + drag.dStrip, hole: part.hole + drag.dHole })
-      } else if (drag.kind === 'jumper') {
-        const j = layout.jumpers.find((x) => x.id === drag.id)
+      } else if (drag.kind === 'jumper' || drag.kind === 'trace') {
+        const kind = drag.kind
+        const j =
+          kind === 'jumper'
+            ? layout.jumpers.find((x) => x.id === drag.id)
+            : layout.traces.find((x) => x.id === drag.id)
         // A click without moving leaves it; a turn counts even without a move.
         const by = drag.moved ? drag : { dStrip: 0, dHole: 0 }
-        const to = j && movedJumper(j, drag.grab ?? 'body', by, drag.turns, drag.pivot, flipped)
+        const move = kind === 'trace' ? movedTrace : movedJumper
+        const to = j && move(j, drag.grab ?? 'body', by, drag.turns, drag.pivot, flipped)
         if (j && to && !sameEnds(j, to)) {
           const id = j.id
-          setSettling({ id, ends: to })
-          // Refusals are shown by the mutation; either way, draw the saved jumper again.
-          void onMoveJumper(id, to)
+          setSettling({ kind, id, ends: to })
+          // Refusals are shown by the mutation; either way, draw the saved one again.
+          void (kind === 'trace' ? onMoveTrace : onMoveJumper)(id, to)
             .catch(() => {})
-            .finally(() => setSettling((s) => (s?.id === id ? null : s)))
+            .finally(() => setSettling((s) => (s?.kind === kind && s.id === id ? null : s)))
         }
       } else {
         const c = layout.connectors.find((x) => x.id === drag.id)
@@ -464,11 +493,7 @@ export function BoardCanvas({
                 height={height}
                 rx={3}
                 fill={
-                  short
-                    ? 'url(#short-hatch)'
-                    : seg.nets.length
-                      ? netColor(seg.nets[0])
-                      : 'oklch(0.72 0.11 60)'
+                  short ? 'url(#short-hatch)' : seg.nets.length ? netColor(seg.nets[0]) : COPPER
                 }
                 opacity={short ? 1 : copperOpacity}
               >
@@ -482,6 +507,17 @@ export function BoardCanvas({
               </rect>
             )
           })}
+          {/* Traces: copper bands joining every pad they run over. */}
+          {layout.traces.map((t) => (
+            <TraceBand
+              key={t.id}
+              trace={t}
+              ends={traceEnds(t)}
+              view={view}
+              opacity={t.short ? 1 : flipped ? 0.95 : 0.45}
+              selected={selected?.kind === 'trace' && selected.id === t.id}
+            />
+          ))}
           {/* Holes. */}
           {strips.map((s) =>
             holes.map((h) => (
@@ -527,6 +563,29 @@ export function BoardCanvas({
               </g>
             ),
           )}
+          {/* Where a trace is clicked: over the holes, which would otherwise take it. */}
+          {layout.traces.map((t) => {
+            const e = traceEnds(t)
+            return (
+              <line
+                key={t.id}
+                x1={holeX(e.a_hole, view)}
+                y1={stripY(e.a_strip)}
+                x2={holeX(e.b_hole, view)}
+                y2={stripY(e.b_strip)}
+                stroke="transparent"
+                strokeWidth={STEP * 0.6}
+                strokeLinecap="round"
+                className={cn(selecting && 'cursor-pointer')}
+                onPointerDown={(event) => onLinkDown(event, 'trace', t.id)}
+              >
+                <title>
+                  Trace {t.a} → {t.b}, {t.pads} pads
+                  {t.short ? ': short' : t.nets.length ? `: ${t.nets.join(' + ')}` : ''}
+                </title>
+              </line>
+            )
+          })}
           {/* Bottom links lie on the copper. */}
           {layout.jumpers
             .filter((j) => j.side === 'bottom')
@@ -539,7 +598,7 @@ export function BoardCanvas({
                 opacity={flipped ? 0.95 : 0.35}
                 selected={selected?.kind === 'jumper' && selected.id === j.id}
                 selectable={selecting}
-                onPointerDown={(e) => onJumperDown(e, j.id)}
+                onPointerDown={(e) => onLinkDown(e, 'jumper', j.id)}
                 label={`Bottom link ${j.a} → ${j.b}${j.insulated ? ' (insulated)' : ''}`}
               />
             ))}
@@ -674,7 +733,7 @@ export function BoardCanvas({
                 opacity={flipped ? 0.3 : 0.95}
                 selected={selected?.kind === 'jumper' && selected.id === j.id}
                 selectable={selecting}
-                onPointerDown={(e) => onJumperDown(e, j.id)}
+                onPointerDown={(e) => onLinkDown(e, 'jumper', j.id)}
                 label={`Jumper ${j.a} → ${j.b}`}
               />
             ))}
@@ -684,7 +743,15 @@ export function BoardCanvas({
               jumper={selectedJumper}
               ends={jumperEnds(selectedJumper)}
               view={view}
-              onGrab={(event, grab) => onJumperDown(event, selectedJumper.id, grab)}
+              onGrab={(event, grab) => onLinkDown(event, 'jumper', selectedJumper.id, grab)}
+            />
+          )}
+          {selecting && !readOnly && selectedTrace && (
+            <JumperHandles
+              jumper={selectedTrace}
+              ends={traceEnds(selectedTrace)}
+              view={view}
+              onGrab={(event, grab) => onLinkDown(event, 'trace', selectedTrace.id, grab)}
             />
           )}
           {/* Ratsnest: what the board doesn't join yet. */}
@@ -728,7 +795,34 @@ export function BoardCanvas({
               )}
             </g>
           )}
-          {tool === 'jumper' && !jumperStart && hoverCell && (
+          {tool === 'trace' && jumperStart && (
+            <g className="pointer-events-none">
+              {hoverCell &&
+                (() => {
+                  const end = straightEnd(jumperStart, hoverCell)
+                  return (
+                    <line
+                      x1={holeX(jumperStart.hole, view)}
+                      y1={stripY(jumperStart.strip)}
+                      x2={holeX(end.hole, view)}
+                      y2={stripY(end.strip)}
+                      stroke={COPPER}
+                      strokeWidth={STEP * 0.5}
+                      strokeLinecap="round"
+                      opacity={0.7}
+                    />
+                  )
+                })()}
+              <circle
+                cx={holeX(jumperStart.hole, view)}
+                cy={stripY(jumperStart.strip)}
+                r={6}
+                className="fill-primary stroke-background"
+                strokeWidth={2}
+              />
+            </g>
+          )}
+          {(tool === 'jumper' || tool === 'trace') && !jumperStart && hoverCell && (
             <circle
               cx={holeX(hoverCell.hole, view)}
               cy={stripY(hoverCell.strip)}
@@ -786,14 +880,52 @@ export function BoardCanvas({
   )
 }
 
-/** Round handles on a selected jumper's ends, to drag one end on its own. */
+/** A trace: a copper band from end to end, tinted by its net, hatched when it shorts. */
+function TraceBand({
+  trace,
+  ends,
+  view,
+  opacity,
+  selected,
+}: {
+  trace: TraceOut
+  ends: JumperEnds
+  view: BoardView
+  opacity: number
+  selected: boolean
+}) {
+  const line = {
+    x1: holeX(ends.a_hole, view),
+    y1: stripY(ends.a_strip),
+    x2: holeX(ends.b_hole, view),
+    y2: stripY(ends.b_strip),
+  }
+  return (
+    <g className="pointer-events-none">
+      {selected && (
+        <line {...line} className="stroke-primary" strokeWidth={STEP * 0.7} strokeLinecap="round" />
+      )}
+      <line
+        {...line}
+        stroke={
+          trace.short ? 'url(#short-hatch)' : trace.nets.length ? netColor(trace.nets[0]) : COPPER
+        }
+        strokeWidth={STEP * 0.5}
+        strokeLinecap="round"
+        opacity={opacity}
+      />
+    </g>
+  )
+}
+
+/** Round handles on a selected jumper's or trace's ends, to drag one end on its own. */
 function JumperHandles({
   jumper,
   ends,
   view,
   onGrab,
 }: {
-  jumper: JumperOut
+  jumper: { a: string; b: string }
   ends: JumperEnds
   view: BoardView
   onGrab: (event: ReactPointerEvent, grab: Grab) => void

@@ -113,6 +113,7 @@ Below 1280 px wide (the board needs the room) the tray and Inspector become over
 - **Copper:** tinted by the net it carries (ground dark, supplies red, other nets from a palette). Copper that joins pins the design keeps apart, unwired pins included, is hatched red. On the component side the copper is faint; turned over (the button, or F) it's solid and mirrored left to right, with labels staying on their holes.
 - **Cuts:** a ring at a hole, or a bar between holes.
 - **Bottom links:** grey, or their colour if insulated.
+- **Traces** (perfboard): wide copper bands from pad to pad, tinted by net like the pads and hatched red when they short; solid turned over, faint on the component side.
 - **Parts:**
   - each pin a dot in its net's colour (a tooltip gives the pin, hole and net);
   - the outline dashed when socketed, solid when soldered;
@@ -137,6 +138,7 @@ The board stays fitted to its space until you pan (drag empty board) or zoom (wh
 | Select | V | Click a part, jumper or connector to select it; drag parts and connectors to move them by whole holes. A selected jumper shows a handle on each end: drag one to move just that end. Drag a jumper by its middle to move the whole of it, and press R while dragging to turn it a quarter clockwise about the hole you grabbed. Each move is one undo step, refused like a new jumper (e.g. a top jumper's end on a pin) |
 | Cut | C | Click a hole to cut the strip there, or near the gap between two holes to cut between them; click a cut to remove it. A dashed ring or bar shows where it would cut. Cutting a hole with a leg, connector pin or jumper end in it is refused, with the reason. Stripboard only |
 | Jumper | J | Click one end, then the other; a line follows the pointer. It goes on the side you're looking at: component side for a top jumper, copper side (turned over) for a bottom link. A top jumper's end in a taken hole is refused. Esc drops the first end. New jumpers aren't selected, so on a tablet the Inspector doesn't cover the board between jumpers |
+| Trace | T | Perfboard only. Click where it starts, then along the row or column: the run snaps to whichever the pointer is further along and is laid, and the next run starts from its end, so a bent path is click, click, click. Click the same spot again, or press Esc, to finish. Each run is one undo step. Select picks a trace; drag an end (it stays on the other end's row or column) or its middle, R turns it, Delete removes it |
 | Connector | K | Pick the type (female or male header, JST-XH, 5.08 mm screw terminal; a type whose pins don't fit the board's hole spacing is marked and can't be put down) and pin count in the toolbar, then click where pin 1 goes; ghost pins show where it lands, pin 1 darker. R (or the toolbar's rotate button) turns it before it's put down. The new connector is selected, to assign its pins |
 
 - **Keys:** R turns the selected part or connector, or the selected jumper a quarter clockwise about its middle hole (also **Rotate** in its Inspector, for tablets). Delete removes the selected jumper or connector, or unplaces a part. Esc steps back: it drops a jumper's first end, then goes back to Select, then clears the selection. Each tool shows a one-line hint under the toolbar.
@@ -150,8 +152,9 @@ The board stays fitted to its space until you pan (drag empty board) or zoom (wh
 **The Inspector:**
 - **A selected part:** its first pin's hole and rotation, Rotate, Off board, Unplace, **Cut between rows** (stripboard), Socketed / Soldered, its pins (hole and net), and Show in schematic.
 - **A selected jumper:** its ends and length, component or copper side, insulated (bottom links), colour, and Remove.
+- **A selected trace:** its ends, pads (a solder bridge or tinned wire), the nets it carries (or that it shorts), Rotate and Remove.
 - **A selected connector:** its type, pin count and pin 1's hole; Rotate and Remove; a picker per pin for what it carries (the off-board parts' pins, or nothing); Add a pin and Remove the last pin.
-- **Nothing selected:** the layout's name (editable), board, its Shelf-help item id (editable, blank clears it), hole spacing (editable on a stripboard or perfboard; changing it re-reads every footprint, so parts may come off the grid), part counts, connections still to join, cuts, jumpers, area used, notes, **Trim dead copper** (stripboard) and Delete layout.
+- **Nothing selected:** the layout's name (editable), board, its Shelf-help item id (editable, blank clears it), hole spacing (editable on a stripboard or perfboard; changing it re-reads every footprint, so parts may come off the grid), part counts, connections still to join, cuts, jumpers, traces (perfboard), area used, notes, **Trim dead copper** (stripboard) and Delete layout.
 
 **The checks bar:**
 - It shows the counts and "N to join", "Nothing on the board yet", or "The board matches the design".
@@ -160,11 +163,11 @@ The board stays fitted to its space until you pan (drag empty board) or zoom (wh
 **Print build sheet** (⋯ menu, step 19) opens a page laid out for one A4 sheet (10 mm margins), printed from the browser's own dialog at "Actual size":
 - **Both sides at true size,** drawn in mm:
   - **Component side:** part outlines (dashed when socketed), legs with pin 1 square, refs, connectors with pin 1 filled, and top jumpers in their colour, numbered.
-  - **Copper side, mirrored:** solid strips, bold cut marks, bottom links, a ring at every solder joint and faint part outlines.
+  - **Copper side, mirrored:** solid strips, bold cut marks, bottom links, traces as grey bands tagged T1, T2…, a ring at every solder joint and faint part outlines.
   - Both have strip letters, hole numbers and a triangle at A1. Cuts are numbered on the drawing when there are at most 24; beyond that the marks alone are clearer, and the list's positions find them.
 - **A 50 mm scale bar** to check the print with a ruler.
 - **A warning box** at the top while the layout has errors or missing connections.
-- **The lists, with tick boxes:** order of work; cuts strip by strip as seen from the copper side; jumpers (ends, side, colour, length, wire to cut); parts in the design's build order, each with its step (pin 1's hole, rotation, mount; unordered parts last, by ref); connectors and their cables (straight or crossed); and what to have ready (board, socket headers by size, connectors, wire).
+- **The lists, with tick boxes:** order of work; cuts strip by strip as seen from the copper side; jumpers (ends, side, colour, length, wire to cut); traces (ends, pads, solder bridge or tinned wire); parts in the design's build order, each with its step (pin 1's hole, rotation, mount; unordered parts last, by ref); connectors and their cables (straight or crossed); and what to have ready (board, socket headers by size, connectors, wire).
 - **Component side SVG** and **Copper side SVG** download each drawing.
 
 **History** (⋯ menu) lists the layout's revisions with Restore. Changes made elsewhere (Claude, another tab) show a "Claude changed this layout" notice with a link to History, and drop the undo steps, as on the design page.

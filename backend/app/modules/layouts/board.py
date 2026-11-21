@@ -7,7 +7,8 @@ the board, x runs along the strips (hole numbers) and y across them (strip lette
 Connectivity is union-find over nodes: each hole is a node (its solder joint), copper
 joins neighbouring holes (stripboard: along a strip, unless cut; breadboard: its fixed
 groups; perfboard: none, each hole its own pad), jumpers join their ends (a bare
-bottom link also every hole it lies across), and each pin joins the hole it's soldered
+bottom link on a stripboard or breadboard pattern also every hole it lies across), a
+perfboard's traces every pad from end to end, and each pin joins the hole it's soldered
 in. Pins of a part joined inside it (its
 grounds, a tie) are joined here too, as in the design's nets.
 """
@@ -27,6 +28,7 @@ from app.modules.layouts.models import (
     JumperSide,
     Layout,
     LayoutPart,
+    Trace,
 )
 from app.modules.parts.models import Part, Pin, PinKind
 
@@ -49,6 +51,9 @@ CONNECTOR_PITCH_MM = {
 BREADBOARD_STRIPS = 14
 BREADBOARD_RAILS = (1, 2, 13, 14)
 BREADBOARD_BLOCKS = ((3, 7), (8, 12))
+# A pad's radius, as a fraction of the pitch: a bare wire passing closer than this to a
+# hole's centre lies on its pad.
+PAD_RADIUS = 0.35
 
 Cell = tuple[int, int]  # (strip, hole), from 1
 
@@ -193,9 +198,12 @@ def connector_cells(connector: Connector, pitch: float = PITCH_MM) -> list[Cell]
     return cells
 
 
-def jumper_path(jumper: Jumper) -> list[Cell]:
-    """The holes a straight jumper lies over, end to end; just the ends if diagonal."""
-    a, b = (jumper.a_strip, jumper.a_hole), (jumper.b_strip, jumper.b_hole)
+def ends(item: Jumper | Trace) -> tuple[Cell, Cell]:
+    return (item.a_strip, item.a_hole), (item.b_strip, item.b_hole)
+
+
+def straight_path(a: Cell, b: Cell) -> list[Cell]:
+    """The holes from a to b along a row or down a column; just the ends if diagonal."""
     if a[0] == b[0]:
         lo, hi = sorted((a[1], b[1]))
         return [(a[0], h) for h in range(lo, hi + 1)]
@@ -203,6 +211,47 @@ def jumper_path(jumper: Jumper) -> list[Cell]:
         lo, hi = sorted((a[0], b[0]))
         return [(s, a[1]) for s in range(lo, hi + 1)]
     return [a, b]
+
+
+def jumper_path(jumper: Jumper) -> list[Cell]:
+    """The holes a straight jumper lies over, end to end; just the ends if diagonal."""
+    return straight_path(*ends(jumper))
+
+
+def is_bare_bottom(jumper: Jumper) -> bool:
+    return jumper.side == JumperSide.BOTTOM and not jumper.insulated
+
+
+def jumper_touches(jumper: Jumper, board_type: BoardType) -> list[Cell]:
+    """The holes a jumper joins: its ends, and on a stripboard or breadboard pattern
+    every hole a bare bottom link lies across (the copper runs under it). On a perfboard
+    a jumper joins only its ends; traces join pads."""
+    if is_bare_bottom(jumper) and board_type != BoardType.PERFBOARD:
+        return jumper_path(jumper)
+    return list(ends(jumper))
+
+
+def trace_path(trace: Trace) -> list[Cell]:
+    return straight_path(*ends(trace))
+
+
+def pads_under(a: Cell, b: Cell, strips: int, holes: int) -> list[Cell]:
+    """Holes other than the ends whose pad a straight wire from a to b lies on: their
+    centre is within PAD_RADIUS of the line."""
+    (s1, h1), (s2, h2) = a, b
+    ds, dh = s2 - s1, h2 - h1
+    length2 = ds * ds + dh * dh
+    out = []
+    for s in range(max(1, min(s1, s2)), min(strips, max(s1, s2)) + 1):
+        for h in range(max(1, min(h1, h2)), min(holes, max(h1, h2)) + 1):
+            if (s, h) in (a, b) or not length2:
+                continue
+            t = ((s - s1) * ds + (h - h1) * dh) / length2
+            t = min(1.0, max(0.0, t))
+            gap2 = (s1 + t * ds - s) ** 2 + (h1 + t * dh - h) ** 2
+            if gap2 < PAD_RADIUS**2:
+                out.append((s, h))
+    return out
 
 
 def is_diagonal(jumper: Jumper) -> bool:
@@ -270,12 +319,21 @@ class Board:
     cut_holes: set[Cell]
     cut_between: set[Cell]
     segments: list[Segment] = field(default_factory=list)
+    # Which design nets each node carries, and every net identity on it (unwired pins
+    # count), for tinting copper and spotting shorts.
+    carried: dict[object, set[str]] = field(default_factory=dict)
+    identities: dict[object, set[str]] = field(default_factory=dict)
 
     def inside(self, cell: Cell) -> bool:
         return 1 <= cell[0] <= self.layout.strips and 1 <= cell[1] <= self.layout.holes
 
     def node(self, key) -> object:
         return self.uf.find(key)
+
+    def tint(self, key) -> tuple[list[str], bool]:
+        """The design nets on what key is joined to, and whether it's a short."""
+        node = self.uf.find(key)
+        return sorted(self.carried.get(node, set())), len(self.identities.get(node, set())) > 1
 
 
 def _copper_links(layout: Layout, copper: set[Cell], between: set[Cell]) -> list[list[Cell]]:
@@ -326,11 +384,11 @@ def build(layout: Layout) -> Board:
 
     for jumper in layout.jumpers:
         node = ("jumper", jumper.id)
-        ends = [(jumper.a_strip, jumper.a_hole), (jumper.b_strip, jumper.b_hole)]
-        touching = ends
-        if jumper.side == JumperSide.BOTTOM and not jumper.insulated:
-            touching = jumper_path(jumper)
-        for cell in touching:
+        for cell in jumper_touches(jumper, layout.board_type):
+            uf.join(node, cell)
+    for trace in layout.traces:
+        node = ("trace", trace.id)
+        for cell in trace_path(trace):
             uf.join(node, cell)
 
     placed = {lp.placement_id: lp for lp in layout.parts}
@@ -389,17 +447,12 @@ def build(layout: Layout) -> Board:
         cut_holes=cut_holes,
         cut_between=cut_between,
     )
-    # Which design nets each node carries, for drawing the copper tinted by net.
-    carried: dict[object, set[str]] = {}
-    identities: dict[object, set[str]] = {}
     for key in present:
         name = net_of.get(key, key)
-        identities.setdefault(uf.find(key), set()).add(name)
+        board.identities.setdefault(uf.find(key), set()).add(name)
         if name in nets:
-            carried.setdefault(uf.find(key), set()).add(name)
+            board.carried.setdefault(uf.find(key), set()).add(name)
     for run in runs:
-        node = uf.find(run[0])
-        names = carried.get(node, set())
-        short = len(identities.get(node, set())) > 1
-        board.segments.append(Segment(run[0], run[-1], sorted(names), short))
+        names, short = board.tint(run[0])
+        board.segments.append(Segment(run[0], run[-1], names, short))
     return board

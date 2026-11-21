@@ -113,6 +113,22 @@ class JumperUpdate(BaseModel):
     color: WireColor | None = None
 
 
+class TraceIn(BaseModel):
+    """A perfboard trace: along a row or down a column, joining every pad between."""
+
+    a_strip: Position
+    a_hole: Position
+    b_strip: Position
+    b_hole: Position
+
+
+class TraceUpdate(BaseModel):
+    a_strip: Position | None = None
+    a_hole: Position | None = None
+    b_strip: Position | None = None
+    b_hole: Position | None = None
+
+
 class ConnectorIn(BaseModel):
     """Pins are what each connector pin carries, in order: an off-board part's pin as
     `ref.PIN`, or null for none."""
@@ -169,6 +185,13 @@ class JumperSnapshot(BaseModel):
     color: WireColor
 
 
+class TraceSnapshot(BaseModel):
+    a_strip: int
+    a_hole: int
+    b_strip: int
+    b_hole: int
+
+
 class ConnectorPinSnapshot(BaseModel):
     index: int
     placement_id: int | None
@@ -189,6 +212,9 @@ class LayoutSnapshot(BaseModel):
     parts: list[PartSnapshot] = []
     cuts: list[CutSnapshot] = []
     jumpers: list[JumperSnapshot] = []
+    # Null in a snapshot from before traces (step 22): a perfboard's straight bare bottom
+    # links were its traces then, and become traces when it's restored.
+    traces: list[TraceSnapshot] | None = None
     connectors: list[ConnectorSnapshot] = []
 
 
@@ -260,6 +286,21 @@ class JumperOut(BaseModel):
     length: float
 
 
+class TraceOut(BaseModel):
+    id: int
+    a_strip: int
+    a_hole: int
+    b_strip: int
+    b_hole: int
+    a: str
+    b: str
+    # The pads it joins, ends included.
+    pads: int
+    # The design nets it carries, and whether it joins pins the design keeps apart.
+    nets: list[str]
+    short: bool
+
+
 class ConnectorPinOut(BaseModel):
     index: int
     # The off-board pin it carries, `ref.PIN`, or null, and its ids.
@@ -324,6 +365,7 @@ class LayoutStats(BaseModel):
     cuts: int
     jumpers: int
     jumper_length: float
+    traces: int = 0
     area_strips: int
     area_holes: int
 
@@ -358,6 +400,7 @@ class LayoutDetail(LayoutSummary):
     not_placed: list[UnplacedOut]
     cuts: list[CutOut]
     jumpers: list[JumperOut]
+    traces: list[TraceOut]
     connectors: list[ConnectorOut]
     segments: list[SegmentOut]
     links: list[LinkOut]
@@ -398,6 +441,19 @@ class SheetJumperOut(BaseModel):
     cut_mm: float
 
 
+class SheetTraceOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    number: int
+    trace_id: int
+    a: str
+    b: str
+    pads: int
+    # "solder bridge" between neighbouring pads, else "tinned wire".
+    kind: str
+    mm: float
+
+
 class SheetPartOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -436,6 +492,7 @@ class BuildSheetOut(BaseModel):
     warnings: list[str]
     cuts: list[SheetCutOut]
     jumpers: list[SheetJumperOut]
+    traces: list[SheetTraceOut]
     parts: list[SheetPartOut]
     connectors: list[SheetConnectorOut]
     shopping: list[str]

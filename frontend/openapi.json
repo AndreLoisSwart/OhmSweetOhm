@@ -2471,6 +2471,168 @@
         }
       }
     },
+    "/api/layouts/{layout_id}/traces": {
+      "post": {
+        "tags": [
+          "layouts"
+        ],
+        "summary": "Add Trace",
+        "operationId": "add_trace",
+        "parameters": [
+          {
+            "name": "layout_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Layout Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TraceIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LayoutDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/layouts/{layout_id}/traces/{trace_id}": {
+      "patch": {
+        "tags": [
+          "layouts"
+        ],
+        "summary": "Update Trace",
+        "operationId": "update_trace",
+        "parameters": [
+          {
+            "name": "layout_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Layout Id"
+            }
+          },
+          {
+            "name": "trace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Trace Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TraceUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LayoutDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "layouts"
+        ],
+        "summary": "Remove Trace",
+        "operationId": "remove_trace",
+        "parameters": [
+          {
+            "name": "layout_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Layout Id"
+            }
+          },
+          {
+            "name": "trace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Trace Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LayoutDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/layouts/{layout_id}/connectors": {
       "post": {
         "tags": [
@@ -3417,6 +3579,13 @@
             "type": "array",
             "title": "Jumpers"
           },
+          "traces": {
+            "items": {
+              "$ref": "#/components/schemas/SheetTraceOut"
+            },
+            "type": "array",
+            "title": "Traces"
+          },
           "parts": {
             "items": {
               "$ref": "#/components/schemas/SheetPartOut"
@@ -3459,6 +3628,7 @@
           "warnings",
           "cuts",
           "jumpers",
+          "traces",
           "parts",
           "connectors",
           "shopping",
@@ -5183,6 +5353,13 @@
             "type": "array",
             "title": "Jumpers"
           },
+          "traces": {
+            "items": {
+              "$ref": "#/components/schemas/TraceOut"
+            },
+            "type": "array",
+            "title": "Traces"
+          },
           "connectors": {
             "items": {
               "$ref": "#/components/schemas/ConnectorOut"
@@ -5232,6 +5409,7 @@
           "not_placed",
           "cuts",
           "jumpers",
+          "traces",
           "connectors",
           "segments",
           "links",
@@ -5395,6 +5573,20 @@
             "title": "Jumpers",
             "default": []
           },
+          "traces": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/TraceSnapshot"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Traces"
+          },
           "connectors": {
             "items": {
               "$ref": "#/components/schemas/ConnectorSnapshot"
@@ -5436,6 +5628,11 @@
           "jumper_length": {
             "type": "number",
             "title": "Jumper Length"
+          },
+          "traces": {
+            "type": "integer",
+            "title": "Traces",
+            "default": 0
           },
           "area_strips": {
             "type": "integer",
@@ -7603,6 +7800,49 @@
         ],
         "title": "SheetPartOut"
       },
+      "SheetTraceOut": {
+        "properties": {
+          "number": {
+            "type": "integer",
+            "title": "Number"
+          },
+          "trace_id": {
+            "type": "integer",
+            "title": "Trace Id"
+          },
+          "a": {
+            "type": "string",
+            "title": "A"
+          },
+          "b": {
+            "type": "string",
+            "title": "B"
+          },
+          "pads": {
+            "type": "integer",
+            "title": "Pads"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "mm": {
+            "type": "number",
+            "title": "Mm"
+          }
+        },
+        "type": "object",
+        "required": [
+          "number",
+          "trace_id",
+          "a",
+          "b",
+          "pads",
+          "kind",
+          "mm"
+        ],
+        "title": "SheetTraceOut"
+      },
       "Snapshot": {
         "properties": {
           "placements": {
@@ -7828,6 +8068,190 @@
           "name"
         ],
         "title": "TagUpdate"
+      },
+      "TraceIn": {
+        "properties": {
+          "a_strip": {
+            "type": "integer",
+            "maximum": 300.0,
+            "minimum": -100.0,
+            "title": "A Strip"
+          },
+          "a_hole": {
+            "type": "integer",
+            "maximum": 300.0,
+            "minimum": -100.0,
+            "title": "A Hole"
+          },
+          "b_strip": {
+            "type": "integer",
+            "maximum": 300.0,
+            "minimum": -100.0,
+            "title": "B Strip"
+          },
+          "b_hole": {
+            "type": "integer",
+            "maximum": 300.0,
+            "minimum": -100.0,
+            "title": "B Hole"
+          }
+        },
+        "type": "object",
+        "required": [
+          "a_strip",
+          "a_hole",
+          "b_strip",
+          "b_hole"
+        ],
+        "title": "TraceIn",
+        "description": "A perfboard trace: along a row or down a column, joining every pad between."
+      },
+      "TraceOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "a_strip": {
+            "type": "integer",
+            "title": "A Strip"
+          },
+          "a_hole": {
+            "type": "integer",
+            "title": "A Hole"
+          },
+          "b_strip": {
+            "type": "integer",
+            "title": "B Strip"
+          },
+          "b_hole": {
+            "type": "integer",
+            "title": "B Hole"
+          },
+          "a": {
+            "type": "string",
+            "title": "A"
+          },
+          "b": {
+            "type": "string",
+            "title": "B"
+          },
+          "pads": {
+            "type": "integer",
+            "title": "Pads"
+          },
+          "nets": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Nets"
+          },
+          "short": {
+            "type": "boolean",
+            "title": "Short"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "a_strip",
+          "a_hole",
+          "b_strip",
+          "b_hole",
+          "a",
+          "b",
+          "pads",
+          "nets",
+          "short"
+        ],
+        "title": "TraceOut"
+      },
+      "TraceSnapshot": {
+        "properties": {
+          "a_strip": {
+            "type": "integer",
+            "title": "A Strip"
+          },
+          "a_hole": {
+            "type": "integer",
+            "title": "A Hole"
+          },
+          "b_strip": {
+            "type": "integer",
+            "title": "B Strip"
+          },
+          "b_hole": {
+            "type": "integer",
+            "title": "B Hole"
+          }
+        },
+        "type": "object",
+        "required": [
+          "a_strip",
+          "a_hole",
+          "b_strip",
+          "b_hole"
+        ],
+        "title": "TraceSnapshot"
+      },
+      "TraceUpdate": {
+        "properties": {
+          "a_strip": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 300.0,
+                "minimum": -100.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "A Strip"
+          },
+          "a_hole": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 300.0,
+                "minimum": -100.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "A Hole"
+          },
+          "b_strip": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 300.0,
+                "minimum": -100.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "B Strip"
+          },
+          "b_hole": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 300.0,
+                "minimum": -100.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "B Hole"
+          }
+        },
+        "type": "object",
+        "title": "TraceUpdate"
       },
       "UnassignedPin": {
         "properties": {

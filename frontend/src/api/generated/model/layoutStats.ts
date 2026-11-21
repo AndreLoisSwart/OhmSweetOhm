@@ -13,6 +13,7 @@ export interface LayoutStats {
   cuts: number;
   jumpers: number;
   jumper_length: number;
+  traces?: number;
   area_strips: number;
   area_holes: number;
 }

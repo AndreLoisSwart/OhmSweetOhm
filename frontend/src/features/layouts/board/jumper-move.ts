@@ -1,4 +1,5 @@
 import type { Cell } from './geometry'
+import { straightEnd } from './tools'
 
 /** A jumper's two ends, as the API takes them. */
 export interface JumperEnds {
@@ -76,3 +77,27 @@ export const sameEnds = (x: JumperEnds, y: JumperEnds) =>
   x.a_hole === y.a_hole &&
   x.b_strip === y.b_strip &&
   x.b_hole === y.b_hole
+
+/**
+ * Where a dragged trace ends up: as a jumper would, but a moved end stays on the other
+ * end's row or column, so the trace stays straight.
+ */
+export function movedTrace(
+  ends: JumperEnds,
+  grab: Grab,
+  by: { dStrip: number; dHole: number },
+  turns = 0,
+  pivot: Cell = middleOf(ends),
+  flipped = false,
+): JumperEnds {
+  const moved = movedJumper(ends, grab, by, turns, pivot, flipped)
+  if (grab === 'body') return moved
+  const a = { strip: moved.a_strip, hole: moved.a_hole }
+  const b = { strip: moved.b_strip, hole: moved.b_hole }
+  if (grab === 'a') {
+    const end = straightEnd(b, a)
+    return { ...moved, a_strip: end.strip, a_hole: end.hole }
+  }
+  const end = straightEnd(a, b)
+  return { ...moved, b_strip: end.strip, b_hole: end.hole }
+}

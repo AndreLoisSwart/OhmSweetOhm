@@ -7,8 +7,8 @@ with the copper runs on that strip and the design nets they carry. A legend foll
 
 Marks, strongest first: a part's pin (its letter), a connector pin (its number), a top
 jumper end `*`, a bottom link end `+`, a cut at the hole `x` (or on a perfboard, `-` or
-`:` where a bare trace crosses a pad), a hole under a part's body (the part's letter in
-lower case), a plain hole `.`.
+`:` on a pad a trace joins), a hole under a part's body (the part's letter in lower
+case), a plain hole `.`.
 
 A perfboard has no strips: each hole is its own pad, so instead of copper runs its
 traces are listed after the picture, with the nets they carry.
@@ -17,9 +17,10 @@ traces are listed after the picture, with the nets they carry.
 from app.modules.layouts.board import (
     Board,
     connector_cells,
-    jumper_path,
+    ends,
     label,
     strip_label,
+    trace_path,
 )
 from app.modules.layouts.models import BoardType, JumperSide, Mount
 
@@ -69,11 +70,9 @@ def render(board: Board) -> str:
     for cell in board.cut_holes:
         put(cell, "x", 4)
     perfboard = layout.board_type == BoardType.PERFBOARD
-    if perfboard:
-        for j in layout.jumpers:
-            if j.side == JumperSide.BOTTOM and not j.insulated:
-                for cell in jumper_path(j)[1:-1]:
-                    put(cell, "-" if j.a_strip == j.b_strip else ":", 4)
+    for t in layout.traces:
+        for cell in trace_path(t):
+            put(cell, "-" if t.a_strip == t.b_strip else ":", 4)
 
     width = len(strip_label(layout.strips))
     # Hole numbers every five holes, over their columns.
@@ -136,29 +135,20 @@ def render(board: Board) -> str:
     )
     if perfboard:
         legend.append(
-            "Perfboard: every hole is its own pad. Only bottom links (bare: traces, or a "
-            "solder bridge between neighbouring holes) and top jumpers join holes; a bare "
-            "trace joins every pad it crosses (- along a row, : down a column)."
+            "Perfboard: every hole is its own pad. Traces join every pad from end to end "
+            "(- along a row, : down a column); jumpers, top or bottom, join only their ends."
         )
         traces = []
-        for n, j in enumerate(layout.jumpers, start=1):
-            if j.side != JumperSide.BOTTOM:
-                continue
-            node = board.node((j.a_strip, j.a_hole))
-            nets = sorted(
-                {
-                    board.net_of.get(key, key)
-                    for key in board.present
-                    if board.node(key) == node and board.net_of.get(key, key) in board.nets
-                }
-            )
+        for t in layout.traces:
+            nets, short = board.tint(("trace", t.id))
+            a, b = ends(t)
             traces.append(
-                f"{n}. {label((j.a_strip, j.a_hole))}-{label((j.b_strip, j.b_hole))}"
-                + (" insulated" if j.insulated else "")
+                f"{label(a)}-{label(b)}"
                 + (f" {'+'.join(nets)}" if nets else "")
+                + (" SHORT" if short else "")
             )
         if traces:
-            legend.append("Traces (jumper number, ends, nets): " + "; ".join(traces))
+            legend.append("Traces (ends, nets): " + "; ".join(traces))
     if layout.board_type == BoardType.BREADBOARD:
         legend.append(
             "Breadboard pattern: rows A, B, M and N are rails along the whole board; "

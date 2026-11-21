@@ -1,5 +1,5 @@
 import { cn } from 'cn'
-import { Cable, MousePointer2, Plug, RotateCw, Scissors } from 'lucide-react'
+import { Cable, MousePointer2, Plug, RotateCw, Scissors, Spline } from 'lucide-react'
 import type { ConnectorType } from '@/api/generated/model'
 import { NativeSelect } from '@/components/native-select'
 import { Button } from '@/components/ui/button'
@@ -11,6 +11,7 @@ const TOOLS: { tool: Tool; label: string; key: string; Icon: typeof Scissors }[]
   { tool: 'select', label: 'Select and move', key: 'V', Icon: MousePointer2 },
   { tool: 'cut', label: 'Cut the copper', key: 'C', Icon: Scissors },
   { tool: 'jumper', label: 'Jumper', key: 'J', Icon: Cable },
+  { tool: 'trace', label: 'Trace', key: 'T', Icon: Spline },
   { tool: 'connector', label: 'Connector', key: 'K', Icon: Plug },
 ]
 
@@ -19,6 +20,7 @@ export function BoardToolbar({
   tool,
   onTool,
   canCut,
+  canTrace,
   flipped,
   jumperStarted,
   connector,
@@ -28,6 +30,8 @@ export function BoardToolbar({
   tool: Tool
   onTool: (tool: Tool) => void
   canCut: boolean
+  /** Only a perfboard has traces. */
+  canTrace: boolean
   flipped: boolean
   jumperStarted: boolean
   connector: ConnectorDraft
@@ -43,13 +47,17 @@ export function BoardToolbar({
         ? jumperStarted
           ? 'Now click the other end. Esc cancels.'
           : `Click one end, then the other. It goes on the ${flipped ? 'copper side (a bottom link)' : 'component side'}: turn the board over for the other.`
-        : tool === 'connector'
-          ? !fits
-            ? `This type's pins don't fit the board's ${pitch} mm holes: pick another.`
-            : connector.pins.some(Boolean)
-              ? `Click where pin 1 goes (the darker one): ${connector.pins.filter(Boolean).join(', ')}. R turns it.`
-              : 'Click where pin 1 goes (the darker one). R turns it. Assign its pins in the Inspector.'
-          : null
+        : tool === 'trace'
+          ? jumperStarted
+            ? 'Click along the row or column to lay a trace; keep clicking to bend it. Click the last hole again or press Esc to finish.'
+            : 'Click where the trace starts. It joins every pad it runs over, along a row or down a column.'
+          : tool === 'connector'
+            ? !fits
+              ? `This type's pins don't fit the board's ${pitch} mm holes: pick another.`
+              : connector.pins.some(Boolean)
+                ? `Click where pin 1 goes (the darker one): ${connector.pins.filter(Boolean).join(', ')}. R turns it.`
+                : 'Click where pin 1 goes (the darker one). R turns it. Assign its pins in the Inspector.'
+            : null
   return (
     <div className="pointer-events-none absolute inset-x-2 top-2 z-10 flex flex-col items-center gap-1.5">
       <div
@@ -58,6 +66,7 @@ export function BoardToolbar({
         aria-label="Board tools"
       >
         {TOOLS.map(({ tool: t, label, key, Icon }) => {
+          if (t === 'trace' && !canTrace) return null
           const disabled = t === 'cut' && !canCut
           return (
             <Button

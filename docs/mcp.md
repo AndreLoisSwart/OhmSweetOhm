@@ -69,7 +69,8 @@ Positions are the board's labels: `C14` is strip C, hole 14; `C9-10` is a cut be
 | `check_layout(layout_id)` | Only the checks, missing connections and stats: for checking after each change |
 | `place_on_board(layout_id, parts: [{ref, at?, rotation?, mount?, off_board?}])` | Place, move, turn or take parts off the board; a part keeps its rotation when none is given |
 | `cut(layout_id, at: [...])`, `uncut(layout_id, at: [...])` | `"B4"` at a hole, `"C9-10"` between holes. `uncut` is destructive (undoable) |
-| `add_jumpers(layout_id, jumpers: [{a, b, side?, insulated?, color?}])`, `remove_jumper(layout_id, a, b)`, `move_jumper(layout_id, a, b, to_a?, to_b?)` (an end not given stays; side, colour and insulation are kept) | Top jumpers by default. On a perfboard, bare bottom links are the traces and a one-hole link is a solder bridge; the text picture marks the pads a trace crosses (`-` along a row, `:` down a column) and lists the traces with their nets |
+| `add_jumpers(layout_id, jumpers: [{a, b, side?, insulated?, color?}])`, `remove_jumper(layout_id, a, b)`, `move_jumper(layout_id, a, b, to_a?, to_b?)` (an end not given stays; side, colour and insulation are kept) | Top jumpers by default. On a perfboard a jumper joins only its ends |
+| `add_traces(layout_id, traces: [{a, b}])`, `remove_trace(layout_id, a, b)` | Perfboard only (step 22): each trace joins every pad from a to b, along a row or down a column. `get_layout` lists them with their pads and nets; the text picture marks their pads (`-` along a row, `:` down a column) and lists them |
 | `propose_connectors(layout_id)` | Read-only. One per off-board part whose connections reach the board: `{for_part, type, pins, why}`, pins in the part's own order, a screw terminal for a power part where it fits |
 | `add_connectors(layout_id, connectors: [{pins, type?, at?, rotation?, pin_count?, ref?}])`, `update_connector(layout_id, ref, at?, rotation?, type?, pin_count?, pins?)`, `remove_connector(layout_id, ref)` | Named J1, J2… unless given a ref |
 | `cut_between_rows(layout_id, ref)`, `trim_dead_copper(layout_id)` | The canvas's helpers |
@@ -109,7 +110,7 @@ Every design answer is a `DesignView`: the design with its placed parts (ref, pa
 > - **Parts you create are unverified.** Take pinouts from the datasheet or the maker's page, say where they came from in the part's notes, and ask the user to check them.
 > - **Search before creating a part.** When adding a part, also find or create its Shelf-help item and store the id.
 > - **"Do I have what this design needs?":** look up each part's Shelf-help item. Offer to mark missing ones as `need`.
-> - **Perfboard:** no strips or cuts. Join pins with bare bottom links (traces, straight along a row or down a column) and one-hole solder bridges, keeping traces off other nets' pads.
+> - **Perfboard:** no strips or cuts. Join pins with `add_traces` (along a row or down a column, joining every pad on the way; bend a path with traces sharing an end), and use jumpers, which join only their ends, to hop over other nets. Keep traces and bare bottom jumpers off other nets' pads.
 > - **Boards are Shelf-help items tagged `protoboard`,** one per size. Before `create_layout`, look them up, suggest one that's in stock and fits, ask the user the size of the piece they'll use, and store the item's id on the layout.
 > - **Writing firmware (not ESPHome):** get the pin map, save it in the firmware as `pins.h` or `pins.py`, and use its constants rather than bare pin numbers. If a board pin has no code name, say so rather than guess.
 > - **Nothing can be deleted.** Removing parts and wires within a design is fine, since every change is undoable.

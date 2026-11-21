@@ -91,6 +91,15 @@ Packaging and the canvas are the riskiest parts, so they come first.
 20. **A layout's Shelf-help board.** `Layout.shelf_item_id` with a migration; in the new-layout dialog, the layout Inspector, the build sheet's shopping line, and MCP (`create_layout`, a new `update_layout`, and the instructions).
 21. **Perfboard.** A third board type with a pad per hole: no copper joins holes, so bottom jumpers are its traces. The canvas, checks, text picture and build sheet learn it.
 
+**Then: traces, path tracing and board build order** (decided 2026-11-21; details in `future-enhancements.md`, Traces, path tracing and board build order). Each step is built only when started:
+
+22. **Solder traces.**
+    - `Trace` (perfboard only, along a row or down a column, joins every pad), with a migration that turns perfboard straight bare bottom links and solder bridges into traces.
+    - Perfboard jumpers join only their ends; the `bare_link_over_pad` check.
+    - Revisions, text picture, build sheet, MCP `add_traces`/`remove_trace`, and the canvas's Trace tool (T).
+23. **Path between two pins.** Shift-click two pins or holes to light the copper path between them, red when it's a short; `touches` on jumpers and traces from the API, and a tested `board/path.ts`.
+24. **Board build order.** The design's build order stepped through on the board: a derived step for jumpers, traces and connectors, step 0 for cuts and stripboard links, and the schematic's bar. Stepping only.
+
 ## Out of scope for phase 1
 
 - Simulation, Wokwi export and firmware generation (see `future-enhancements.md`; firmware support is planned as steps 10–13 above)

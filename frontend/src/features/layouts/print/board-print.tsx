@@ -29,11 +29,12 @@ export const BoardPrint = forwardRef<
   // (strip letter and hole number) from the cut list.
   const numberCuts = sheet.cuts.length <= MAX_NUMBERED_CUTS
   const jumperNumber = new Map(sheet.jumpers.map((j) => [j.jumper_id, j.number]))
+  const traceNumber = new Map(sheet.traces.map((t) => [t.trace_id, t.number]))
   const strips = Array.from({ length: layout.strips }, (_, i) => i + 1)
   const holes = Array.from({ length: layout.holes }, (_, i) => i + 1)
   const onBoard = layout.parts.filter((part) => part.on_board)
 
-  const numberTag = (cx: number, cy: number, n: number, key: string) => (
+  const numberTag = (cx: number, cy: number, n: number | string, key: string) => (
     <g key={key}>
       <circle cx={cx} cy={cy} r={font * 0.62} fill="white" stroke="black" strokeWidth={0.12} />
       <text
@@ -178,6 +179,26 @@ export const BoardPrint = forwardRef<
               </g>
             )
           })}
+          {/* Traces: solder along every pad they run over, numbered T1, T2… */}
+          {layout.traces.map((t) => (
+            <g key={`t${t.id}`}>
+              <line
+                x1={x(t.a_hole)}
+                y1={y(t.a_strip)}
+                x2={x(t.b_hole)}
+                y2={y(t.b_strip)}
+                stroke="#888"
+                strokeWidth={p * 0.45}
+                strokeLinecap="round"
+              />
+              {numberTag(
+                (x(t.a_hole) + x(t.b_hole)) / 2,
+                (y(t.a_strip) + y(t.b_strip)) / 2 - (t.a_strip === t.b_strip ? p * 0.7 : 0),
+                `T${traceNumber.get(t.id) ?? 0}`,
+                `tn${t.id}`,
+              )}
+            </g>
+          ))}
           {/* Bottom links. */}
           {layout.jumpers
             .filter((j) => j.side === 'bottom')

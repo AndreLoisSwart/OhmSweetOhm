@@ -43,6 +43,7 @@ import {
   type CutTarget,
   inside,
   type Selection,
+  straightEnd,
   takenHoles,
   type Tool,
 } from './board/tools'
@@ -113,6 +114,7 @@ function LayoutEditor({ layout, design }: { layout: LayoutDetail; design: Design
 
   const chooseTool = (next: Tool) => {
     if (next === 'cut' && layout.board_type !== 'stripboard') return
+    if (next === 'trace' && layout.board_type !== 'perfboard') return
     setTool(next)
     setJumperStart(null)
     setArmed(null)
@@ -137,7 +139,33 @@ function LayoutEditor({ layout, design }: { layout: LayoutDetail; design: Design
     quietly(actions.addCuts([target]))
   }
 
+  /**
+   * A trace is laid run by run: each click lays one and starts the next from its end.
+   * Clicking the same hole again ends it, judged by where you clicked rather than where
+   * the run snapped to, so a second click on the same spot never adds a stub.
+   */
+  const lastTraceClick = useRef<Cell | null>(null)
+  const tracePoint = (cell: Cell) => {
+    if (!inside(cell, layout)) return
+    const last = lastTraceClick.current
+    lastTraceClick.current = cell
+    if (!jumperStart) return setJumperStart(cell)
+    const end = straightEnd(jumperStart, cell)
+    const again = last && last.strip === cell.strip && last.hole === cell.hole
+    if (again || (end.strip === jumperStart.strip && end.hole === jumperStart.hole)) {
+      lastTraceClick.current = null
+      return setJumperStart(null)
+    }
+    const a = jumperStart
+    setJumperStart(end)
+    actions
+      .addTrace({ a_strip: a.strip, a_hole: a.hole, b_strip: end.strip, b_hole: end.hole })
+      // Refused (shown by the mutation): carry on from where the run started.
+      .catch(() => setJumperStart(a))
+  }
+
   const jumperPoint = (cell: Cell) => {
+    if (tool === 'trace') return tracePoint(cell)
     if (!inside(cell, layout)) return
     const side = flipped ? 'bottom' : 'top'
     const who = taken.get(cellLabel(cell))
@@ -224,7 +252,13 @@ function LayoutEditor({ layout, design }: { layout: LayoutDetail; design: Design
       }
       if (mod || event.altKey) return
       const key = event.key.toLowerCase()
-      const tools: Record<string, Tool> = { v: 'select', c: 'cut', j: 'jumper', k: 'connector' }
+      const tools: Record<string, Tool> = {
+        v: 'select',
+        c: 'cut',
+        j: 'jumper',
+        t: 'trace',
+        k: 'connector',
+      }
       if (tools[key]) return chooseTool(tools[key])
       const part =
         selected?.kind === 'part'
@@ -236,6 +270,8 @@ function LayoutEditor({ layout, design }: { layout: LayoutDetail; design: Design
           : undefined
       const jumper =
         selected?.kind === 'jumper' ? layout.jumpers.find((j) => j.id === selected.id) : undefined
+      const trace =
+        selected?.kind === 'trace' ? layout.traces.find((t) => t.id === selected.id) : undefined
       if (event.key === 'Escape') {
         if (jumperStart) setJumperStart(null)
         else if (tool !== 'select' || armed !== null) chooseTool('select')
@@ -262,11 +298,14 @@ function LayoutEditor({ layout, design }: { layout: LayoutDetail; design: Design
         quietly(actions.updateConnector(conn.id, { rotation: nextRotation(conn.rotation) }))
       } else if (key === 'r' && jumper) {
         quietly(actions.updateJumper(jumper.id, turnJumper(jumper, middleOf(jumper), 1, flipped)))
+      } else if (key === 'r' && trace) {
+        quietly(actions.updateTrace(trace.id, turnJumper(trace, middleOf(trace), 1, flipped)))
       } else if (event.key === 'Delete' || event.key === 'Backspace') {
         if (!selected) return
         setSelected(null)
         if (selected.kind === 'part') quietly(actions.unplace(selected.id))
         if (selected.kind === 'jumper') quietly(actions.removeJumper(selected.id))
+        if (selected.kind === 'trace') quietly(actions.removeTrace(selected.id))
         if (selected.kind === 'connector') quietly(actions.removeConnector(selected.id))
       } else if (key === 'f') {
         setFlipped((f) => !f)
@@ -450,6 +489,7 @@ function LayoutEditor({ layout, design }: { layout: LayoutDetail; design: Design
                 quietly(actions.updateConnector(c.id, { strip: at.strip, hole: at.hole }))
               }
               onMoveJumper={(id, ends) => actions.updateJumper(id, ends)}
+              onMoveTrace={(id, ends) => actions.updateTrace(id, ends)}
               onCut={cut}
               jumperStart={jumperStart}
               onJumperPoint={jumperPoint}
@@ -471,6 +511,7 @@ function LayoutEditor({ layout, design }: { layout: LayoutDetail; design: Design
                 tool={tool}
                 onTool={chooseTool}
                 canCut={layout.board_type === 'stripboard'}
+                canTrace={layout.board_type === 'perfboard'}
                 flipped={flipped}
                 jumperStarted={jumperStart !== null}
                 connector={connector}

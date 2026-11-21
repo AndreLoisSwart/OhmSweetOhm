@@ -8,10 +8,12 @@ import type { ConnectorSnapshot } from './connectorSnapshot';
 import type { CutSnapshot } from './cutSnapshot';
 import type { JumperSnapshot } from './jumperSnapshot';
 import type { PartSnapshot } from './partSnapshot';
+import type { TraceSnapshot } from './traceSnapshot';
 
 export interface LayoutSnapshot {
   parts?: PartSnapshot[];
   cuts?: CutSnapshot[];
   jumpers?: JumperSnapshot[];
+  traces?: TraceSnapshot[] | null;
   connectors?: ConnectorSnapshot[];
 }

@@ -131,6 +131,8 @@ LayoutPart     id, layout_id → Layout, placement_id → Placement (unique per 
 Cut            id, layout_id, strip, hole, between
 Jumper         id, layout_id, a_strip, a_hole, b_strip, b_hole, side (top | bottom),
                insulated, color
+Trace          id, layout_id, a_strip, a_hole, b_strip, b_hole (perfboard only; along a
+               row or down a column)
 Connector      id, layout_id, ref (unique per layout), type (header_male |
                header_female | jst_xh | screw_508), pin_count, strip, hole, rotation
 ConnectorPin   id, connector_id, index (from 1), placement_id, pin_id (the off-board
@@ -141,7 +143,7 @@ LayoutRevision id, layout_id, created_at, author, summary, snapshot (JSON)
 - **A layout holds only physical facts.** Nets come from its design; board connectivity and layout checks are computed, never stored.
 - **Positions are 1-based** and read as the board's labels: strip 3, hole 14 is C14.
 - **A layout's `pitch_mm` sets its grid:** footprints (in mm) land on holes that far apart, within 0.1 mm. A breadboard pattern is always 2.54.
-- **Board types** (step 21 added perfboard): a stripboard's copper runs along each strip and can be cut; a breadboard pattern has fixed rails and columns of five, 14 rows at 2.54 mm; a perfboard has a pad per hole and nothing joined, so bare bottom links are its traces (joining every pad they cross) and a one-hole link is a solder bridge. Only a stripboard can be cut. New layouts default to 24 × 37, 14 × 62 and 24 × 30.
+- **Board types** (step 21 added perfboard): a stripboard's copper runs along each strip and can be cut; a breadboard pattern has fixed rails and columns of five, 14 rows at 2.54 mm; a perfboard has a pad per hole and nothing joined: its **traces** join every pad from end to end (solder bridges between neighbouring pads, tinned wire along longer runs), and its jumpers, top or bottom, join only their ends. On a stripboard or breadboard pattern a bare bottom link still joins every strip it lies across. Only a stripboard can be cut; only a perfboard has traces (step 22, 2026-11-21: its straight bare bottom links and solder bridges became traces, and older revisions convert the same way when restored). New layouts default to 24 × 37, 14 × 62 and 24 × 30.
 - **A layout's `shelf_item_id` is the board it's built on:** a Shelf-help item, tagged `protoboard` there, as on parts never checked here. There's no board library; each board size the user owns is its own Shelf-help item, which holds its stock. The size, type and pitch stay on the layout. It's not part of a layout revision, like the name and notes.
 - **A placement with no `LayoutPart` isn't placed yet.** Removing a placement from the design removes it from its layouts, and deleting a design deletes its layouts.
 

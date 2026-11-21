@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { middleOf, movedJumper, sameEnds, turnJumper } from './jumper-move'
+import { middleOf, movedJumper, sameEnds, turnJumper, movedTrace } from './jumper-move'
 
 // C3 → C7: along strip C.
 const j = { a_strip: 3, a_hole: 3, b_strip: 3, b_hole: 7 }
@@ -58,6 +58,26 @@ describe('turning a jumper', () => {
       a_hole: 4,
       b_strip: 7,
       b_hole: 4,
+    })
+  })
+})
+
+describe('movedTrace', () => {
+  const trace = { a_strip: 1, a_hole: 2, b_strip: 1, b_hole: 6 }
+  it('keeps a dragged end on the row or column of the other end', () => {
+    expect(movedTrace(trace, 'b', { dStrip: 1, dHole: 2 })).toEqual({ ...trace, b_hole: 8 })
+    expect(movedTrace(trace, 'b', { dStrip: 3, dHole: -4 })).toEqual({
+      ...trace,
+      b_strip: 4,
+      b_hole: 2,
+    })
+  })
+  it('moves and turns the whole of it like a jumper', () => {
+    expect(movedTrace(trace, 'body', { dStrip: 2, dHole: 1 })).toEqual({
+      a_strip: 3,
+      a_hole: 3,
+      b_strip: 3,
+      b_hole: 7,
     })
   })
 })

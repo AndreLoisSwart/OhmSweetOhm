@@ -203,6 +203,7 @@ Then it's compared with the design's nets:
 | `cut_under_pin` | error | a cut at a hole with a leg in it |
 | `under_body` | error | a part or top jumper on a hole under a soldered part's body |
 | `jumper_hole_taken` | error | a top jumper's end on a hole with a leg or another jumper |
+| `bare_link_over_pad` | warning | a bare bottom jumper lying on copper it isn't counted as joining: a perfboard pad between its ends, or strips a diagonal stripboard link crosses (added in step 22) |
 | `diagonal_jumper` | note | a jumper that isn't straight along a strip or across strips (on a perfboard: along a row or down a column) |
 | `unassigned_connector_pin` | warning | a connector pin carrying nothing |
 | `off_board_unconnected` | warning | an off-board part's connection with no connector pin |
@@ -410,12 +411,90 @@ The user has several protoboards: different sizes, and plain perfboard as well a
 ### Step 21: perfboard (built 2026-11-21)
 
 - **`BoardType.PERFBOARD`:** a pad per hole, any size, pitch chosen as on a stripboard.
-- **No copper joins holes.** Bottom jumpers are its solder traces, and a link between neighbouring holes is a solder bridge, both as now. Cuts are refused, as on the breadboard pattern.
+- **No copper joins holes.** Bottom jumpers are its solder traces, and a link between neighbouring holes is a solder bridge, both as now. Cuts are refused, as on the breadboard pattern. (Step 22 replaces this with traces of their own; see below.)
 - **Checks:** the missing connections list everything until traces are added. No new rules: the cut rules can't fire, `diagonal_jumper` speaks of rows and columns, and a short's hint says a bare trace joins every pad it crosses instead of suggesting cuts.
 - **Text picture:** pads and traces instead of strips.
 - **Canvas and print:** the board's copper comes back as one segment per pad, so pads are drawn and tinted by net like strips; traces are the bottom links already drawn; the cut tool is off. Default size 24 × 30 (about 7 × 9 cm). Adding the type rebuilds the `board_type` CHECK constraint in a migration.
 - **Build sheet:** names the board "Perfboard", lists traces and bridges hole to hole in place of cuts, and words the order of work for traces.
 - **MCP:** `create_layout` accepts it; `add_jumpers` with `side: bottom` lays traces, which its docstring says.
+
+## Traces, path tracing and board build order (decided 2026-11-21, build steps 22–24)
+
+Three changes to the board, in this order: traces settle what joins what, and the other two read connectivity.
+
+### Step 22: solder traces on a perfboard (built 2026-11-21)
+
+**Why:** a jumper and a trace are different things at the bench. A jumper is a wire with two ends; a trace is solder or tinned wire joined to every pad it runs along. Treating bare bottom links as traces (step 21) breaks on a diagonal link: from C5 to E7 it runs straight over D6's pad, yet only its ends count. And a link can't say "only my ends".
+
+**Decided:**
+
+| | Jumper | Trace |
+|---|---|---|
+| What it is | A wire with two ends, top or bottom, any angle | Solder bridges or tinned wire on the copper side |
+| Joins | **Its two ends only** (on a perfboard, bare or not) | **Every pad from end to end** |
+| Shape | Straight, or diagonal (`diagonal_jumper` note) | Along a row or down a column only; a bent path is several traces sharing ends |
+| Boards | All | Perfboard only (a stripboard's copper already runs along strips) |
+
+- **Model:** `Trace id, layout_id → Layout, a_strip, a_hole, b_strip, b_hole`, with a migration. The two ends are different holes on the same strip or the same hole number; anything else is refused. Traces may share holes with legs, jumper ends and other traces.
+- **Stripboard and breadboard pattern are unchanged:** a bare bottom link there still touches every strip it lies across, since the copper is continuous.
+- **Data migration:** on perfboard layouts, every straight bare bottom link (one-hole solder bridges included) becomes a trace with the same ends, so each board keeps its connections. Diagonal and insulated bottom links stay jumpers. Restoring an older perfboard revision converts its links the same way, so old revisions keep their meaning.
+- **Connectivity (`board.py`):** a trace joins every hole from `a` to `b`. On a perfboard a bottom jumper joins only its ends.
+- **New check `bare_link_over_pad`** (warning): a bare bottom jumper on a perfboard passes over a pad that isn't one of its ends, i.e. the pad's centre lies within the pad radius (0.35 of the pitch) of the wire's line. This catches the 45° case. "The bare link C5→E7 passes over D6: insulate it, or make it a trace if D6 should join." On a stripboard, the same check fires for a diagonal bare link, which crosses strips between its ends.
+- **Short hints** on a perfboard name the trace that joins the two nets.
+- **Revisions** carry traces; undo through the snapshot as now.
+- **Text picture:** traces keep the current marks (`-` along a row, `:` down a column), with a line per trace and its net; `+` marks only bottom jumper ends.
+- **Canvas** (`board/tools.ts`):
+  - A **Trace** tool (**T**), perfboard only. Click a hole, then another: the line snaps to that row or column, whichever the pointer is further along. Each click lays a run and starts the next from its end, so a bent path is click, click, click; Esc or clicking the last hole again ends it. Each run is saved straight away and is one undo step.
+  - Traces are drawn as wide copper bands between pads, tinted by net like the pads and hatched red when they short. Solid on the copper side, faint on the component side.
+  - **Select** picks a trace; its ends have handles to drag, staying straight; Delete removes it. The Inspector shows its ends, pads, nets and Remove.
+- **Build sheet:** a **Traces** list in place of perfboard bottom links: "1: C4 → C9, 6 pads, tinned wire", or "bridge with solder" for neighbouring pads. The order of work puts traces after the parts are soldered (their legs anchor them), then bottom jumpers.
+- **MCP:** `add_traces(layout_id, traces: [{a, b}])` and `remove_trace(layout_id, a, b)`, each saving a revision; `get_layout` lists traces; `add_jumpers` on a perfboard no longer makes traces, and its docstring says so. The perfboard instruction becomes: join pins with traces along rows and columns, use jumpers (insulated, or on top) to cross other nets, keep traces off other nets' pads.
+- **Built as planned.** Also: finishing a trace by clicking the same spot again is judged by where you clicked, not where the run snapped to, so it never adds a one-pad stub; `TraceOut` carries `pads`, `nets` and `short`, and the stats count `traces`. Documented in data-model.md, pages.md and mcp.md.
+
+### Step 23: trace the path between two pins
+
+Shift-click two pins (or any holes) and the board shows the copper path between them, or that there isn't one.
+
+- **Interaction** (Select tool):
+  - **Shift-click** a pin or hole sets A; a second Shift-click sets B. Cmd/Ctrl-click does the same (Shift is the one to teach: Ctrl-click on a Mac is a right click).
+  - Another Shift-click replaces B; Shift-clicking A again, Esc, or picking a check clears it.
+  - Tablets: **Trace from here** beside each pin in a selected part's Inspector, then tap the other pin.
+- **The server says what joins what,** so the frontend never re-derives the copper rules:
+  - each jumper and trace gets `touches`, the holes it joins;
+  - each board pin gets its internal join group (a part's grounds, a tie), as the design's nets use.
+  - Copper runs are already in `segments`.
+- **Path** (`board/path.ts`, pure, tested): a graph of holes (chained along each copper run), pins (to their hole and their group), jumpers and traces (to the holes they touch) and connector pins. A breadth-first search finds the path with the fewest hops from A to B.
+- **Look** (independent of jumper and wire colours):
+  - Everything off the path dims to about 25%.
+  - Path items keep their own colour, over one accent halo, with a moving dashed line along the route. A red jumper and a blue strip read as one path.
+  - Only the stretch of a copper run between the holes the path enters and leaves lights up, not the whole strip.
+  - Parts of the path on the side you're not looking at (a top jumper while turned over) are drawn dashed instead of hidden.
+  - A and B get labelled rings. A join inside a part (its two GND pins) is a dashed arc between the pins.
+- **A chip under the toolbar** says what was found:
+  - **Connected, same net:** "esp.GPIO21 (C14) → bme.SDA (F20) · 2 strips, 1 jumper".
+  - **Connected, different nets:** the path is drawn red: "Short: GND and 3V3 meet through strip C and trace C4→C9". This shows exactly where a short runs.
+  - **Not connected:** each end's connected copper is tinted lightly; if the design joins them, the ratsnest line between them shows and the chip says "Not connected yet (net SDA)".
+- **Docs to update when built:** pages.md (Layout page: the board, keys, Inspector).
+
+### Step 24: build order on the board
+
+Step through the design's build order on the board, as on the schematic. Stepping only; numbering stays on the schematic.
+
+- **Parts use the design's `build_step`.** The layout stores no order of its own.
+- **Everything else gets a step worked out from that, never stored** (`layouts/build_order.py`, tested):
+  - **Step 0, Prepare the board:** cuts, and a stripboard's or breadboard pattern's bottom links (made before parts go in). Shown only when there are some.
+  - **Top jumpers, perfboard traces and perfboard bottom jumpers:** the earliest step at which they join two present pins of one net that would otherwise be apart. Present pins are those of parts at that step or earlier (and the connector pins carrying them).
+  - **Connectors:** the earliest step of a part they carry.
+  - Anything never needed by that rule (spare copper, redundant links, empty connectors) joins the last step.
+  - The API adds `step` to jumpers, traces and connectors, and the build steps in order.
+- **The bar:** the header's **Build order** button or **B** opens the same bar as the schematic (⏮ *Step 3 · 2 of 5* ⏭ with the refs; ← and →; Esc, B or Exit closes). It reuses `buildSteps` from `designs/canvas/build-order.ts`, plus step 0.
+  - The current step's parts, jumpers, traces and connectors are drawn as they are; earlier steps greyed; later steps hidden, or ghosted with the same switch (remembered in this browser).
+  - Cuts and copper are always shown; copper is tinted only by the nets of parts present so far.
+  - The ratsnest shows only links between present pins.
+  - Path tracing (step 23) works on what's shown.
+  - With no part ordered, the bar says so and links to the schematic's Number parts.
+- **Not decided:** numbering parts by clicking them on the board, and grouping the build sheet by these steps. Try stepping first.
+- **Docs to update when built:** data-model.md (Build order: the derived steps), pages.md (Layout page), mcp.md (`get_layout`'s steps).
 
 ## Canvas: more ways to tame a busy design
 

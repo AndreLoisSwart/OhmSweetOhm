@@ -133,9 +133,10 @@ designs carry Shelf-help ids (shelf_item_id, shelf_project_id).
   first no errors, then fewer and shorter jumpers and a smaller area. Show the user the
   picture as you go. If a different GPIO would save jumpers, suggest the schematic
   change; make it only with their OK. Offer trim_dead_copper at the end.
-- On a perfboard there are no strips or cuts: join pins with bare bottom links (traces,
-  straight along a row or down a column) and one-hole solder bridges. Keep traces off
-  pads of other nets, since a bare trace joins every pad it crosses.
+- On a perfboard there are no strips or cuts: join pins with add_traces (along a row or
+  down a column, joining every pad on the way; bend a path with traces sharing an end)
+  and use jumpers, which join only their ends, to hop over other nets. Keep traces and
+  bare bottom jumpers off other nets' pads.
 - Every change you make to a design or layout saves a revision first, so the user can undo it from
   History in the app. Nothing can be deleted through these tools (parts, pins, designs,
   tags); ask the user to do that in the app. Notes and descriptions can only be added to.

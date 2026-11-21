@@ -1,4 +1,4 @@
-"""Layouts: creating them, placing parts, cuts, jumpers and connectors. Business rules
+"""Layouts: creating them, placing parts, cuts, jumpers, traces and connectors. Business rules
 live here; every change answers with the whole layout, checks included."""
 
 from sqlalchemy import select
@@ -24,6 +24,7 @@ from app.modules.layouts.models import (
     Layout,
     LayoutPart,
     Mount,
+    Trace,
 )
 from app.modules.layouts.schemas import (
     DEFAULT_SIZE,
@@ -50,6 +51,9 @@ from app.modules.layouts.schemas import (
     PartPlace,
     PlacedRef,
     SegmentOut,
+    TraceIn,
+    TraceOut,
+    TraceUpdate,
     UnplacedOut,
 )
 from app.modules.parts.models import Author, PartKind, PinKind
@@ -98,6 +102,7 @@ def _summary_fields(layout: Layout, checked: checks.Checked) -> dict:
             cuts=s.cuts,
             jumpers=s.jumpers,
             jumper_length=s.jumper_length,
+            traces=s.traces,
             area_strips=s.area_strips,
             area_holes=s.area_holes,
         ),
@@ -119,6 +124,22 @@ def summary(layout: Layout) -> LayoutSummary:
 def _has_footprint(placement: Placement) -> bool:
     return all(p.x_mm is not None for p in placement.part.pins if p.kind != PinKind.NC) and bool(
         placement.part.pins
+    )
+
+
+def _trace_out(board: boards.Board, t: Trace) -> TraceOut:
+    nets, short = board.tint(("trace", t.id))
+    return TraceOut(
+        id=t.id,
+        a_strip=t.a_strip,
+        a_hole=t.a_hole,
+        b_strip=t.b_strip,
+        b_hole=t.b_hole,
+        a=label((t.a_strip, t.a_hole)),
+        b=label((t.b_strip, t.b_hole)),
+        pads=len(boards.trace_path(t)),
+        nets=nets,
+        short=short,
     )
 
 
@@ -219,6 +240,7 @@ def detail(layout: Layout) -> LayoutDetail:
             )
             for j in layout.jumpers
         ],
+        traces=[_trace_out(board, t) for t in layout.traces],
         connectors=connectors,
         segments=[
             SegmentOut(
@@ -481,6 +503,73 @@ def remove_jumper(
     jumper = _jumper(layout, jumper_id)
     revisions.before_change(layout, claude)
     layout.jumpers.remove(jumper)
+    _touch(layout)
+    session.commit()
+    return layout
+
+
+# Traces (step 22) ----------------------------------------------------------------------
+
+
+def _check_trace(layout: Layout, a: tuple[int, int], b: tuple[int, int]) -> None:
+    if layout.board_type != BoardType.PERFBOARD:
+        raise ConflictError("Only a perfboard has traces: its pads aren't joined otherwise")
+    if a == b:
+        raise ConflictError("A trace needs two different holes")
+    if a[0] != b[0] and a[1] != b[1]:
+        raise ConflictError(
+            f"A trace runs along a row or down a column: {label(a)} → {label(b)} is diagonal. "
+            "Bend it with two traces, or use a jumper"
+        )
+    for cell in (a, b):
+        if not _inside(layout, *cell):
+            raise ConflictError(f"{label(cell)} isn't on the board")
+
+
+def add_traces(
+    session: Session, layout_id: int, items: list[TraceIn], claude: str | None = None
+) -> Layout:
+    layout = get_layout(session, layout_id)
+    for item in items:
+        _check_trace(layout, (item.a_strip, item.a_hole), (item.b_strip, item.b_hole))
+    revisions.before_change(layout, claude)
+    layout.traces.extend(Trace(**item.model_dump()) for item in items)
+    _touch(layout)
+    session.commit()
+    return layout
+
+
+def _trace(layout: Layout, trace_id: int) -> Trace:
+    trace = next((t for t in layout.traces if t.id == trace_id), None)
+    if trace is None:
+        raise NotFoundError(f"Trace {trace_id} isn't in this layout")
+    return trace
+
+
+def update_trace(
+    session: Session, layout_id: int, trace_id: int, data: TraceUpdate, claude: str | None = None
+) -> Layout:
+    layout = get_layout(session, layout_id)
+    trace = _trace(layout, trace_id)
+    changes = data.model_dump(exclude_unset=True, exclude_none=True)
+    a = (changes.get("a_strip", trace.a_strip), changes.get("a_hole", trace.a_hole))
+    b = (changes.get("b_strip", trace.b_strip), changes.get("b_hole", trace.b_hole))
+    _check_trace(layout, a, b)
+    revisions.before_change(layout, claude)
+    for field, value in changes.items():
+        setattr(trace, field, value)
+    _touch(layout)
+    session.commit()
+    return layout
+
+
+def remove_trace(
+    session: Session, layout_id: int, trace_id: int, claude: str | None = None
+) -> Layout:
+    layout = get_layout(session, layout_id)
+    trace = _trace(layout, trace_id)
+    revisions.before_change(layout, claude)
+    layout.traces.remove(trace)
     _touch(layout)
     session.commit()
     return layout

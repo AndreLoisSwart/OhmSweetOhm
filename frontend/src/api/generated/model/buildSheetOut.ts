@@ -8,6 +8,7 @@ import type { SheetConnectorOut } from './sheetConnectorOut';
 import type { SheetCutOut } from './sheetCutOut';
 import type { SheetJumperOut } from './sheetJumperOut';
 import type { SheetPartOut } from './sheetPartOut';
+import type { SheetTraceOut } from './sheetTraceOut';
 
 /**
  * What to do at the bench, in order. Cuts and jumpers are numbered as on the
@@ -21,6 +22,7 @@ export interface BuildSheetOut {
   warnings: string[];
   cuts: SheetCutOut[];
   jumpers: SheetJumperOut[];
+  traces: SheetTraceOut[];
   parts: SheetPartOut[];
   connectors: SheetConnectorOut[];
   shopping: string[];

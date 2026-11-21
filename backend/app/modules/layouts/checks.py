@@ -13,10 +13,15 @@ from app.modules.layouts.board import (
     Cell,
     connector_cells,
     connector_step,
+    ends,
     footprint_sig,
+    is_bare_bottom,
     is_diagonal,
     jumper_length,
     label,
+    pads_under,
+    strip_label,
+    trace_path,
 )
 from app.modules.layouts.models import BoardType, JumperSide, Mount
 
@@ -51,6 +56,7 @@ class Summary:
     cuts: int = 0
     jumpers: int = 0
     jumper_length: float = 0
+    traces: int = 0
     # The holes used, as the strips and holes of their bounding box.
     area_strips: int = 0
     area_holes: int = 0
@@ -124,6 +130,7 @@ def _physical(board: Board, users: dict[Cell, list[tuple[str, str]]]) -> list[Re
         for cell in ((j.a_strip, j.a_hole), (j.b_strip, j.b_hole))
         if j.side == JumperSide.BOTTOM and not board.inside(cell)
     )
+    edge += sorted(cell for t in board.layout.traces for cell in ends(t) if not board.inside(cell))
     if edge:
         names = sorted({name for cell in edge for _, name in users.get(cell, [])})
         out.append(
@@ -219,6 +226,50 @@ def _physical(board: Board, users: dict[Cell, list[tuple[str, str]]]) -> list[Re
                     holes=[label(a), label(b)],
                 )
             )
+    out += _bare_links(board)
+    return out
+
+
+def _bare_links(board: Board) -> list[Result]:
+    """Bare bottom wire lying on copper it isn't counted as joining: on a perfboard,
+    pads between a jumper's ends; on a stripboard, strips a diagonal link crosses."""
+    out = []
+    layout = board.layout
+    for n, jumper in enumerate(layout.jumpers, start=1):
+        if not is_bare_bottom(jumper):
+            continue
+        a, b = ends(jumper)
+        name = f"The bare link {label(a)} → {label(b)} (jumper {n})"
+        if layout.board_type == BoardType.PERFBOARD:
+            pads = pads_under(a, b, layout.strips, layout.holes)
+            if not pads:
+                continue
+            listed = ", ".join(label(c) for c in pads)
+            message = (
+                f"{name} passes over {listed}: insulate it, or make it a trace if "
+                f"{'that pad' if len(pads) == 1 else 'those pads'} should join"
+            )
+        elif layout.board_type == BoardType.STRIPBOARD and is_diagonal(jumper):
+            lo, hi = sorted((a[0], b[0]))
+            if hi - lo < 2:
+                continue
+            pads = []
+            crossed = [strip_label(s) for s in range(lo + 1, hi)]
+            message = (
+                f"{name} crosses strip{'s' if len(crossed) > 1 else ''} "
+                f"{', '.join(crossed)} between its ends and touches their copper: "
+                "insulate it, or run it straight"
+            )
+        else:
+            continue
+        out.append(
+            Result(
+                "bare_link_over_pad",
+                Severity.WARNING,
+                message,
+                holes=[label(a), label(b), *(label(c) for c in pads)],
+            )
+        )
     return out
 
 
@@ -361,7 +412,7 @@ def _shorts(board: Board, users: dict[Cell, list[tuple[str, str]]]) -> list[Resu
 def _cut_hint(board: Board, nets: dict[str, list[str]], users) -> str:
     """Where to cut, when two nets share one stretch of a strip."""
     if board.layout.board_type == BoardType.PERFBOARD:
-        return "A bare trace joins every pad it crosses: route it around such pads, or insulate it"
+        return _trace_hint(board, nets)
     if board.layout.board_type != BoardType.STRIPBOARD:
         return ""
     on_strip: dict[int, list[tuple[int, str]]] = {}
@@ -383,10 +434,33 @@ def _cut_hint(board: Board, nets: dict[str, list[str]], users) -> str:
     return ("Try: " + ", ".join(dict.fromkeys(hints))) if hints else ""
 
 
+def _trace_hint(board: Board, nets: dict[str, list[str]]) -> str:
+    """On a perfboard: the traces and jumpers carrying the short."""
+    key = next(iter(nets.values()))[0]
+    node = board.node(key)
+    names = [
+        f"trace {label(a)} → {label(b)}"
+        for t in board.layout.traces
+        if board.node(("trace", t.id)) == node
+        for a, b in [ends(t)]
+    ]
+    names += [
+        f"jumper {n} ({label(a)} → {label(b)})"
+        for n, j in enumerate(board.layout.jumpers, start=1)
+        if board.node(("jumper", j.id)) == node
+        for a, b in [ends(j)]
+    ]
+    if not names:
+        return ""
+    return f"It runs through {', '.join(names)}: move or shorten the one that crosses the other net"
+
+
 def _summary(board: Board, users, links: list[Link]) -> Summary:
     used = [c for c in users if board.inside(c)]
     for j in board.layout.jumpers:
         used += [(j.a_strip, j.a_hole), (j.b_strip, j.b_hole)]
+    for t in board.layout.traces:
+        used += [c for c in trace_path(t) if board.inside(c)]
     summary = Summary(
         on_board=len(board.parts),
         off_board=len(board.off_board),
@@ -395,6 +469,7 @@ def _summary(board: Board, users, links: list[Link]) -> Summary:
         cuts=len(board.layout.cuts),
         jumpers=len(board.layout.jumpers),
         jumper_length=round(sum(jumper_length(j) for j in board.layout.jumpers), 1),
+        traces=len(board.layout.traces),
     )
     if used:
         strips = [c[0] for c in used]

@@ -15,6 +15,7 @@ import type { LayoutStats } from './layoutStats';
 import type { LinkOut } from './linkOut';
 import type { PlacedRef } from './placedRef';
 import type { SegmentOut } from './segmentOut';
+import type { TraceOut } from './traceOut';
 import type { UnplacedOut } from './unplacedOut';
 
 export interface LayoutDetail {
@@ -36,6 +37,7 @@ export interface LayoutDetail {
   not_placed: UnplacedOut[];
   cuts: CutOut[];
   jumpers: JumperOut[];
+  traces: TraceOut[];
   connectors: ConnectorOut[];
   segments: SegmentOut[];
   links: LinkOut[];

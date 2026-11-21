@@ -38,6 +38,7 @@ from app.modules.layouts.schemas import (
     LayoutStats,
     LayoutUpdate,
     PartPlace,
+    TraceIn,
 )
 from app.modules.parts.models import Author
 
@@ -70,6 +71,15 @@ class JumperView(BaseModel):
     insulated: bool
     color: WireColor
     length: float
+
+
+class TraceView(BaseModel):
+    a: str
+    b: str
+    pads: int
+    # The design nets it carries; short: it joins pins the design keeps apart.
+    nets: list[str]
+    short: bool
 
 
 class ConnectorView(BaseModel):
@@ -112,6 +122,7 @@ class LayoutView(LayoutCheckView):
     not_placed: list[NotPlacedView]
     cuts: list[str]
     jumpers: list[JumperView]
+    traces: list[TraceView]
     connectors: list[ConnectorView]
 
 
@@ -166,6 +177,11 @@ class JumperAdd(BaseModel):
     color: WireColor | None = None
 
 
+class TraceAdd(BaseModel):
+    a: str
+    b: str
+
+
 class ConnectorAdd(BaseModel):
     """pins: what each carries, pin 1 first (`bme.SDA`, or null). pin_count defaults to
     the pins given."""
@@ -194,6 +210,7 @@ def _check_view(board: boards.Board) -> LayoutCheckView:
             cuts=s.cuts,
             jumpers=s.jumpers,
             jumper_length=s.jumper_length,
+            traces=s.traces,
             area_strips=s.area_strips,
             area_holes=s.area_holes,
         ),
@@ -254,6 +271,10 @@ def layout_view(layout: Layout) -> LayoutView:
                 length=round(boards.jumper_length(j), 1),
             )
             for j in layout.jumpers
+        ],
+        traces=[
+            TraceView(a=t.a, b=t.b, pads=t.pads, nets=t.nets, short=t.short)
+            for t in (layouts._trace_out(board, t) for t in layout.traces)
         ],
         connectors=[
             ConnectorView(
@@ -434,11 +455,10 @@ def register_layout_tools(tool: Callable, open_session: Callable, READ, WRITE, R
     @tool(WRITE)
     def add_jumpers(layout_id: int, jumpers: list[JumperAdd]) -> LayoutView:
         """Wire links between holes. side top: insulated wire on the component side,
-        through two free holes. side bottom: on the copper; a bare one joins every strip
-        it lies across (insulated: only its ends). Keep them straight along or across
-        the strips. On a perfboard, bare bottom links are its solder traces (joining every
-        pad they cross) and a one-hole link is a solder bridge; that's how its holes get
-        joined."""
+        through two free holes. side bottom: on the copper; on a stripboard a bare one
+        joins every strip it lies across (insulated: only its ends). Keep them straight
+        along or across the strips. On a perfboard a jumper, top or bottom, joins only its
+        ends: join pads with add_traces, and use jumpers to hop over other nets."""
         with open_session() as session:
             items = []
             for j in jumpers:
@@ -460,6 +480,46 @@ def register_layout_tools(tool: Callable, open_session: Callable, READ, WRITE, R
                 + _listed([f"{j.a}→{j.b}" for j in jumpers])
             )
             return layout_view(layouts.add_jumpers(session, layout_id, items, claude=summary))
+
+    @tool(WRITE)
+    def add_traces(layout_id: int, traces: list[TraceAdd]) -> LayoutView:
+        """Perfboard copper: each trace joins every pad from a to b, along a row (A2 to
+        A9) or down a column (A2 to F2), never diagonally. Neighbouring pads are bridged
+        with solder, longer runs are tinned wire. Bend a path with traces sharing an end.
+        Keep traces off other nets' pads: a trace joins everything on its pads."""
+        with open_session() as session:
+            items = []
+            for t in traces:
+                a, b = _hole(t.a), _hole(t.b)
+                items.append(TraceIn(a_strip=a[0], a_hole=a[1], b_strip=b[0], b_hole=b[1]))
+            summary = (
+                "Added trace"
+                + ("s " if len(traces) > 1 else " ")
+                + _listed([f"{t.a}→{t.b}" for t in traces])
+            )
+            return layout_view(layouts.add_traces(session, layout_id, items, claude=summary))
+
+    @tool(REMOVE)
+    def remove_trace(layout_id: int, a: str, b: str) -> LayoutView:
+        """Removes the trace between two holes (either way round)."""
+        with open_session() as session:
+            layout = layouts.get_layout(session, layout_id)
+            wanted = {_hole(a), _hole(b)}
+            trace = next(
+                (
+                    t
+                    for t in layout.traces
+                    if {(t.a_strip, t.a_hole), (t.b_strip, t.b_hole)} == wanted
+                ),
+                None,
+            )
+            if trace is None:
+                raise NotFoundError(f"There's no trace between {a} and {b}")
+            return layout_view(
+                layouts.remove_trace(
+                    session, layout_id, trace.id, claude=f"Removed the trace {a}→{b}"
+                )
+            )
 
     @tool(REMOVE)
     def remove_jumper(layout_id: int, a: str, b: str) -> LayoutView:

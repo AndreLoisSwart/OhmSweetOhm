@@ -5,17 +5,20 @@ import {
   useAddConnector,
   useAddCuts,
   useAddJumper,
+  useAddTrace,
   useCutBetweenRows,
   useApplyLayoutSnapshot,
   usePlaceParts,
   useRemoveConnector,
   useRemoveCut,
   useRemoveJumper,
+  useRemoveTrace,
   useRestoreLayoutRevision,
   useTrimDeadCopper,
   useUnplacePart,
   useUpdateConnector,
   useUpdateJumper,
+  useUpdateTrace,
   useUpdateLayout,
 } from '@/api/generated/layouts/layouts'
 import type {
@@ -28,6 +31,8 @@ import type {
   LayoutSnapshot,
   LayoutUpdate,
   PartPlace,
+  TraceIn,
+  TraceUpdate,
 } from '@/api/generated/model'
 import { snapshotOf } from './board/geometry'
 
@@ -58,6 +63,9 @@ export function useLayoutActions(layoutId: number) {
   const addJumper = useAddJumper(options)
   const updateJumper = useUpdateJumper(options)
   const removeJumper = useRemoveJumper(options)
+  const addTrace = useAddTrace(options)
+  const updateTrace = useUpdateTrace(options)
+  const removeTrace = useRemoveTrace(options)
   const addConnector = useAddConnector(options)
   const updateConnector = useUpdateConnector(options)
   const removeConnector = useRemoveConnector(options)
@@ -110,6 +118,10 @@ export function useLayoutActions(layoutId: number) {
         step(() => updateJumper.mutateAsync({ layoutId, jumperId, data })),
       removeJumper: (jumperId: number) =>
         step(() => removeJumper.mutateAsync({ layoutId, jumperId })),
+      addTrace: (data: TraceIn) => step(() => addTrace.mutateAsync({ layoutId, data })),
+      updateTrace: (traceId: number, data: TraceUpdate) =>
+        step(() => updateTrace.mutateAsync({ layoutId, traceId, data })),
+      removeTrace: (traceId: number) => step(() => removeTrace.mutateAsync({ layoutId, traceId })),
       addConnector: (data: ConnectorIn) => step(() => addConnector.mutateAsync({ layoutId, data })),
       updateConnector: (connectorId: number, data: ConnectorUpdate) =>
         step(() => updateConnector.mutateAsync({ layoutId, connectorId, data })),

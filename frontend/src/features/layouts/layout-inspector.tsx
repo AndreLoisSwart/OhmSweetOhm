@@ -1,3 +1,4 @@
+import { cn } from 'cn'
 import { Cable, CircuitBoard, ExternalLink, RotateCw, Scissors, Trash2, Undo } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router'
@@ -225,6 +226,7 @@ function LayoutDetails({
     ['Still to join', s.missing],
     ['Cuts', s.cuts],
     ['Jumpers', `${s.jumpers}${s.jumpers ? `, ${s.jumper_length} holes long in all` : ''}`],
+    ...(layout.board_type === 'perfboard' ? [['Traces', s.traces ?? 0] as [string, number]] : []),
     ['Area used', s.area_strips ? `${s.area_strips} strips × ${s.area_holes} holes` : '—'],
   ]
   return (
@@ -356,7 +358,9 @@ function JumperDetails({
               disabled={readOnly}
               onChange={(e) => save({ insulated: e.target.checked })}
             />
-            Insulated (touches only its ends; bare, it joins every strip it crosses)
+            {layout.board_type === 'perfboard'
+              ? 'Insulated (it joins only its ends either way; bare, keep it off other pads)'
+              : 'Insulated (touches only its ends; bare, it joins every strip it crosses)'}
           </label>
         )}
       </Section>
@@ -529,6 +533,65 @@ function ConnectorDetails({
   )
 }
 
+function TraceDetails({
+  layout,
+  traceId,
+  actions,
+  readOnly,
+}: {
+  layout: LayoutDetail
+  traceId: number
+  actions: LayoutActions
+  readOnly: boolean
+}) {
+  const t = layout.traces.find((x) => x.id === traceId)
+  if (!t) return null
+  return (
+    <div className="grid gap-4">
+      <div>
+        <div className="text-lg font-semibold">
+          Trace{' '}
+          <span className="font-mono">
+            {t.a} → {t.b}
+          </span>
+        </div>
+        <div className="text-sm text-muted-foreground">
+          {t.pads} pads, {t.pads <= 2 ? 'a solder bridge' : 'tinned wire'}
+        </div>
+      </div>
+      <Section title="Carries">
+        <p className={cn('text-sm', t.short && 'text-status-red')}>
+          {t.short
+            ? `A short: ${t.nets.join(' + ') || 'it joins pins the design keeps apart'}`
+            : t.nets.join(' + ') || 'Nothing yet'}
+        </p>
+      </Section>
+      {!readOnly && (
+        <div className="flex gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            title="Turn it a quarter clockwise about its middle (R). Drag an end to lengthen or shorten it."
+            onClick={() => quietly(actions.updateTrace(t.id, turnJumper(t, middleOf(t), 1, false)))}
+          >
+            <RotateCw />
+            Rotate
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-destructive"
+            onClick={() => quietly(actions.removeTrace(t.id))}
+          >
+            <Trash2 />
+            Remove
+          </Button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 /** The selected part, jumper or connector; or the layout itself when nothing is. */
 export function LayoutInspector({
   layout,
@@ -545,6 +608,10 @@ export function LayoutInspector({
   readOnly: boolean
   onDelete: () => void
 }) {
+  if (selected?.kind === 'trace' && layout.traces.some((t) => t.id === selected.id))
+    return (
+      <TraceDetails layout={layout} traceId={selected.id} actions={actions} readOnly={readOnly} />
+    )
   if (selected?.kind === 'jumper' && layout.jumpers.some((j) => j.id === selected.id))
     return (
       <JumperDetails layout={layout} jumperId={selected.id} actions={actions} readOnly={readOnly} />

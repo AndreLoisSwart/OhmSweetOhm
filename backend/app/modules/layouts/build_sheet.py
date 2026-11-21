@@ -47,6 +47,18 @@ class SheetJumper:
 
 
 @dataclass
+class SheetTrace:
+    number: int
+    trace_id: int
+    a: str
+    b: str
+    pads: int
+    # "solder bridge" between neighbouring pads, else "tinned wire".
+    kind: str
+    mm: float
+
+
+@dataclass
 class SheetPart:
     ref: str
     part: str
@@ -81,11 +93,11 @@ class Sheet:
     warnings: list[str]
     cuts: list[SheetCut]
     jumpers: list[SheetJumper]
+    traces: list[SheetTrace]
     parts: list[SheetPart]
     connectors: list[SheetConnector]
     shopping: list[str]
     steps: list[str] = field(default_factory=list)
-    # On a perfboard, bare bottom links are its traces and bridges.
     perfboard: bool = False
 
 
@@ -96,9 +108,9 @@ BOARD_NAMES = {
 }
 
 
-def link_name(holes: float) -> str:
-    """A perfboard's bare bottom link: a bridge between neighbouring holes, else a trace."""
-    return "solder bridge" if holes <= 1 else "trace"
+def trace_kind(pads: int) -> str:
+    """Neighbouring pads are bridged with solder; longer runs get tinned wire."""
+    return "solder bridge" if pads <= 2 else "tinned wire"
 
 
 def _header_rows(lp) -> list[int]:
@@ -147,6 +159,21 @@ def build(layout: Layout) -> Sheet:
                 holes=round(holes, 1),
                 mm=round(mm, 1),
                 cut_mm=round(mm + (LEG_ALLOWANCE_MM if legs else 0)),
+            )
+        )
+
+    traces = []
+    for n, t in enumerate(layout.traces, start=1):
+        pads = len(boards.trace_path(t))
+        traces.append(
+            SheetTrace(
+                number=n,
+                trace_id=t.id,
+                a=label((t.a_strip, t.a_hole)),
+                b=label((t.b_strip, t.b_hole)),
+                pads=pads,
+                kind=trace_kind(pads),
+                mm=round((pads - 1) * pitch, 1),
             )
         )
 
@@ -226,21 +253,15 @@ def build(layout: Layout) -> Sheet:
     bare = sum(j.cut_mm for j in jumpers if j.side == "bottom" and not j.insulated)
     if insulated:
         shopping.append(f"About {insulated / 10:.0f} cm of insulated hook-up wire for jumpers")
+    bare += sum(t.mm + LEG_ALLOWANCE_MM for t in traces if t.kind == "tinned wire")
     if bare:
-        what = "traces" if perfboard else "bottom links"
+        what = "traces and bottom jumpers" if perfboard else "bottom links"
         shopping.append(f"About {bare / 10:.0f} cm of bare tinned wire for {what}")
 
     steps = []
     if sheet_cuts:
         steps.append(f"Turn the board over and make the {len(sheet_cuts)} cuts (copper side)")
-    if perfboard and any(j.side == "bottom" and not j.insulated for j in jumpers):
-        steps.append(
-            "Turn the board over and lay the traces and solder bridges, soldering the wire "
-            "to every pad it crosses"
-        )
-        if any(j.side == "bottom" and j.insulated for j in jumpers):
-            steps.append("Solder the insulated bottom links on the copper side")
-    elif any(j.side == "bottom" for j in jumpers):
+    if not perfboard and any(j.side == "bottom" for j in jumpers):
         steps.append("Solder the bottom links on the copper side")
     if any(j.side == "top" for j in jumpers):
         steps.append("Fit and solder the top jumpers, shortest first")
@@ -250,6 +271,15 @@ def build(layout: Layout) -> Sheet:
         steps.append("Solder the female headers for the socketed modules")
     if connectors:
         steps.append("Solder the connectors, pin 1 where marked")
+    if traces:
+        steps.append(
+            "Turn the board over and lay the traces: bridge neighbouring pads with solder, "
+            "and solder tinned wire to every pad along longer runs"
+        )
+    if perfboard and any(j.side == "bottom" for j in jumpers):
+        steps.append(
+            "Solder the bottom jumpers at their ends only, keeping bare wire off other pads"
+        )
     check = (
         "Check each trace for breaks and for stray solder between pads"
         if perfboard
@@ -270,6 +300,7 @@ def build(layout: Layout) -> Sheet:
         warnings=warnings,
         cuts=sheet_cuts,
         jumpers=jumpers,
+        traces=traces,
         parts=parts,
         connectors=connectors,
         shopping=shopping,
@@ -295,16 +326,21 @@ def as_text(sheet: Sheet) -> str:
         ]
         out.append("")
     if sheet.jumpers:
-        out += ["## Traces and jumpers" if sheet.perfboard else "## Jumpers"]
+        out += ["## Jumpers"]
         out += [
             f"- [ ] {j.number}. {j.a} → {j.b}, "
-            + (
-                link_name(j.holes)
-                if sheet.perfboard and j.side == "bottom" and not j.insulated
-                else j.side + (" insulated" if j.insulated and j.side == "bottom" else "")
-            )
+            + j.side
+            + (" insulated" if j.insulated and j.side == "bottom" else "")
             + f", {j.color}, {j.holes:g} holes ({j.mm:g} mm), cut {j.cut_mm:g} mm"
             for j in sheet.jumpers
+        ]
+        out.append("")
+    if sheet.traces:
+        out += ["## Traces (copper side)"]
+        out += [
+            f"- [ ] T{t.number}. {t.a} → {t.b}, {t.pads} pads, {t.kind}"
+            + (f" ({t.mm:g} mm)" if t.kind == "tinned wire" else "")
+            for t in sheet.traces
         ]
         out.append("")
     out += ["## Parts (in build order)" if any(p.step for p in sheet.parts) else "## Parts"]

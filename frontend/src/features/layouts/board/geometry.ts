@@ -134,6 +134,12 @@ export function snapshotOf(layout: LayoutDetail): LayoutSnapshot {
       insulated: j.insulated,
       color: j.color,
     })),
+    traces: layout.traces.map(({ a_strip, a_hole, b_strip, b_hole }) => ({
+      a_strip,
+      a_hole,
+      b_strip,
+      b_hole,
+    })),
     connectors: layout.connectors.map((c) => ({
       ref: c.ref,
       type: c.type,

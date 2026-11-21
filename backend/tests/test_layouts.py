@@ -5,7 +5,7 @@ import pytest
 from app.core.db import get_session
 from app.modules.layouts import service
 from app.modules.layouts.board import label, parse_label, rotate, to_steps
-from app.modules.layouts.schemas import CutIn
+from app.modules.layouts.schemas import CutIn, TraceIn
 
 
 @pytest.fixture
@@ -589,31 +589,41 @@ def test_other_pitches(api, library):
 # Perfboard -------------------------------------------------------------------------------
 
 
-def trace(api, lid, a, b, **fields) -> dict:
+def link(api, lid, a, b, **fields):
     (a_strip, a_hole), (b_strip, b_hole) = a, b
-    return ok(
-        api.post(
-            f"/api/layouts/{lid}/jumpers",
-            json={
-                "a_strip": a_strip,
-                "a_hole": a_hole,
-                "b_strip": b_strip,
-                "b_hole": b_hole,
-                "side": "bottom",
-                **fields,
-            },
-        )
+    return api.post(
+        f"/api/layouts/{lid}/jumpers",
+        json={
+            "a_strip": a_strip,
+            "a_hole": a_hole,
+            "b_strip": b_strip,
+            "b_hole": b_hole,
+            "side": "bottom",
+            **fields,
+        },
     )
 
 
-def test_perfboard_pads_and_traces(api, library):
+def trace(api, lid, a, b):
+    (a_strip, a_hole), (b_strip, b_hole) = a, b
+    return api.post(
+        f"/api/layouts/{lid}/traces",
+        json={"a_strip": a_strip, "a_hole": a_hole, "b_strip": b_strip, "b_hole": b_hole},
+    )
+
+
+def perfboard_leds(api, library) -> tuple[dict, dict]:
     design = design_with(
         api,
         library,
         {"a": "LED (5 mm)", "b": "LED (5 mm)"},
         wires=[("a.A", "b.A"), ("a.K", "b.K")],
     )
-    layout = new_layout(api, design, board_type="perfboard")
+    return design, new_layout(api, design, board_type="perfboard")
+
+
+def test_perfboard_pads_and_traces(api, library):
+    design, layout = perfboard_leds(api, library)
     lid = layout["id"]
     assert (layout["strips"], layout["holes"], layout["pitch_mm"]) == (24, 30, 2.54)
     # A pad per hole, nothing joined.
@@ -629,21 +639,107 @@ def test_perfboard_pads_and_traces(api, library):
     assert "layout_short" not in check_ids(layout)
     assert layout["stats"]["missing"] == 2
 
-    # Traces down columns 2 and 3 join them; a bare trace joins the empty pads it crosses.
-    trace(api, lid, (1, 2), (4, 2))
-    layout = trace(api, lid, (1, 3), (4, 3))
+    # Traces down columns 2 and 3 join them, and every pad on the way.
+    ok(trace(api, lid, (1, 2), (4, 2)))
+    layout = ok(trace(api, lid, (1, 3), (4, 3)))
     assert layout["stats"]["missing"] == 0 and check_ids(layout, "error") == []
+    assert layout["stats"]["traces"] == 2
     pads = {(s["a_strip"], s["a_hole"]): s["nets"] for s in layout["segments"]}
     assert pads[(2, 2)] == pads[(1, 2)] != []
+    first = layout["traces"][0]
+    assert (first["a"], first["b"], first["pads"], first["short"]) == ("A2", "D2", 4, False)
+    assert first["nets"] == pads[(1, 2)]
 
-    # A solder bridge from A2 to A3 shorts the LED's legs, with a hint about traces.
-    layout = trace(api, lid, (1, 2), (1, 3))
+    # Diagonal traces, traces off the board and a trace of one hole are refused.
+    assert trace(api, lid, (1, 5), (3, 7)).status_code == 409
+    assert trace(api, lid, (1, 30), (1, 31)).status_code == 409
+    assert trace(api, lid, (1, 5), (1, 5)).status_code == 409
+
+    # A solder bridge from A2 to A3 shorts the LED's legs; the hint names the traces.
+    layout = ok(trace(api, lid, (1, 2), (1, 3)))
     short = [c for c in layout["checks"] if c["id"] == "layout_short"]
-    assert len(short) == 1 and "bare trace" in short[0]["message"]
+    assert len(short) == 1 and "trace A2 → A3" in short[0]["message"]
+    assert all(t["short"] for t in layout["traces"])
 
+    # Moving an end keeps it straight; removing it clears the short.
+    bridge = layout["traces"][2]["id"]
+    moved = api.patch(f"/api/layouts/{lid}/traces/{bridge}", json={"b_strip": 2})
+    assert moved.status_code == 409
     sheet = ok(api.get(f"/api/layouts/{lid}/build-sheet"))
     assert sheet["shopping"][0] == "Perfboard, 24 × 30 holes, 2.54 mm pitch"
-    assert sheet["steps"][0].startswith("Turn the board over and lay the traces")
+    assert [t["kind"] for t in sheet["traces"]] == ["tinned wire", "tinned wire", "solder bridge"]
+    assert sheet["steps"][-2].startswith("Turn the board over and lay the traces")
     assert sheet["steps"][-1].startswith("Check each trace")
-    assert "## Traces and jumpers" in sheet["text"]
-    assert "1. A2 → D2, trace" in sheet["text"] and "3. A2 → A3, solder bridge" in sheet["text"]
+    assert "## Traces (copper side)" in sheet["text"]
+    assert "T1. A2 → D2, 4 pads, tinned wire (7.6 mm)" in sheet["text"]
+    assert "T3. A2 → A3, 2 pads, solder bridge" in sheet["text"]
+    layout = ok(api.delete(f"/api/layouts/{lid}/traces/{bridge}"))
+    assert "layout_short" not in check_ids(layout) and len(layout["traces"]) == 2
+
+
+def test_traces_only_on_a_perfboard(api, library):
+    design, layout = two_leds(api, library)
+    assert trace(api, layout["id"], (1, 2), (1, 5)).status_code == 409
+
+
+def test_perfboard_jumpers_join_only_their_ends(api, library):
+    design, layout = perfboard_leds(api, library)
+    lid = layout["id"]
+    layout = place(api, layout, design, a=(1, 2), b=(4, 2))
+    # A bare bottom link A3 → D3 joins its ends (the K legs), not B3 and C3 under it,
+    # and says so.
+    layout = ok(link(api, lid, (1, 3), (4, 3)))
+    pads = {(s["a_strip"], s["a_hole"]): s["nets"] for s in layout["segments"]}
+    assert pads[(1, 3)] != [] and pads[(2, 3)] == []
+    over = [c for c in layout["checks"] if c["id"] == "bare_link_over_pad"]
+    assert len(over) == 1 and "passes over B3, C3" in over[0]["message"]
+    # A 45° link passes over the pad in its middle; a knight's move misses both pads.
+    layout = ok(link(api, lid, (10, 1), (12, 3)))
+    over = [c["message"] for c in layout["checks"] if c["id"] == "bare_link_over_pad"]
+    assert any("passes over K2" in m for m in over)
+    layout = ok(link(api, lid, (15, 1), (16, 3)))
+    assert len([c for c in layout["checks"] if c["id"] == "bare_link_over_pad"]) == 2
+    # Insulated, it lies over nothing.
+    layout = ok(link(api, lid, (20, 1), (20, 9), insulated=True))
+    assert len([c for c in layout["checks"] if c["id"] == "bare_link_over_pad"]) == 2
+
+
+def test_stripboard_diagonal_bare_link_warns(api, library):
+    design, layout = two_leds(api, library)
+    lid = layout["id"]
+    layout = ok(link(api, lid, (1, 1), (4, 3)))
+    over = [c["message"] for c in layout["checks"] if c["id"] == "bare_link_over_pad"]
+    assert over and "crosses strips B, C" in over[0]
+    # Straight across the strips it's counted as joining them: no warning.
+    layout = ok(link(api, lid, (6, 1), (9, 1)))
+    assert len([c for c in layout["checks"] if c["id"] == "bare_link_over_pad"]) == 1
+
+
+def test_old_perfboard_snapshot_becomes_traces(api, library):
+    """A snapshot from before traces: straight bare bottom links were the traces."""
+    design, layout = perfboard_leds(api, library)
+    lid = layout["id"]
+    jumper = {"side": "bottom", "insulated": False, "color": "gray"}
+    snapshot = {
+        "jumpers": [
+            {"a_strip": 1, "a_hole": 2, "b_strip": 4, "b_hole": 2, **jumper},
+            {"a_strip": 1, "a_hole": 5, "b_strip": 3, "b_hole": 7, **jumper},
+            {**jumper, "a_strip": 6, "a_hole": 1, "b_strip": 6, "b_hole": 4, "insulated": True},
+        ]
+    }
+    layout = ok(api.put(f"/api/layouts/{lid}/snapshot", json=snapshot))
+    assert [(t["a"], t["b"]) for t in layout["traces"]] == [("A2", "D2")]
+    assert [(j["a"], j["b"]) for j in layout["jumpers"]] == [("A5", "C7"), ("F1", "F4")]
+    # A new snapshot carries traces, so it's taken as it is.
+    snapshot["traces"] = [{"a_strip": 2, "a_hole": 1, "b_strip": 2, "b_hole": 3}]
+    layout = ok(api.put(f"/api/layouts/{lid}/snapshot", json=snapshot))
+    assert [(t["a"], t["b"]) for t in layout["traces"]] == [("B1", "B3")]
+    assert len(layout["jumpers"]) == 3
+    # Revisions keep traces.
+    session = next(api.app.dependency_overrides[get_session]())
+    service.add_traces(
+        session, lid, [TraceIn(a_strip=9, a_hole=1, b_strip=9, b_hole=2)], claude="Added trace"
+    )
+    revs = ok(api.get(f"/api/layouts/{lid}/revisions"))
+    restored = ok(api.post(f"/api/layouts/{lid}/revisions/{revs[0]['id']}/restore"))
+    assert [(t["a"], t["b"]) for t in restored["traces"]] == [("B1", "B3")]

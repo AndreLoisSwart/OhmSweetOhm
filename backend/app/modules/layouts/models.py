@@ -1,7 +1,7 @@
 """Protoboard layouts (build step 15): a design's parts on a physical board.
 
 A layout holds only physical facts: which of the design's placements are on the board
-and where, the board's type and size, and cuts, jumpers and connectors. Connectivity
+and where, the board's type and size, and cuts, jumpers, traces and connectors. Connectivity
 stays the design's; board connectivity and layout checks are computed, never stored.
 
 Positions are 1-based and match the board's labels: strip 1 is A, hole 1 is the first
@@ -25,7 +25,7 @@ class BoardType(StrEnum):
     # A breadboard's pattern: power rails along the edges, columns of five each side of
     # the gap. No cuts.
     BREADBOARD = "breadboard"
-    # A pad per hole, nothing joined: bottom links are its solder traces. No cuts.
+    # A pad per hole, nothing joined: traces join pads. No cuts.
     PERFBOARD = "perfboard"
 
 
@@ -39,7 +39,8 @@ class Mount(StrEnum):
 class JumperSide(StrEnum):
     # Insulated wire on the component side, through two free holes.
     TOP = "top"
-    # Wire or solder on the copper: touches every strip it crosses unless insulated.
+    # Wire on the copper side. On a stripboard or breadboard pattern a bare one touches
+    # every strip it crosses; on a perfboard (and when insulated) only its ends.
     BOTTOM = "bottom"
 
 
@@ -82,6 +83,9 @@ class Layout(Base):
     )
     jumpers: Mapped[list["Jumper"]] = relationship(
         cascade="all, delete-orphan", order_by=lambda: Jumper.id, lazy="selectin"
+    )
+    traces: Mapped[list["Trace"]] = relationship(
+        cascade="all, delete-orphan", order_by=lambda: Trace.id, lazy="selectin"
     )
     connectors: Mapped[list["Connector"]] = relationship(
         cascade="all, delete-orphan", order_by=lambda: Connector.id, lazy="selectin"
@@ -147,6 +151,20 @@ class Jumper(Base):
     # A bottom link in sleeving touches only its ends.
     insulated: Mapped[bool] = mapped_column(default=False)
     color: Mapped[WireColor] = mapped_column(str_enum(WireColor, "color"))
+
+
+class Trace(Base):
+    """A perfboard's copper (build step 22): solder bridges or tinned wire joining every
+    pad from one end to the other, along a row or down a column."""
+
+    __tablename__ = "layout_traces"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    layout_id: Mapped[int] = mapped_column(ForeignKey("layouts.id", ondelete="CASCADE"), index=True)
+    a_strip: Mapped[int]
+    a_hole: Mapped[int]
+    b_strip: Mapped[int]
+    b_hole: Mapped[int]
 
 
 class Connector(Base):

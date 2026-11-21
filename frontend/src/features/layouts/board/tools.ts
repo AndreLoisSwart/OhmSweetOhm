@@ -3,12 +3,13 @@
 import type { ConnectorType, LayoutDetail } from '@/api/generated/model'
 import { type BoardView, type Cell, cellAt, cellLabel, holeX, STEP, toSteps } from './geometry'
 
-export type Tool = 'select' | 'cut' | 'jumper' | 'connector'
+export type Tool = 'select' | 'cut' | 'jumper' | 'trace' | 'connector'
 
 /** What's selected on the board. */
 export type Selection =
   | { kind: 'part'; id: number }
   | { kind: 'jumper'; id: number }
+  | { kind: 'trace'; id: number }
   | { kind: 'connector'; id: number }
   | null
 
@@ -49,6 +50,16 @@ export function takenHoles(layout: LayoutDetail): Map<string, string> {
       taken.set(j.b, 'a jumper')
     }
   return taken
+}
+
+/**
+ * Where a trace from start towards cell ends: straight along start's row or down its
+ * column, whichever the pointer is further along (a trace is never diagonal).
+ */
+export function straightEnd(start: Cell, cell: Cell): Cell {
+  const ds = Math.abs(cell.strip - start.strip)
+  const dh = Math.abs(cell.hole - start.hole)
+  return ds > dh ? { strip: cell.strip, hole: start.hole } : { strip: start.strip, hole: cell.hole }
 }
 
 export const inside = (cell: Cell, layout: LayoutDetail) =>

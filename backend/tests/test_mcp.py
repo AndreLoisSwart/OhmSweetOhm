@@ -103,6 +103,8 @@ def test_tool_list(mcp):
         "add_jumpers",
         "remove_jumper",
         "move_jumper",
+        "add_traces",
+        "remove_trace",
         "propose_connectors",
         "add_connectors",
         "update_connector",
@@ -557,7 +559,7 @@ def lines_of(layout) -> list[str]:
 
 
 def test_claude_traces_a_perfboard(api, mcp):
-    """On a perfboard, bare bottom links are the traces; the picture shows them."""
+    """On a perfboard, traces join pads; the picture shows them."""
     assert api.post("/api/parts/starter").status_code == 200
     lib = {p["name"]: p["id"] for p in api.get("/api/parts").json()}
     did = api.post("/api/designs", json={"name": "Bench"}).json()["id"]
@@ -576,26 +578,27 @@ def test_claude_traces_a_perfboard(api, mcp):
     mcp("place_on_board", layout_id=lid, parts=[{"ref": "a", "at": "A2"}, {"ref": "b", "at": "D2"}])
     with pytest.raises(ToolError):
         mcp("cut", layout_id=lid, at=["B4"])
+    # A bottom jumper joins only its ends now, so A2 and D2 join but nothing between.
     layout = mcp(
-        "add_jumpers",
+        "add_traces",
         layout_id=lid,
-        jumpers=[
-            {"a": "A2", "b": "D2", "side": "bottom"},
-            {"a": "A3", "b": "D3", "side": "bottom"},
-        ],
+        traces=[{"a": "A2", "b": "D2"}, {"a": "A3", "b": "D3"}],
     )
     assert layout["missing"] == []
+    assert [(t["a"], t["b"], t["pads"]) for t in layout["traces"]] == [
+        ("A2", "D2", 4),
+        ("A3", "D3", 4),
+    ]
     lines = layout["picture"].splitlines()
-    # The traces' middle holes are marked down their columns; no per-row copper runs.
-    assert lines[2].split()[1].startswith(".") and lines[2][2:8] == ". : : "
+    # The traces' pads are marked down their columns; no per-row copper runs.
+    assert lines[2][2:8] == ". : : "
     assert "Perfboard: every hole is its own pad" in layout["picture"]
-    assert "Traces (jumper number, ends, nets): 1. A2-D2 " in layout["picture"]
-    # Moving a trace's end, named either way round; the other end stays.
-    moved = mcp("move_jumper", layout_id=lid, a="D3", b="A3", to_a="E3")
-    assert [(j["a"], j["b"]) for j in moved["jumpers"]] == [("A2", "D2"), ("A3", "E3")]
+    assert "Traces (ends, nets): A2-D2 " in layout["picture"]
     revisions = mcp("list_layout_revisions", layout_id=lid)["revisions"]
-    assert revisions[0]["summary"] == "Moved the jumper D3→A3 to E3→A3"
+    assert revisions[0]["summary"] == "Added traces A2→D2, A3→D3"
     with pytest.raises(ToolError):
-        mcp("move_jumper", layout_id=lid, a="A3", b="E3")
+        mcp("add_traces", layout_id=lid, traces=[{"a": "A5", "b": "C7"}])
+    layout = mcp("remove_trace", layout_id=lid, a="D3", b="A3")
+    assert len(layout["traces"]) == 1 and layout["missing"] != []
     with pytest.raises(ToolError):
-        mcp("move_jumper", layout_id=lid, a="A3", b="E3", to_b="A3")
+        mcp("remove_trace", layout_id=lid, a="D3", b="A3")

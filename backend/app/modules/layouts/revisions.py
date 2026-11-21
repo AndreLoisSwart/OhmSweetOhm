@@ -1,4 +1,4 @@
-"""Layout revisions: the layout's parts, cuts, jumpers and connectors saved before a
+"""Layout revisions: the layout's parts, cuts, jumpers, traces and connectors saved before a
 change, as for designs (designs/revisions.py): one before each of Claude's changes, one
 per canvas editing session, and one before a restore. The latest 50 are kept."""
 
@@ -9,15 +9,18 @@ from app.core.errors import NotFoundError
 
 # Same quiet spell as designs.
 from app.modules.designs.revisions import QUIET
-from app.modules.layouts.board import footprint_sig
+from app.modules.layouts.board import footprint_sig, is_diagonal
 from app.modules.layouts.models import (
+    BoardType,
     Connector,
     ConnectorPin,
     Cut,
     Jumper,
+    JumperSide,
     Layout,
     LayoutPart,
     LayoutRevision,
+    Trace,
 )
 from app.modules.layouts.schemas import (
     ConnectorPinSnapshot,
@@ -27,6 +30,7 @@ from app.modules.layouts.schemas import (
     LayoutRevisionOut,
     LayoutSnapshot,
     PartSnapshot,
+    TraceSnapshot,
 )
 from app.modules.parts.models import Author
 
@@ -61,6 +65,10 @@ def snapshot_of(layout: Layout) -> LayoutSnapshot:
                 color=j.color,
             )
             for j in layout.jumpers
+        ],
+        traces=[
+            TraceSnapshot(a_strip=t.a_strip, a_hole=t.a_hole, b_strip=t.b_strip, b_hole=t.b_hole)
+            for t in layout.traces
         ],
         connectors=[
             ConnectorSnapshot(
@@ -116,6 +124,7 @@ def apply_snapshot(session: Session, layout: Layout, snapshot: LayoutSnapshot) -
     layout.parts.clear()
     layout.cuts.clear()
     layout.jumpers.clear()
+    layout.traces.clear()
     layout.connectors.clear()
     session.flush()
     for item in snapshot.parts:
@@ -134,7 +143,11 @@ def apply_snapshot(session: Session, layout: Layout, snapshot: LayoutSnapshot) -
                 )
             )
     layout.cuts.extend(Cut(**c.model_dump()) for c in snapshot.cuts)
-    layout.jumpers.extend(Jumper(**j.model_dump()) for j in snapshot.jumpers)
+    jumpers, traces = snapshot.jumpers, snapshot.traces
+    if traces is None:
+        jumpers, traces = _links_as_traces(layout, jumpers)
+    layout.jumpers.extend(Jumper(**j.model_dump()) for j in jumpers)
+    layout.traces.extend(Trace(**t.model_dump()) for t in traces)
     for item in snapshot.connectors:
         connector = Connector(**item.model_dump(exclude={"pins"}))
         for pin in item.pins:
@@ -148,6 +161,27 @@ def apply_snapshot(session: Session, layout: Layout, snapshot: LayoutSnapshot) -
             )
         layout.connectors.append(connector)
     layout.updated_at = utcnow()
+
+
+def _links_as_traces(
+    layout: Layout, jumpers: list[JumperSnapshot]
+) -> tuple[list[JumperSnapshot], list[TraceSnapshot]]:
+    """A snapshot from before traces: on a perfboard its straight bare bottom links (and
+    one-hole solder bridges) were its traces, so they become traces, as the migration
+    did for the layouts themselves."""
+    if layout.board_type != BoardType.PERFBOARD:
+        return jumpers, []
+    kept, traces = [], []
+    for j in jumpers:
+        if j.side == JumperSide.BOTTOM and not j.insulated and not is_diagonal(j):
+            traces.append(
+                TraceSnapshot(
+                    a_strip=j.a_strip, a_hole=j.a_hole, b_strip=j.b_strip, b_hole=j.b_hole
+                )
+            )
+        else:
+            kept.append(j)
+    return kept, traces
 
 
 def list_revisions(layout: Layout) -> list[LayoutRevisionOut]:

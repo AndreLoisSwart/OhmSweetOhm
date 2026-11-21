@@ -37,7 +37,9 @@ import type {
   LayoutSnapshot,
   LayoutSummary,
   LayoutUpdate,
-  PartsPlace
+  PartsPlace,
+  TraceIn,
+  TraceUpdate
 } from '../model';
 
 import { apiFetch } from '../../fetcher';
@@ -1246,6 +1248,259 @@ export const useRemoveJumper = <TError = ErrorType<HTTPValidationError>,
         TContext
       > => {
       return useMutation(getRemoveJumperMutationOptions(options), queryClient);
+    }
+    export const getAddTraceUrl = (layoutId: number,) => {
+
+
+
+
+  return `/api/layouts/${layoutId}/traces`
+}
+
+/**
+ * @summary Add Trace
+ */
+export const addTrace = async (layoutId: number,
+    traceIn: TraceIn, options?: Parameters<typeof apiFetch>[1]): Promise<LayoutDetail> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<LayoutDetail>(getAddTraceUrl(layoutId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(traceIn)
+  }
+);}
+
+
+
+
+
+export const getAddTraceMutationKey = () => ['addTrace'] as const;
+
+export const getAddTraceMutationOptions = <TError = ErrorType<HTTPValidationError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addTrace>>, TError,AddTraceMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof addTrace>>, TError,AddTraceMutationVariables, TContext> => {
+
+const mutationKey = getAddTraceMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof addTrace>>, AddTraceMutationVariables> = (props) => {
+          const {layoutId,data} = props ?? {};
+
+          return  addTrace(layoutId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AddTraceMutationResult = NonNullable<Awaited<ReturnType<typeof addTrace>>>
+    export type AddTraceMutationBody = TraceIn
+    export type AddTraceMutationError = ErrorType<HTTPValidationError>
+    export type AddTraceMutationVariables = {layoutId: number;data: TraceIn}
+
+    /**
+ * @summary Add Trace
+ */
+export const useAddTrace = <TError = ErrorType<HTTPValidationError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addTrace>>, TError,AddTraceMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof addTrace>>,
+        TError,
+        AddTraceMutationVariables,
+        TContext
+      > => {
+      return useMutation(getAddTraceMutationOptions(options), queryClient);
+    }
+    export const getUpdateTraceUrl = (layoutId: number,
+    traceId: number,) => {
+
+
+
+
+  return `/api/layouts/${layoutId}/traces/${traceId}`
+}
+
+/**
+ * @summary Update Trace
+ */
+export const updateTrace = async (layoutId: number,
+    traceId: number,
+    traceUpdate: TraceUpdate, options?: Parameters<typeof apiFetch>[1]): Promise<LayoutDetail> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<LayoutDetail>(getUpdateTraceUrl(layoutId,traceId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(traceUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateTraceMutationKey = () => ['updateTrace'] as const;
+
+export const getUpdateTraceMutationOptions = <TError = ErrorType<HTTPValidationError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateTrace>>, TError,UpdateTraceMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateTrace>>, TError,UpdateTraceMutationVariables, TContext> => {
+
+const mutationKey = getUpdateTraceMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateTrace>>, UpdateTraceMutationVariables> = (props) => {
+          const {layoutId,traceId,data} = props ?? {};
+
+          return  updateTrace(layoutId,traceId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateTraceMutationResult = NonNullable<Awaited<ReturnType<typeof updateTrace>>>
+    export type UpdateTraceMutationBody = TraceUpdate
+    export type UpdateTraceMutationError = ErrorType<HTTPValidationError>
+    export type UpdateTraceMutationVariables = {layoutId: number;traceId: number;data: TraceUpdate}
+
+    /**
+ * @summary Update Trace
+ */
+export const useUpdateTrace = <TError = ErrorType<HTTPValidationError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateTrace>>, TError,UpdateTraceMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateTrace>>,
+        TError,
+        UpdateTraceMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateTraceMutationOptions(options), queryClient);
+    }
+    export const getRemoveTraceUrl = (layoutId: number,
+    traceId: number,) => {
+
+
+
+
+  return `/api/layouts/${layoutId}/traces/${traceId}`
+}
+
+/**
+ * @summary Remove Trace
+ */
+export const removeTrace = async (layoutId: number,
+    traceId: number, options?: Parameters<typeof apiFetch>[1]): Promise<LayoutDetail> => {
+
+  return apiFetch<LayoutDetail>(getRemoveTraceUrl(layoutId,traceId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getRemoveTraceMutationKey = () => ['removeTrace'] as const;
+
+export const getRemoveTraceMutationOptions = <TError = ErrorType<HTTPValidationError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeTrace>>, TError,RemoveTraceMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof removeTrace>>, TError,RemoveTraceMutationVariables, TContext> => {
+
+const mutationKey = getRemoveTraceMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof removeTrace>>, RemoveTraceMutationVariables> = (props) => {
+          const {layoutId,traceId} = props ?? {};
+
+          return  removeTrace(layoutId,traceId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RemoveTraceMutationResult = NonNullable<Awaited<ReturnType<typeof removeTrace>>>
+
+    export type RemoveTraceMutationError = ErrorType<HTTPValidationError>
+    export type RemoveTraceMutationVariables = {layoutId: number;traceId: number}
+
+    /**
+ * @summary Remove Trace
+ */
+export const useRemoveTrace = <TError = ErrorType<HTTPValidationError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeTrace>>, TError,RemoveTraceMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof removeTrace>>,
+        TError,
+        RemoveTraceMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRemoveTraceMutationOptions(options), queryClient);
     }
     export const getAddConnectorUrl = (layoutId: number,) => {
 
