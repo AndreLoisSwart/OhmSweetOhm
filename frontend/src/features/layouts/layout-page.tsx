@@ -37,6 +37,7 @@ import { BoardCanvas } from './board/board-canvas'
 import { type BoardHighlight, NO_HIGHLIGHT } from './board/highlight'
 import { type Cell, cellLabel, nextRotation, type Turn } from './board/geometry'
 import { middleOf, turnJumper } from './board/jumper-move'
+import { tracePath } from './board/path'
 import {
   type ConnectorDraft,
   connectorStep,
@@ -51,6 +52,7 @@ import { BoardToolbar } from './board-toolbar'
 import { LayoutChecksBar } from './layout-checks-bar'
 import { LayoutHistoryDialog } from './layout-history-dialog'
 import { LayoutInspector } from './layout-inspector'
+import { PathChip } from './path-chip'
 import { PartsTray } from './parts-tray'
 import { type LayoutActions, useLayoutActions } from './use-layout-actions'
 import { ViewSwitcher } from './view-switcher'
@@ -97,6 +99,22 @@ function LayoutEditor({ layout, design }: { layout: LayoutDetail; design: Design
   const [flipped, setFlipped] = useState(false)
   const [checksOpen, setChecksOpen] = useState(false)
   const [picked, setPicked] = useState<LayoutCheck | null>(null)
+  // Path tracing: Shift-click a pin or hole, then another. waiting: the first end came
+  // from the Inspector, so the next plain click picks the other.
+  const [pathEnds, setPathEnds] = useState<{ a: Cell; b: Cell | null; waiting: boolean } | null>(
+    null,
+  )
+  const path = useMemo(
+    () => (pathEnds?.b ? tracePath(layout, design, pathEnds.a, pathEnds.b) : null),
+    [pathEnds, layout, design],
+  )
+  const pathPoint = (cell: Cell) => {
+    if (!inside(cell, layout)) return
+    setPicked(null)
+    if (!pathEnds) return setPathEnds({ a: cell, b: null, waiting: false })
+    if (pathEnds.a.strip === cell.strip && pathEnds.a.hole === cell.hole) return setPathEnds(null)
+    setPathEnds({ a: pathEnds.a, b: cell, waiting: false })
+  }
   const [historyOpen, setHistoryOpen] = useState(false)
   const [trayOpen, setTrayOpen] = useState(false)
   const [detailsOpen, setDetailsOpen] = useState(false)
@@ -118,6 +136,8 @@ function LayoutEditor({ layout, design }: { layout: LayoutDetail; design: Design
     setTool(next)
     setJumperStart(null)
     setArmed(null)
+    // Tracing is a Select thing: another tool ends it.
+    if (next !== 'select') setPathEnds(null)
   }
 
   const taken = useMemo(() => takenHoles(layout), [layout])
@@ -273,7 +293,8 @@ function LayoutEditor({ layout, design }: { layout: LayoutDetail; design: Design
       const trace =
         selected?.kind === 'trace' ? layout.traces.find((t) => t.id === selected.id) : undefined
       if (event.key === 'Escape') {
-        if (jumperStart) setJumperStart(null)
+        if (pathEnds) setPathEnds(null)
+        else if (jumperStart) setJumperStart(null)
         else if (tool !== 'select' || armed !== null) chooseTool('select')
         else {
           setSelected(null)
@@ -322,6 +343,16 @@ function LayoutEditor({ layout, design }: { layout: LayoutDetail; design: Design
       selected={selected}
       actions={actions}
       readOnly={readOnly}
+      onTraceFrom={(cell) => {
+        setPicked(null)
+        setPathEnds({ a: cell, b: null, waiting: true })
+        // Below 1280 px the Inspector covers the board: close it, so the other end can be
+        // tapped.
+        if (!wide) {
+          setDetailsOpen(false)
+          setSelected(null)
+        }
+      }}
       onDelete={() =>
         deleteLayout.mutate(
           { layoutId: layout.id },
@@ -503,6 +534,10 @@ function LayoutEditor({ layout, design }: { layout: LayoutDetail; design: Design
                   : null
               }
               onConnectorAt={placeConnector}
+              path={path}
+              pathStart={pathEnds && !pathEnds.b ? pathEnds.a : null}
+              pathWaiting={pathEnds?.waiting ?? false}
+              onPathPoint={pathPoint}
               armedRotation={armedRotation}
               readOnly={readOnly}
             />
@@ -519,6 +554,17 @@ function LayoutEditor({ layout, design }: { layout: LayoutDetail; design: Design
                 pitch={layout.pitch_mm}
               />
             )}
+            <div
+              className={`pointer-events-none absolute inset-x-2 z-10 flex justify-center ${readOnly ? 'top-2' : 'top-12'}`}
+            >
+              <PathChip
+                layout={layout}
+                start={pathEnds && !pathEnds.b ? pathEnds.a : null}
+                waiting={pathEnds?.waiting ?? false}
+                path={path}
+                onClear={() => setPathEnds(null)}
+              />
+            </div>
             {!wide && (
               <>
                 <Button
@@ -570,6 +616,7 @@ function LayoutEditor({ layout, design }: { layout: LayoutDetail; design: Design
             picked={picked}
             onPick={(check) => {
               setPicked(check)
+              setPathEnds(null)
               if (!wide) setChecksOpen(false)
             }}
           />

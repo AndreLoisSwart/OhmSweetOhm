@@ -319,6 +319,8 @@ class Board:
     cut_holes: set[Cell]
     cut_between: set[Cell]
     segments: list[Segment] = field(default_factory=list)
+    # Pins on the board (or a connector) joined inside their part: its grounds, a tie.
+    joins: list[list[str]] = field(default_factory=list)
     # Which design nets each node carries, and every net identity on it (unwired pins
     # count), for tinting copper and spotting shorts.
     carried: dict[object, set[str]] = field(default_factory=dict)
@@ -416,6 +418,7 @@ def build(layout: Layout) -> Board:
     # Pins joined inside their part, and each pin's design net.
     net_of: dict[str, str] = {}
     nets: dict[str, list[str]] = {}
+    joins: list[list[str]] = []
     for net in compute_nets(design):
         nets[net.name] = [p.key for p in net.pins]
         for pin in net.pins:
@@ -432,6 +435,8 @@ def build(layout: Layout) -> Board:
         for members in groups.values():
             for key in members[1:]:
                 uf.join(members[0], key)
+            if len(here := [key for key in members if key in present]) > 1:
+                joins.append(here)
 
     board = Board(
         layout=layout,
@@ -446,6 +451,7 @@ def build(layout: Layout) -> Board:
         copper=copper,
         cut_holes=cut_holes,
         cut_between=cut_between,
+        joins=joins,
     )
     for key in present:
         name = net_of.get(key, key)

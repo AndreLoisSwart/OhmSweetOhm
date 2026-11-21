@@ -451,7 +451,7 @@ Three changes to the board, in this order: traces settle what joins what, and th
 - **MCP:** `add_traces(layout_id, traces: [{a, b}])` and `remove_trace(layout_id, a, b)`, each saving a revision; `get_layout` lists traces; `add_jumpers` on a perfboard no longer makes traces, and its docstring says so. The perfboard instruction becomes: join pins with traces along rows and columns, use jumpers (insulated, or on top) to cross other nets, keep traces off other nets' pads.
 - **Built as planned.** Also: finishing a trace by clicking the same spot again is judged by where you clicked, not where the run snapped to, so it never adds a one-pad stub; `TraceOut` carries `pads`, `nets` and `short`, and the stats count `traces`. Documented in data-model.md, pages.md and mcp.md.
 
-### Step 23: trace the path between two pins
+### Step 23: trace the path between two pins (built 2026-11-21)
 
 Shift-click two pins (or any holes) and the board shows the copper path between them, or that there isn't one.
 
@@ -474,7 +474,7 @@ Shift-click two pins (or any holes) and the board shows the copper path between 
   - **Connected, same net:** "esp.GPIO21 (C14) → bme.SDA (F20) · 2 strips, 1 jumper".
   - **Connected, different nets:** the path is drawn red: "Short: GND and 3V3 meet through strip C and trace C4→C9". This shows exactly where a short runs.
   - **Not connected:** each end's connected copper is tinted lightly; if the design joins them, the ratsnest line between them shows and the chip says "Not connected yet (net SDA)".
-- **Docs to update when built:** pages.md (Layout page: the board, keys, Inspector).
+- **Built as planned,** with these settled on the way: the in-part joins come as one list on the layout (`joins`: groups of pin keys with two or more on the board or a connector) rather than a group on each pin; choosing another tool also stops tracing; and the chip names a net "not wired" only when it isn't one of the design's nets. Documented in pages.md (Layout page).
 
 ### Step 24: build order on the board
 

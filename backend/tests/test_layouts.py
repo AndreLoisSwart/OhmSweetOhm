@@ -290,6 +290,24 @@ def test_bottom_links_touch_what_they_cross(api, library):
     assert gone["jumpers"] == [] and "layout_short" not in check_ids(gone)
 
 
+def test_what_joins_what_for_path_tracing(api, library):
+    """The API says what each jumper and trace joins, and which pins join inside parts."""
+    design, layout = two_leds(api, library)
+    lid = layout["id"]
+    bare = ok(link(api, lid, (1, 5), (4, 5)))
+    assert bare["jumpers"][0]["touches"] == ["A5", "B5", "C5", "D5"]
+    sleeved = ok(link(api, lid, (6, 1), (8, 1), insulated=True))
+    assert sleeved["jumpers"][1]["touches"] == ["F1", "H1"]
+    # An ESP32's two grounds are joined inside it.
+    design = design_with(api, library, {"esp": "ESP32 DevKit V1 (30-pin)"})
+    layout = new_layout(api, design)
+    layout = place(api, layout, design, esp=(2, 2))
+    assert ["esp.GND", "esp.GND2"] in [sorted(j) for j in layout["joins"]]
+    perf = new_layout(api, design, board_type="perfboard")
+    perf = ok(trace(api, perf["id"], (1, 2), (1, 4)))
+    assert perf["traces"][0]["touches"] == ["A2", "A3", "A4"]
+
+
 def test_cut_between_and_at_a_pin(api, library):
     design, layout = two_leds(api, library)
     lid = layout["id"]

@@ -138,6 +138,7 @@ def _trace_out(board: boards.Board, t: Trace) -> TraceOut:
         a=label((t.a_strip, t.a_hole)),
         b=label((t.b_strip, t.b_hole)),
         pads=len(boards.trace_path(t)),
+        touches=[label(c) for c in boards.trace_path(t)],
         nets=nets,
         short=short,
     )
@@ -237,10 +238,12 @@ def detail(layout: Layout) -> LayoutDetail:
                 insulated=j.insulated,
                 color=j.color,
                 length=round(boards.jumper_length(j), 1),
+                touches=[label(c) for c in boards.jumper_touches(j, layout.board_type)],
             )
             for j in layout.jumpers
         ],
         traces=[_trace_out(board, t) for t in layout.traces],
+        joins=board.joins,
         connectors=connectors,
         segments=[
             SegmentOut(

@@ -284,6 +284,8 @@ class JumperOut(BaseModel):
     color: WireColor
     # In holes.
     length: float
+    # The holes it joins: its ends, and every hole a bare stripboard link lies across.
+    touches: list[str]
 
 
 class TraceOut(BaseModel):
@@ -296,6 +298,8 @@ class TraceOut(BaseModel):
     b: str
     # The pads it joins, ends included.
     pads: int
+    # Those pads, end to end.
+    touches: list[str]
     # The design nets it carries, and whether it joins pins the design keeps apart.
     nets: list[str]
     short: bool
@@ -403,6 +407,9 @@ class LayoutDetail(LayoutSummary):
     traces: list[TraceOut]
     connectors: list[ConnectorOut]
     segments: list[SegmentOut]
+    # Pins (`ref.PIN`) joined inside their part, each group with two or more on the board
+    # or a connector: a part's grounds, pins sharing a tie.
+    joins: list[list[str]]
     links: list[LinkOut]
     checks: list[LayoutCheck]
 

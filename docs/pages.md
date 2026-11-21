@@ -120,6 +120,12 @@ Below 1280 px wide (the board needs the room) the tray and Inspector become over
   - the ref in the corner.
 - **Connectors and top jumpers:** drawn over the parts.
 - **The ratsnest:** dashed lines in the net's colour, from the API's `links`.
+- **Path tracing** (step 23): with Select, **Shift-click** (or Cmd/Ctrl-click) a pin or hole, then another; another Shift-click replaces the second end, Shift-clicking the first again, Esc, picking a check or another tool stops it. On a tablet, **Trace from here** beside a pin in the part's Inspector starts it (closing the Inspector below 1280 px), and the next tap picks the other end.
+  - **Joined:** everything else dims; the path's copper (only the stretch between where it enters and leaves a run), traces, jumpers and pins keep their own colours over one amber halo, with a moving dashed line along it. A top jumper seen from the copper side is dashed. Pins joined inside a part (its two grounds) show as a dashed arc. Ends are ringed A and B.
+  - **Joined across two design nets:** the same, with a red halo: where the short runs.
+  - **Not joined:** each end's copper is tinted (A blue, B green), with a dashed line between them when the design joins them.
+  - A chip under the toolbar says what was found: "a.A (A2) → b.A (D2) · 2 strips, 1 jumper", "Short: SDA and GND meet through 1 strip, 1 trace", or "Not connected yet (net SDA)". Its × stops tracing.
+  - The route is found in the browser (`board/path.ts`, fewest hops) from what the API says joins what: copper runs (`segments`), each jumper's and trace's `touches`, and `joins` (pins joined inside parts). The server stays the judge of connectivity.
 
 The board stays fitted to its space until you pan (drag empty board) or zoom (wheel); the fit button fits it again.
 
@@ -141,7 +147,7 @@ The board stays fitted to its space until you pan (drag empty board) or zoom (wh
 | Trace | T | Perfboard only. Click where it starts, then along the row or column: the run snaps to whichever the pointer is further along and is laid, and the next run starts from its end, so a bent path is click, click, click. Click the same spot again, or press Esc, to finish. Each run is one undo step. Select picks a trace; drag an end (it stays on the other end's row or column) or its middle, R turns it, Delete removes it |
 | Connector | K | Pick the type (female or male header, JST-XH, 5.08 mm screw terminal; a type whose pins don't fit the board's hole spacing is marked and can't be put down) and pin count in the toolbar, then click where pin 1 goes; ghost pins show where it lands, pin 1 darker. R (or the toolbar's rotate button) turns it before it's put down. The new connector is selected, to assign its pins |
 
-- **Keys:** R turns the selected part or connector, or the selected jumper a quarter clockwise about its middle hole (also **Rotate** in its Inspector, for tablets). Delete removes the selected jumper or connector, or unplaces a part. Esc steps back: it drops a jumper's first end, then goes back to Select, then clears the selection. Each tool shows a one-line hint under the toolbar.
+- **Keys:** R turns the selected part or connector, or the selected jumper a quarter clockwise about its middle hole (also **Rotate** in its Inspector, for tablets). Delete removes the selected jumper or connector, or unplaces a part. Esc steps back: it stops path tracing, drops a jumper's first end, then goes back to Select, then clears the selection. Each tool shows a one-line hint under the toolbar.
 - **The middle button** pans with any tool; the left button pans the empty board with Select.
 
 **The parts tray:**
@@ -150,7 +156,7 @@ The board stays fitted to its space until you pan (drag empty board) or zoom (wh
 - **Off the board:** each part with the pins that still need a connector, in the part's own pin order, and **Add a N-pin connector**. That opens the connector tool with those pins assigned in that order (a straight cable), ready to click where pin 1 goes.
 
 **The Inspector:**
-- **A selected part:** its first pin's hole and rotation, Rotate, Off board, Unplace, **Cut between rows** (stripboard), Socketed / Soldered, its pins (hole and net), and Show in schematic.
+- **A selected part:** its first pin's hole and rotation, Rotate, Off board, Unplace, **Cut between rows** (stripboard), Socketed / Soldered, its pins (hole and net, with **Trace from here**), and Show in schematic.
 - **A selected jumper:** its ends and length, component or copper side, insulated (bottom links), colour, and Remove.
 - **A selected trace:** its ends, pads (a solder bridge or tinned wire), the nets it carries (or that it shorts), Rotate and Remove.
 - **A selected connector:** its type, pin count and pin 1's hole; Rotate and Remove; a picker per pin for what it carries (the off-board parts' pins, or nothing); Add a pin and Remove the last pin.

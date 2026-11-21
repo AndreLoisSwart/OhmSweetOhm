@@ -36,6 +36,8 @@ import {
 } from './geometry'
 import { type CutTarget, cutTarget, type Selection, straightEnd, type Tool } from './tools'
 import { type Grab, type JumperEnds, movedJumper, movedTrace, sameEnds } from './jumper-move'
+import type { PathResult } from './path'
+import { PathLayer } from './path-layer'
 
 interface Viewport {
   x: number
@@ -101,6 +103,10 @@ export function BoardCanvas({
   connectorPreview,
   armedRotation,
   onConnectorAt,
+  path,
+  pathStart,
+  pathWaiting,
+  onPathPoint,
   readOnly,
 }: {
   layout: LayoutDetail
@@ -127,6 +133,13 @@ export function BoardCanvas({
   /** How a part armed from the tray will be turned when it's put down. */
   armedRotation: number
   onConnectorAt: (cell: Cell) => void
+  /** The traced path between two holes (Shift-click), drawn over the board. */
+  path: PathResult | null
+  /** Its first end, while the second is still to pick. */
+  pathStart: Cell | null
+  /** The path's first end is picked from the Inspector: the next click picks the other. */
+  pathWaiting: boolean
+  onPathPoint: (cell: Cell) => void
   readOnly: boolean
 }) {
   const view: BoardView = { strips: layout.strips, holes: layout.holes, flipped }
@@ -210,6 +223,34 @@ export function BoardCanvas({
     for (const net of design.nets) for (const pin of net.pins) map.set(pin, net.name)
     return map
   }, [design.nets])
+
+  // Where each pin on the board is, and its colour, for the traced path.
+  const pinCells = useMemo(() => {
+    const map = new Map<string, Cell>()
+    for (const part of layout.parts)
+      for (const pin of part.pins) map.set(pin.key, { strip: pin.strip, hole: pin.hole })
+    for (const c of layout.connectors)
+      for (const p of c.pins)
+        if (p.pin && p.strip != null && p.hole != null && !map.has(p.pin))
+          map.set(p.pin, { strip: p.strip, hole: p.hole })
+    return map
+  }, [layout])
+  const pinColor = (key: string) => {
+    const net = netOf.get(key)
+    return net ? netColor(net) : 'oklch(0.55 0.02 260)'
+  }
+
+  /**
+   * Shift-click (or Cmd/Ctrl-click) a pin or hole with Select to trace the path from it;
+   * caught before parts, jumpers and the board see the click.
+   */
+  const onPathDown = (event: ReactPointerEvent) => {
+    if (event.button !== 0 || armed !== null || tool !== 'select') return
+    if (!(event.shiftKey || event.metaKey || event.ctrlKey || pathWaiting)) return
+    event.stopPropagation()
+    event.preventDefault()
+    onPathPoint(cellFrom(event.clientX, event.clientY))
+  }
 
   const onBackgroundDown = (event: ReactPointerEvent) => {
     // The middle button pans with any tool.
@@ -421,6 +462,7 @@ export function BoardCanvas({
       <svg
         ref={svg}
         className="absolute inset-0 h-full w-full"
+        onPointerDownCapture={onPathDown}
         onPointerDown={onBackgroundDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
@@ -768,6 +810,38 @@ export function BoardCanvas({
               className="pointer-events-none"
             />
           ))}
+          {path && (
+            <PathLayer
+              path={path}
+              layout={layout}
+              view={view}
+              pinCells={pinCells}
+              pinColor={pinColor}
+            />
+          )}
+          {pathStart && (
+            <g className="pointer-events-none">
+              <circle
+                cx={holeX(pathStart.hole, view)}
+                cy={stripY(pathStart.strip)}
+                r={9}
+                fill="none"
+                stroke="oklch(0.84 0.17 85)"
+                strokeWidth={3}
+              />
+              <text
+                x={holeX(pathStart.hole, view) + 10}
+                y={stripY(pathStart.strip) - 9}
+                fontSize={11}
+                className="fill-foreground font-mono font-bold"
+                stroke="var(--card)"
+                strokeWidth={3}
+                paintOrder="stroke"
+              >
+                A
+              </text>
+            </g>
+          )}
           {/* The tools' previews. */}
           {tool === 'cut' && hover && (
             <CutGhost target={cutTarget(hover.x, hover.y, view)} view={view} />

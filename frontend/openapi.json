@@ -4976,6 +4976,13 @@
           "length": {
             "type": "number",
             "title": "Length"
+          },
+          "touches": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Touches"
           }
         },
         "type": "object",
@@ -4990,7 +4997,8 @@
           "side",
           "insulated",
           "color",
-          "length"
+          "length",
+          "touches"
         ],
         "title": "JumperOut"
       },
@@ -5374,6 +5382,16 @@
             "type": "array",
             "title": "Segments"
           },
+          "joins": {
+            "items": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "type": "array",
+            "title": "Joins"
+          },
           "links": {
             "items": {
               "$ref": "#/components/schemas/LinkOut"
@@ -5412,6 +5430,7 @@
           "traces",
           "connectors",
           "segments",
+          "joins",
           "links",
           "checks"
         ],
@@ -8140,6 +8159,13 @@
             "type": "integer",
             "title": "Pads"
           },
+          "touches": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Touches"
+          },
           "nets": {
             "items": {
               "type": "string"
@@ -8162,6 +8188,7 @@
           "a",
           "b",
           "pads",
+          "touches",
           "nets",
           "short"
         ],

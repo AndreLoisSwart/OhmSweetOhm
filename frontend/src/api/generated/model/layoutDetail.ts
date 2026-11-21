@@ -40,6 +40,7 @@ export interface LayoutDetail {
   traces: TraceOut[];
   connectors: ConnectorOut[];
   segments: SegmentOut[];
+  joins: string[][];
   links: LinkOut[];
   checks: LayoutCheck[];
 }

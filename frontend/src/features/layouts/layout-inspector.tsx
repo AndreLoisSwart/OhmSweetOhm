@@ -1,5 +1,14 @@
 import { cn } from 'cn'
-import { Cable, CircuitBoard, ExternalLink, RotateCw, Scissors, Trash2, Undo } from 'lucide-react'
+import {
+  Cable,
+  CircuitBoard,
+  ExternalLink,
+  RotateCw,
+  Route,
+  Scissors,
+  Trash2,
+  Undo,
+} from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router'
 import type {
@@ -16,7 +25,7 @@ import { EditableText } from '@/components/editable-text'
 import { Button } from '@/components/ui/button'
 import { quietly } from '@/features/designs/use-design-actions'
 import { parseOptionalId } from '@/features/parts/fields'
-import { nextRotation } from './board/geometry'
+import { type Cell, nextRotation } from './board/geometry'
 import { middleOf, turnJumper } from './board/jumper-move'
 import { boardName, isFixed } from './boards'
 import { PitchPicker } from './pitch-picker'
@@ -51,12 +60,14 @@ function PartDetails({
   placementId,
   actions,
   readOnly,
+  onTraceFrom,
 }: {
   layout: LayoutDetail
   design: DesignDetail
   placementId: number
   actions: LayoutActions
   readOnly: boolean
+  onTraceFrom: (cell: Cell) => void
 }) {
   const part = layout.parts.find((p) => p.placement_id === placementId)
   if (!part) return null
@@ -160,10 +171,22 @@ function PartDetails({
         <Section title="Pins">
           <ul className="grid gap-0.5 text-xs">
             {part.pins.map((pin) => (
-              <li key={pin.key} className="flex gap-2 px-1">
+              <li key={pin.key} className="flex items-center gap-2 px-1">
                 <span className="w-20 truncate font-mono">{pin.key.split('.')[1]}</span>
                 <span className="w-10 font-mono text-muted-foreground">{pin.at}</span>
-                <span className="truncate text-muted-foreground">{nets.get(pin.key) ?? '—'}</span>
+                <span className="flex-1 truncate text-muted-foreground">
+                  {nets.get(pin.key) ?? '—'}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="size-6"
+                  aria-label={`Trace from ${pin.key}`}
+                  title="Trace from here: then click the other end on the board"
+                  onClick={() => onTraceFrom({ strip: pin.strip, hole: pin.hole })}
+                >
+                  <Route />
+                </Button>
               </li>
             ))}
           </ul>
@@ -600,6 +623,7 @@ export function LayoutInspector({
   actions,
   readOnly,
   onDelete,
+  onTraceFrom,
 }: {
   layout: LayoutDetail
   design: DesignDetail
@@ -607,6 +631,8 @@ export function LayoutInspector({
   actions: LayoutActions
   readOnly: boolean
   onDelete: () => void
+  /** Starts tracing the path from a pin; the next click on the board picks the other end. */
+  onTraceFrom: (cell: Cell) => void
 }) {
   if (selected?.kind === 'trace' && layout.traces.some((t) => t.id === selected.id))
     return (
@@ -633,6 +659,7 @@ export function LayoutInspector({
       placementId={selected.id}
       actions={actions}
       readOnly={readOnly}
+      onTraceFrom={onTraceFrom}
     />
   ) : (
     <LayoutDetails layout={layout} actions={actions} readOnly={readOnly} onDelete={onDelete} />
