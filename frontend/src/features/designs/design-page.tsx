@@ -289,7 +289,8 @@ function DesignEditor({ design }: { design: DesignDetail }) {
               </aside>
             )}
             <div className="flex min-w-0 flex-1 flex-col">
-              <div className="relative min-h-0 flex-1">
+              {/* @container: the build order bar sizes itself to the canvas. */}
+              <div className="@container relative min-h-0 flex-1">
                 <DesignCanvas
                   design={shown}
                   nodes={nodes}
