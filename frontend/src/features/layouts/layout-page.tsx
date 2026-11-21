@@ -36,6 +36,7 @@ import { PHONE_QUERY, useMediaQuery } from '@/lib/use-media-query'
 import { BoardCanvas } from './board/board-canvas'
 import { type BoardHighlight, NO_HIGHLIGHT } from './board/highlight'
 import { type Cell, cellLabel, nextRotation, type Turn } from './board/geometry'
+import { middleOf, turnJumper } from './board/jumper-move'
 import {
   type ConnectorDraft,
   connectorStep,
@@ -233,6 +234,8 @@ function LayoutEditor({ layout, design }: { layout: LayoutDetail; design: Design
         selected?.kind === 'connector'
           ? layout.connectors.find((c) => c.id === selected.id)
           : undefined
+      const jumper =
+        selected?.kind === 'jumper' ? layout.jumpers.find((j) => j.id === selected.id) : undefined
       if (event.key === 'Escape') {
         if (jumperStart) setJumperStart(null)
         else if (tool !== 'select' || armed !== null) chooseTool('select')
@@ -257,6 +260,8 @@ function LayoutEditor({ layout, design }: { layout: LayoutDetail; design: Design
         )
       } else if (key === 'r' && conn) {
         quietly(actions.updateConnector(conn.id, { rotation: nextRotation(conn.rotation) }))
+      } else if (key === 'r' && jumper) {
+        quietly(actions.updateJumper(jumper.id, turnJumper(jumper, middleOf(jumper), 1, flipped)))
       } else if (event.key === 'Delete' || event.key === 'Backspace') {
         if (!selected) return
         setSelected(null)
@@ -444,6 +449,7 @@ function LayoutEditor({ layout, design }: { layout: LayoutDetail; design: Design
               onMoveConnector={(c, at) =>
                 quietly(actions.updateConnector(c.id, { strip: at.strip, hole: at.hole }))
               }
+              onMoveJumper={(id, ends) => quietly(actions.updateJumper(id, ends))}
               onCut={cut}
               jumperStart={jumperStart}
               onJumperPoint={jumperPoint}

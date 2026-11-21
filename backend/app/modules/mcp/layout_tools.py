@@ -32,6 +32,7 @@ from app.modules.layouts.schemas import (
     ConnectorIn,
     ConnectorUpdate,
     JumperIn,
+    JumperUpdate,
     LayoutCreate,
     LayoutRevisionOut,
     LayoutStats,
@@ -286,6 +287,18 @@ def _listed(items: list[str], limit: int = 4) -> str:
     return shown if len(items) <= limit else f"{shown} and {len(items) - limit} more"
 
 
+def _find_jumper(layout, a: str, b: str):
+    """The jumper between two holes, either way round."""
+    ends = {_hole(a), _hole(b)}
+    jumper = next(
+        (j for j in layout.jumpers if {(j.a_strip, j.a_hole), (j.b_strip, j.b_hole)} == ends),
+        None,
+    )
+    if jumper is None:
+        raise NotFoundError(f"There's no jumper between {a} and {b}")
+    return jumper
+
+
 def register_layout_tools(tool: Callable, open_session: Callable, READ, WRITE, REMOVE) -> None:
     @tool(READ)
     def list_layouts(design_id: int) -> Layouts:
@@ -452,21 +465,40 @@ def register_layout_tools(tool: Callable, open_session: Callable, READ, WRITE, R
     def remove_jumper(layout_id: int, a: str, b: str) -> LayoutView:
         """Removes the jumper between two holes (either way round)."""
         with open_session() as session:
-            layout = layouts.get_layout(session, layout_id)
-            ends = {_hole(a), _hole(b)}
-            jumper = next(
-                (
-                    j
-                    for j in layout.jumpers
-                    if {(j.a_strip, j.a_hole), (j.b_strip, j.b_hole)} == ends
-                ),
-                None,
-            )
-            if jumper is None:
-                raise NotFoundError(f"There's no jumper between {a} and {b}")
+            jumper = _find_jumper(layouts.get_layout(session, layout_id), a, b)
             return layout_view(
                 layouts.remove_jumper(
                     session, layout_id, jumper.id, claude=f"Removed the jumper {a}→{b}"
+                )
+            )
+
+    @tool(WRITE)
+    def move_jumper(
+        layout_id: int, a: str, b: str, to_a: str | None = None, to_b: str | None = None
+    ) -> LayoutView:
+        """Moves the jumper between holes a and b (either way round): to_a is where the
+        end at a goes, to_b where the end at b goes; an end not given stays. Its side,
+        colour and insulation are kept. Checked as a new jumper would be."""
+        if to_a is None and to_b is None:
+            raise ConflictError("Give to_a, to_b or both: where the ends go")
+        with open_session() as session:
+            jumper = _find_jumper(layouts.get_layout(session, layout_id), a, b)
+            # The end at a may be the jumper's second end.
+            flipped = (jumper.a_strip, jumper.a_hole) != _hole(a)
+            first, second = (to_b, to_a) if flipped else (to_a, to_b)
+            fields: dict = {}
+            if first is not None:
+                fields["a_strip"], fields["a_hole"] = _hole(first)
+            if second is not None:
+                fields["b_strip"], fields["b_hole"] = _hole(second)
+            moved = f"{to_a or a}→{to_b or b}"
+            return layout_view(
+                layouts.update_jumper(
+                    session,
+                    layout_id,
+                    jumper.id,
+                    JumperUpdate(**fields),
+                    claude=f"Moved the jumper {a}→{b} to {moved}",
                 )
             )
 

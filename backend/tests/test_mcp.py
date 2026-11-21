@@ -102,6 +102,7 @@ def test_tool_list(mcp):
         "uncut",
         "add_jumpers",
         "remove_jumper",
+        "move_jumper",
         "propose_connectors",
         "add_connectors",
         "update_connector",
@@ -589,3 +590,12 @@ def test_claude_traces_a_perfboard(api, mcp):
     assert lines[2].split()[1].startswith(".") and lines[2][2:8] == ". : : "
     assert "Perfboard: every hole is its own pad" in layout["picture"]
     assert "Traces (jumper number, ends, nets): 1. A2-D2 " in layout["picture"]
+    # Moving a trace's end, named either way round; the other end stays.
+    moved = mcp("move_jumper", layout_id=lid, a="D3", b="A3", to_a="E3")
+    assert [(j["a"], j["b"]) for j in moved["jumpers"]] == [("A2", "D2"), ("A3", "E3")]
+    revisions = mcp("list_layout_revisions", layout_id=lid)["revisions"]
+    assert revisions[0]["summary"] == "Moved the jumper D3→A3 to E3→A3"
+    with pytest.raises(ToolError):
+        mcp("move_jumper", layout_id=lid, a="A3", b="E3")
+    with pytest.raises(ToolError):
+        mcp("move_jumper", layout_id=lid, a="A3", b="E3", to_b="A3")

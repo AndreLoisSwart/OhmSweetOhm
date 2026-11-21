@@ -134,12 +134,12 @@ The board stays fitted to its space until you pan (drag empty board) or zoom (wh
 
 | Tool | Key | What it does |
 |---|---|---|
-| Select | V | Click a part, jumper or connector to select it; drag parts and connectors to move them by whole holes |
+| Select | V | Click a part, jumper or connector to select it; drag parts and connectors to move them by whole holes. A selected jumper shows a handle on each end: drag one to move just that end. Drag a jumper by its middle to move the whole of it, and press R while dragging to turn it a quarter clockwise about the hole you grabbed. Each move is one undo step, refused like a new jumper (e.g. a top jumper's end on a pin) |
 | Cut | C | Click a hole to cut the strip there, or near the gap between two holes to cut between them; click a cut to remove it. A dashed ring or bar shows where it would cut. Cutting a hole with a leg, connector pin or jumper end in it is refused, with the reason. Stripboard only |
 | Jumper | J | Click one end, then the other; a line follows the pointer. It goes on the side you're looking at: component side for a top jumper, copper side (turned over) for a bottom link. A top jumper's end in a taken hole is refused. Esc drops the first end. New jumpers aren't selected, so on a tablet the Inspector doesn't cover the board between jumpers |
 | Connector | K | Pick the type (female or male header, JST-XH, 5.08 mm screw terminal; a type whose pins don't fit the board's hole spacing is marked and can't be put down) and pin count in the toolbar, then click where pin 1 goes; ghost pins show where it lands, pin 1 darker. R (or the toolbar's rotate button) turns it before it's put down. The new connector is selected, to assign its pins |
 
-- **Keys:** R turns the selected part or connector. Delete removes the selected jumper or connector, or unplaces a part. Esc steps back: it drops a jumper's first end, then goes back to Select, then clears the selection. Each tool shows a one-line hint under the toolbar.
+- **Keys:** R turns the selected part or connector, or the selected jumper a quarter clockwise about its middle hole (also **Rotate** in its Inspector, for tablets). Delete removes the selected jumper or connector, or unplaces a part. Esc steps back: it drops a jumper's first end, then goes back to Select, then clears the selection. Each tool shows a one-line hint under the toolbar.
 - **The middle button** pans with any tool; the left button pans the empty board with Select.
 
 **The parts tray:**

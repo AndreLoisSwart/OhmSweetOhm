@@ -8,7 +8,13 @@ import {
   useRef,
   useState,
 } from 'react'
-import type { ConnectorOut, DesignDetail, LayoutDetail, LayoutPartOut } from '@/api/generated/model'
+import type {
+  ConnectorOut,
+  DesignDetail,
+  JumperOut,
+  LayoutDetail,
+  LayoutPartOut,
+} from '@/api/generated/model'
 import { Button } from '@/components/ui/button'
 import { type BoardHighlight, PLACEMENT_MIME } from './highlight'
 import {
@@ -28,6 +34,7 @@ import {
   stripY,
 } from './geometry'
 import { type CutTarget, cutTarget, type Selection, type Tool } from './tools'
+import { type Grab, type JumperEnds, movedJumper, sameEnds } from './jumper-move'
 
 interface Viewport {
   x: number
@@ -54,15 +61,19 @@ function capture(event: ReactPointerEvent) {
 const MIN_ZOOM = 0.25
 const MAX_ZOOM = 4
 
-/** A part or connector being dragged: it moves by whole holes. */
+/** A part, connector or jumper being dragged: it moves by whole holes. */
 interface Drag {
-  kind: 'part' | 'connector'
+  kind: 'part' | 'connector' | 'jumper'
   id: number
   startX: number
   startY: number
   dStrip: number
   dHole: number
   moved: boolean
+  /** A jumper's: an end, or the whole of it, turned (R) about the hole it was grabbed by. */
+  grab?: Grab
+  pivot?: Cell
+  turns?: number
 }
 
 export function BoardCanvas({
@@ -77,6 +88,7 @@ export function BoardCanvas({
   onPlace,
   onMove,
   onMoveConnector,
+  onMoveJumper,
   onCut,
   jumperStart,
   onJumperPoint,
@@ -97,6 +109,7 @@ export function BoardCanvas({
   onPlace: (placementId: number, at: Cell) => void
   onMove: (part: LayoutPartOut, at: Cell) => void
   onMoveConnector: (connector: ConnectorOut, at: Cell) => void
+  onMoveJumper: (jumperId: number, ends: JumperEnds) => void
   onCut: (target: CutTarget) => void
   /** The jumper tool's first hole, once picked. */
   jumperStart: Cell | null
@@ -234,11 +247,50 @@ export function BoardCanvas({
     })
   }
 
-  const onJumperDown = (event: ReactPointerEvent, jumperId: number) => {
+  /** A jumper is dragged by an end (its handles, once selected) or by its middle. */
+  const onJumperDown = (event: ReactPointerEvent, jumperId: number, grab: Grab = 'body') => {
     if (event.button !== 0 || !selecting) return
     event.stopPropagation()
     onSelect({ kind: 'jumper', id: jumperId })
+    if (readOnly) return
+    capture(event)
+    setDrag({
+      kind: 'jumper',
+      id: jumperId,
+      startX: event.clientX,
+      startY: event.clientY,
+      dStrip: 0,
+      dHole: 0,
+      moved: false,
+      grab,
+      pivot: cellFrom(event.clientX, event.clientY),
+      turns: 0,
+    })
   }
+
+  /** Where a jumper is drawn: where it's being dragged to, or where it is. */
+  const jumperEnds = (j: JumperOut): JumperEnds =>
+    drag?.kind === 'jumper' && drag.id === j.id
+      ? movedJumper(j, drag.grab ?? 'body', drag, drag.turns, drag.pivot, flipped)
+      : j
+
+  const selectedJumper =
+    selected?.kind === 'jumper' ? layout.jumpers.find((j) => j.id === selected.id) : undefined
+
+  // R turns a jumper dragged by its middle, a quarter clockwise each time. Caught before
+  // the page's own keys, which would otherwise act on the selection too.
+  const turning = drag?.kind === 'jumper' && drag.grab === 'body'
+  useEffect(() => {
+    if (!turning) return
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key.toLowerCase() !== 'r' || event.ctrlKey || event.metaKey || event.altKey) return
+      event.preventDefault()
+      event.stopImmediatePropagation()
+      setDrag((d) => (d ? { ...d, turns: (d.turns ?? 0) + 1 } : d))
+    }
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  }, [turning])
 
   const onPointerMove = (event: ReactPointerEvent) => {
     if (drag) {
@@ -269,6 +321,12 @@ export function BoardCanvas({
         const part = layout.parts.find((p) => p.placement_id === drag.id)
         if (part && moved && part.strip != null && part.hole != null)
           onMove(part, { strip: part.strip + drag.dStrip, hole: part.hole + drag.dHole })
+      } else if (drag.kind === 'jumper') {
+        const j = layout.jumpers.find((x) => x.id === drag.id)
+        // A click without moving leaves it; a turn counts even without a move.
+        const by = drag.moved ? drag : { dStrip: 0, dHole: 0 }
+        const to = j && movedJumper(j, drag.grab ?? 'body', by, drag.turns, drag.pivot, flipped)
+        if (j && to && !sameEnds(j, to)) onMoveJumper(j.id, to)
       } else {
         const c = layout.connectors.find((x) => x.id === drag.id)
         if (c && moved && c.strip != null && c.hole != null)
@@ -462,7 +520,7 @@ export function BoardCanvas({
             .map((j) => (
               <JumperLine
                 key={j.id}
-                jumper={j}
+                jumper={jumperEnds(j)}
                 view={view}
                 color={j.insulated ? j.color : 'oklch(0.7 0.02 260)'}
                 opacity={flipped ? 0.95 : 0.35}
@@ -597,7 +655,7 @@ export function BoardCanvas({
             .map((j) => (
               <JumperLine
                 key={j.id}
-                jumper={j}
+                jumper={jumperEnds(j)}
                 view={view}
                 color={j.color}
                 opacity={flipped ? 0.3 : 0.95}
@@ -607,6 +665,15 @@ export function BoardCanvas({
                 label={`Jumper ${j.a} → ${j.b}`}
               />
             ))}
+          {/* The selected jumper's ends: drag either to move just that end. */}
+          {selecting && !readOnly && selectedJumper && (
+            <JumperHandles
+              jumper={selectedJumper}
+              ends={jumperEnds(selectedJumper)}
+              view={view}
+              onGrab={(event, grab) => onJumperDown(event, selectedJumper.id, grab)}
+            />
+          )}
           {/* Ratsnest: what the board doesn't join yet. */}
           {layout.links.map((link, i) => (
             <line
@@ -704,6 +771,37 @@ export function BoardCanvas({
       </Button>
     </div>
   )
+}
+
+/** Round handles on a selected jumper's ends, to drag one end on its own. */
+function JumperHandles({
+  jumper,
+  ends,
+  view,
+  onGrab,
+}: {
+  jumper: JumperOut
+  ends: JumperEnds
+  view: BoardView
+  onGrab: (event: ReactPointerEvent, grab: Grab) => void
+}) {
+  const handles = [
+    { grab: 'a' as const, strip: ends.a_strip, hole: ends.a_hole, at: jumper.a },
+    { grab: 'b' as const, strip: ends.b_strip, hole: ends.b_hole, at: jumper.b },
+  ]
+  return handles.map((end) => (
+    <circle
+      key={end.grab}
+      cx={holeX(end.hole, view)}
+      cy={stripY(end.strip)}
+      r={6}
+      className="cursor-grab fill-primary stroke-background"
+      strokeWidth={2}
+      onPointerDown={(event) => onGrab(event, end.grab)}
+    >
+      <title>Drag to move this end ({end.at})</title>
+    </circle>
+  ))
 }
 
 function JumperLine({

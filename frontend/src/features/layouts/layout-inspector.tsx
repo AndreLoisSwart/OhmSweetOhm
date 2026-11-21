@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button'
 import { quietly } from '@/features/designs/use-design-actions'
 import { parseOptionalId } from '@/features/parts/fields'
 import { nextRotation } from './board/geometry'
+import { middleOf, turnJumper } from './board/jumper-move'
 import { boardName, isFixed } from './boards'
 import { PitchPicker } from './pitch-picker'
 import { CONNECTOR_TYPES, type Selection } from './board/tools'
@@ -376,15 +377,26 @@ function JumperDetails({
         </div>
       </Section>
       {!readOnly && (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="justify-self-start text-destructive"
-          onClick={() => quietly(actions.removeJumper(j.id))}
-        >
-          <Trash2 />
-          Remove
-        </Button>
+        <div className="flex gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            title="Turn it a quarter clockwise about its middle (R). Drag an end to move just that end."
+            onClick={() => save(turnJumper(j, middleOf(j), 1, false))}
+          >
+            <RotateCw />
+            Rotate
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-destructive"
+            onClick={() => quietly(actions.removeJumper(j.id))}
+          >
+            <Trash2 />
+            Remove
+          </Button>
+        </div>
       )}
     </div>
   )
