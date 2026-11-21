@@ -35,6 +35,7 @@ from app.modules.layouts.schemas import (
     LayoutCreate,
     LayoutRevisionOut,
     LayoutStats,
+    LayoutUpdate,
     PartPlace,
 )
 from app.modules.parts.models import Author
@@ -102,6 +103,8 @@ class LayoutView(LayoutCheckView):
     strips: int
     holes: int
     pitch_mm: float
+    # The board it's built on: a Shelf-help item id.
+    shelf_item_id: int | None
     # The board as text: see the legend at its end.
     picture: str
     parts: list[BoardPartView]
@@ -218,6 +221,7 @@ def layout_view(layout: Layout) -> LayoutView:
         strips=layout.strips,
         holes=layout.holes,
         pitch_mm=pitch,
+        shelf_item_id=layout.shelf_item_id,
         picture=picture.render(board),
         parts=[
             BoardPartView(
@@ -308,15 +312,39 @@ def register_layout_tools(tool: Callable, open_session: Callable, READ, WRITE, R
         strips: int | None = None,
         holes: int | None = None,
         pitch_mm: float | None = None,
+        shelf_item_id: int | None = None,
     ) -> LayoutView:
         """A new protoboard layout of the design. A stripboard is 24 strips of 37 holes
         unless sized (ask the user the size of theirs); a breadboard pattern is 14 rows
-        of 62. pitch_mm is the hole spacing, 2.54 unless the user's board differs."""
+        of 62; a perfboard (a pad per hole, nothing joined) is 24 × 30 unless sized.
+        pitch_mm is the hole spacing, 2.54 unless the user's board differs.
+        shelf_item_id is the board on the shelf: a Shelf-help item tagged protoboard,
+        looked up there first, since this app can't check it."""
         data = LayoutCreate(
-            name=name, board_type=board_type, strips=strips, holes=holes, pitch_mm=pitch_mm
+            name=name,
+            board_type=board_type,
+            strips=strips,
+            holes=holes,
+            pitch_mm=pitch_mm,
+            shelf_item_id=shelf_item_id,
         )
         with open_session() as session:
             return layout_view(layouts.create_layout(session, design_id, data))
+
+    @tool(WRITE)
+    def update_layout(
+        layout_id: int, name: str | None = None, shelf_item_id: int | None = None
+    ) -> LayoutView:
+        """Renames the layout, or links the Shelf-help board it's built on (0 unlinks;
+        look the id up in Shelf-help first). Only the fields given change. Saves no
+        revision: a layout revision holds what's on the board."""
+        fields: dict = {}
+        if name is not None:
+            fields["name"] = name
+        if shelf_item_id is not None:
+            fields["shelf_item_id"] = shelf_item_id or None
+        with open_session() as session:
+            return layout_view(layouts.update_layout(session, layout_id, LayoutUpdate(**fields)))
 
     @tool(READ)
     def get_layout(layout_id: int) -> LayoutView:
@@ -395,7 +423,9 @@ def register_layout_tools(tool: Callable, open_session: Callable, READ, WRITE, R
         """Wire links between holes. side top: insulated wire on the component side,
         through two free holes. side bottom: on the copper; a bare one joins every strip
         it lies across (insulated: only its ends). Keep them straight along or across
-        the strips."""
+        the strips. On a perfboard, bare bottom links are its solder traces (joining every
+        pad they cross) and a one-hole link is a solder bridge; that's how its holes get
+        joined."""
         with open_session() as session:
             items = []
             for j in jumpers:

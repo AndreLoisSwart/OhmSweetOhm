@@ -98,7 +98,7 @@ A board layout of a design, from the view switcher in the design header: `Schema
 **The view switcher:**
 - Each layout shows its state ("2 to join · 1 error", "Matches the design", "Empty").
 - On the schematic, an amber dot marks that some layout needs attention.
-- New layout asks for the board (stripboard 24 × 37, or breadboard pattern 14 × 62), a stripboard's hole spacing (2.54 mm standard, 2.0, 1.27, or another 1–10 mm, with a note that 2.54 mm modules won't fit a finer board) and a name, then opens it.
+- New layout asks for the board (stripboard, breadboard pattern or perfboard), its size (strips × holes, blank for the usual 24 × 37, 14 × 62 or 24 × 30; a breadboard pattern always has 14 rows), the hole spacing of a stripboard or perfboard (2.54 mm standard, 2.0, 1.27, or another 1–10 mm, with a note that 2.54 mm modules won't fit a finer board), a name and, optionally, the Shelf-help item of the board it's built on, then opens it.
 
 **The page uses the design page's shell:**
 - left: the parts tray;
@@ -151,7 +151,7 @@ The board stays fitted to its space until you pan (drag empty board) or zoom (wh
 - **A selected part:** its first pin's hole and rotation, Rotate, Off board, Unplace, **Cut between rows** (stripboard), Socketed / Soldered, its pins (hole and net), and Show in schematic.
 - **A selected jumper:** its ends and length, component or copper side, insulated (bottom links), colour, and Remove.
 - **A selected connector:** its type, pin count and pin 1's hole; Rotate and Remove; a picker per pin for what it carries (the off-board parts' pins, or nothing); Add a pin and Remove the last pin.
-- **Nothing selected:** the layout's name (editable), board, hole spacing (editable on a stripboard; changing it re-reads every footprint, so parts may come off the grid), part counts, connections still to join, cuts, jumpers, area used, notes, **Trim dead copper** (stripboard) and Delete layout.
+- **Nothing selected:** the layout's name (editable), board, its Shelf-help item id (editable, blank clears it), hole spacing (editable on a stripboard or perfboard; changing it re-reads every footprint, so parts may come off the grid), part counts, connections still to join, cuts, jumpers, area used, notes, **Trim dead copper** (stripboard) and Delete layout.
 
 **The checks bar:**
 - It shows the counts and "N to join", "Nothing on the board yet", or "The board matches the design".

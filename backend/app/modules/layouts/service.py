@@ -87,6 +87,7 @@ def _summary_fields(layout: Layout, checked: checks.Checked) -> dict:
         "strips": layout.strips,
         "holes": layout.holes,
         "pitch_mm": layout.pitch_mm,
+        "shelf_item_id": layout.shelf_item_id,
         "updated_at": layout.updated_at,
         "check_summary": counts,
         "stats": LayoutStats(
@@ -283,6 +284,7 @@ def create_layout(session: Session, design_id: int, data: LayoutCreate) -> Layou
         strips=strips,
         holes=data.holes or holes,
         pitch_mm=round(data.pitch_mm or boards.PITCH_MM, 2),
+        shelf_item_id=data.shelf_item_id,
     )
     session.add(layout)
     session.commit()

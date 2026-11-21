@@ -62,6 +62,8 @@ export function PrintPage() {
     return <p className="p-6 text-sm text-destructive">{errorMessage(error)}</p>
   }
   const l = layout.data
+  // A perfboard's bare bottom links are its traces and bridges.
+  const perfboard = l.board_type === 'perfboard'
   const s = sheet.data
   const name = slug(`${s.title}`)
 
@@ -171,7 +173,7 @@ export function PrintPage() {
             </Block>
           )}
           {s.jumpers.length > 0 && (
-            <Block title={`Jumpers (${s.jumpers.length})`}>
+            <Block title={`${perfboard ? 'Traces and jumpers' : 'Jumpers'} (${s.jumpers.length})`}>
               <ul>
                 {s.jumpers.map((j) => (
                   <li key={j.jumper_id}>
@@ -180,8 +182,16 @@ export function PrintPage() {
                       {j.number}. {j.a} → {j.b}
                     </span>
                     ,{' '}
-                    {j.side === 'top' ? 'top' : j.insulated ? 'bottom, insulated' : 'bottom, bare'},{' '}
-                    {j.color}, {j.holes} holes: cut {j.cut_mm} mm
+                    {j.side === 'top'
+                      ? 'top'
+                      : j.insulated
+                        ? 'bottom, insulated'
+                        : perfboard
+                          ? j.holes <= 1
+                            ? 'solder bridge'
+                            : 'trace'
+                          : 'bottom, bare'}
+                    , {j.color}, {j.holes} holes: cut {j.cut_mm} mm
                   </li>
                 ))}
               </ul>

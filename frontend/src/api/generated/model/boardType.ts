@@ -11,4 +11,5 @@ export type BoardType = typeof BoardType[keyof typeof BoardType];
 export const BoardType = {
   stripboard: 'stripboard',
   breadboard: 'breadboard',
+  perfboard: 'perfboard',
 } as const;

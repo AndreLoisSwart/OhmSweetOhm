@@ -28,7 +28,12 @@ ConnectorRef = Annotated[
 Pitch = Annotated[float, Field(ge=1, le=10)]
 
 # Board sizes: the user's stripboard and full-size breadboard-pattern board.
-DEFAULT_SIZE = {BoardType.STRIPBOARD: (24, 37), BoardType.BREADBOARD: (14, 62)}
+DEFAULT_SIZE = {
+    BoardType.STRIPBOARD: (24, 37),
+    BoardType.BREADBOARD: (14, 62),
+    # About 7 × 9 cm, a common perfboard.
+    BoardType.PERFBOARD: (24, 30),
+}
 
 
 class LayoutCreate(BaseModel):
@@ -39,13 +44,18 @@ class LayoutCreate(BaseModel):
     holes: Annotated[int, Field(ge=2, le=200)] | None = None
     # The distance between holes in mm; 2.54 unless given. Always 2.54 on a breadboard.
     pitch_mm: Pitch | None = None
+    # The board on the shelf: a Shelf-help item id.
+    shelf_item_id: int | None = None
 
 
 class LayoutUpdate(BaseModel):
+    """Only the fields sent are changed; shelf_item_id is cleared with null."""
+
     name: Name | None = None
     notes: str | None = None
     # Changing it re-reads every footprint on the new grid: parts may come off it.
     pitch_mm: Pitch | None = None
+    shelf_item_id: int | None = None
 
     _not_null = field_validator("name", "notes", "pitch_mm")(reject_null)
 
@@ -334,6 +344,7 @@ class LayoutSummary(BaseModel):
     strips: int
     holes: int
     pitch_mm: float
+    shelf_item_id: int | None
     updated_at: datetime
     check_summary: CheckSummary
     stats: LayoutStats

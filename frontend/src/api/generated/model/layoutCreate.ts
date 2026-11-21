@@ -16,4 +16,5 @@ export interface LayoutCreate {
   strips?: number | null;
   holes?: number | null;
   pitch_mm?: number | null;
+  shelf_item_id?: number | null;
 }

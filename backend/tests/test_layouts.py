@@ -97,6 +97,23 @@ def test_create_sizes(api, library):
     assert [s["name"] for s in summaries] == ["v1", "v1"]
 
 
+def test_shelf_board(api, library):
+    design = design_with(api, library, {"nano": "Arduino Nano"})
+    assert new_layout(api, design)["shelf_item_id"] is None
+    layout = new_layout(api, design, shelf_item_id=12)
+    assert layout["shelf_item_id"] == 12
+    lid = layout["id"]
+    sheet = ok(api.get(f"/api/layouts/{lid}/build-sheet"))
+    assert sheet["shopping"][0] == ("Stripboard, 24 × 37 holes, 2.54 mm pitch (Shelf-help item 12)")
+    # Changing other fields keeps it; null clears it.
+    assert ok(api.patch(f"/api/layouts/{lid}", json={"name": "v2"}))["shelf_item_id"] == 12
+    assert ok(api.patch(f"/api/layouts/{lid}", json={"shelf_item_id": 7}))["shelf_item_id"] == 7
+    layout = ok(api.patch(f"/api/layouts/{lid}", json={"shelf_item_id": None}))
+    assert layout["shelf_item_id"] is None
+    sheet = ok(api.get(f"/api/layouts/{lid}/build-sheet"))
+    assert sheet["shopping"][0] == "Stripboard, 24 × 37 holes, 2.54 mm pitch"
+
+
 def test_placing_puts_pins_on_holes(api, library):
     design = design_with(api, library, {"nano": "Arduino Nano", "led": "LED (5 mm)"})
     layout = new_layout(api, design)
@@ -567,3 +584,66 @@ def test_other_pitches(api, library):
     bb = new_layout(api, design, board_type="breadboard")
     assert api.patch(f"/api/layouts/{bb['id']}", json={"pitch_mm": 2.0}).status_code == 409
     assert api.patch(f"/api/layouts/{lid}", json={"pitch_mm": 0.5}).status_code == 422
+
+
+# Perfboard -------------------------------------------------------------------------------
+
+
+def trace(api, lid, a, b, **fields) -> dict:
+    (a_strip, a_hole), (b_strip, b_hole) = a, b
+    return ok(
+        api.post(
+            f"/api/layouts/{lid}/jumpers",
+            json={
+                "a_strip": a_strip,
+                "a_hole": a_hole,
+                "b_strip": b_strip,
+                "b_hole": b_hole,
+                "side": "bottom",
+                **fields,
+            },
+        )
+    )
+
+
+def test_perfboard_pads_and_traces(api, library):
+    design = design_with(
+        api,
+        library,
+        {"a": "LED (5 mm)", "b": "LED (5 mm)"},
+        wires=[("a.A", "b.A"), ("a.K", "b.K")],
+    )
+    layout = new_layout(api, design, board_type="perfboard")
+    lid = layout["id"]
+    assert (layout["strips"], layout["holes"], layout["pitch_mm"]) == (24, 30, 2.54)
+    # A pad per hole, nothing joined.
+    assert len(layout["segments"]) == 24 * 30
+    assert all(
+        s["a_strip"] == s["b_strip"] and s["a_hole"] == s["b_hole"] for s in layout["segments"]
+    )
+    cut = api.post(f"/api/layouts/{lid}/cuts", json={"cuts": [{"strip": 1, "hole": 4}]})
+    assert cut.status_code == 409
+
+    # a at A2–A3 and b at D2–D3: on separate pads, so nothing joins them yet.
+    layout = place(api, layout, design, a=(1, 2), b=(4, 2))
+    assert "layout_short" not in check_ids(layout)
+    assert layout["stats"]["missing"] == 2
+
+    # Traces down columns 2 and 3 join them; a bare trace joins the empty pads it crosses.
+    trace(api, lid, (1, 2), (4, 2))
+    layout = trace(api, lid, (1, 3), (4, 3))
+    assert layout["stats"]["missing"] == 0 and check_ids(layout, "error") == []
+    pads = {(s["a_strip"], s["a_hole"]): s["nets"] for s in layout["segments"]}
+    assert pads[(2, 2)] == pads[(1, 2)] != []
+
+    # A solder bridge from A2 to A3 shorts the LED's legs, with a hint about traces.
+    layout = trace(api, lid, (1, 2), (1, 3))
+    short = [c for c in layout["checks"] if c["id"] == "layout_short"]
+    assert len(short) == 1 and "bare trace" in short[0]["message"]
+
+    sheet = ok(api.get(f"/api/layouts/{lid}/build-sheet"))
+    assert sheet["shopping"][0] == "Perfboard, 24 × 30 holes, 2.54 mm pitch"
+    assert sheet["steps"][0].startswith("Turn the board over and lay the traces")
+    assert sheet["steps"][-1].startswith("Check each trace")
+    assert "## Traces and jumpers" in sheet["text"]
+    assert "1. A2 → D2, trace" in sheet["text"] and "3. A2 → A3, solder bridge" in sheet["text"]

@@ -94,6 +94,7 @@ def test_tool_list(mcp):
         "restore_revision",
         "list_layouts",
         "create_layout",
+        "update_layout",
         "get_layout",
         "check_layout",
         "place_on_board",
@@ -456,6 +457,13 @@ def test_claude_lays_out_a_board(api, mcp):
     layout = mcp("create_layout", design_id=did, name="Stripboard v1")
     lid = layout["id"]
     assert (layout["strips"], layout["holes"], layout["pitch_mm"]) == (24, 37, 2.54)
+    assert layout["shelf_item_id"] is None
+    linked = mcp("update_layout", layout_id=lid, shelf_item_id=12)
+    assert (linked["name"], linked["shelf_item_id"]) == ("Stripboard v1", 12)
+    assert mcp("update_layout", layout_id=lid, name="v1b")["shelf_item_id"] == 12
+    assert mcp("update_layout", layout_id=lid, shelf_item_id=0)["shelf_item_id"] is None
+    assert mcp("list_layout_revisions", layout_id=lid)["revisions"] == []
+    mcp("update_layout", layout_id=lid, name="Stripboard v1")
     assert [p["ref"] for p in layout["not_placed"]] == ["bme", "led", "nano"]
 
     layout = mcp(
@@ -545,3 +553,39 @@ def test_claude_lays_out_a_board(api, mcp):
 
 def lines_of(layout) -> list[str]:
     return layout["picture"].splitlines()
+
+
+def test_claude_traces_a_perfboard(api, mcp):
+    """On a perfboard, bare bottom links are the traces; the picture shows them."""
+    assert api.post("/api/parts/starter").status_code == 200
+    lib = {p["name"]: p["id"] for p in api.get("/api/parts").json()}
+    did = api.post("/api/designs", json={"name": "Bench"}).json()["id"]
+    led = lib["LED (5 mm)"]
+    api.post(
+        f"/api/designs/{did}/placements",
+        json={"parts": [{"part_id": led, "ref": "a"}, {"part_id": led, "ref": "b"}]},
+    )
+    api.post(
+        f"/api/designs/{did}/wires",
+        json={"wires": [{"a": "a.A", "b": "b.A"}, {"a": "a.K", "b": "b.K"}]},
+    )
+    layout = mcp("create_layout", design_id=did, name="Perf", board_type="perfboard")
+    lid = layout["id"]
+    assert (layout["strips"], layout["holes"]) == (24, 30)
+    mcp("place_on_board", layout_id=lid, parts=[{"ref": "a", "at": "A2"}, {"ref": "b", "at": "D2"}])
+    with pytest.raises(ToolError):
+        mcp("cut", layout_id=lid, at=["B4"])
+    layout = mcp(
+        "add_jumpers",
+        layout_id=lid,
+        jumpers=[
+            {"a": "A2", "b": "D2", "side": "bottom"},
+            {"a": "A3", "b": "D3", "side": "bottom"},
+        ],
+    )
+    assert layout["missing"] == []
+    lines = layout["picture"].splitlines()
+    # The traces' middle holes are marked down their columns; no per-row copper runs.
+    assert lines[2].split()[1].startswith(".") and lines[2][2:8] == ". : : "
+    assert "Perfboard: every hole is its own pad" in layout["picture"]
+    assert "Traces (jumper number, ends, nets): 1. A2-D2 " in layout["picture"]

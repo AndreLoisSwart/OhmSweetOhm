@@ -202,6 +202,11 @@ def _physical(board: Board, users: dict[Cell, list[tuple[str, str]]]) -> list[Re
                     f"{a.ref} and {b.ref} take up the same space on the board",
                 )
             )
+    straight = (
+        "along a row or down a column"
+        if board.layout.board_type == BoardType.PERFBOARD
+        else "along or across the strips"
+    )
     for n, jumper in enumerate(board.layout.jumpers, start=1):
         if is_diagonal(jumper):
             a, b = (jumper.a_strip, jumper.a_hole), (jumper.b_strip, jumper.b_hole)
@@ -209,8 +214,8 @@ def _physical(board: Board, users: dict[Cell, list[tuple[str, str]]]) -> list[Re
                 Result(
                     "diagonal_jumper",
                     Severity.NOTE,
-                    f"Jumper {n} ({label(a)} → {label(b)}) runs diagonally: straight along or "
-                    "across the strips is tidier and easier to check",
+                    f"Jumper {n} ({label(a)} → {label(b)}) runs diagonally: straight "
+                    f"{straight} is tidier and easier to check",
                     holes=[label(a), label(b)],
                 )
             )
@@ -355,6 +360,8 @@ def _shorts(board: Board, users: dict[Cell, list[tuple[str, str]]]) -> list[Resu
 
 def _cut_hint(board: Board, nets: dict[str, list[str]], users) -> str:
     """Where to cut, when two nets share one stretch of a strip."""
+    if board.layout.board_type == BoardType.PERFBOARD:
+        return "A bare trace joins every pad it crosses: route it around such pads, or insulate it"
     if board.layout.board_type != BoardType.STRIPBOARD:
         return ""
     on_strip: dict[int, list[tuple[int, str]]] = {}

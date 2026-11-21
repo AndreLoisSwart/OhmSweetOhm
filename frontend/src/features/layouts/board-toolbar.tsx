@@ -66,7 +66,7 @@ export function BoardToolbar({
               size="sm"
               aria-pressed={tool === t}
               disabled={disabled}
-              title={disabled ? 'A breadboard pattern has no strips to cut' : `${label} (${key})`}
+              title={disabled ? 'Only a stripboard has strips to cut' : `${label} (${key})`}
               onClick={() => onTool(t)}
             >
               <Icon />

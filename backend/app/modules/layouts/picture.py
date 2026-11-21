@@ -6,11 +6,21 @@ then the gap after it (`|` where a cut separates it from the next hole). Each li
 with the copper runs on that strip and the design nets they carry. A legend follows.
 
 Marks, strongest first: a part's pin (its letter), a connector pin (its number), a top
-jumper end `*`, a bottom link end `+`, a cut at the hole `x`, a hole under a part's body
-(the part's letter in lower case), a plain hole `.`.
+jumper end `*`, a bottom link end `+`, a cut at the hole `x` (or on a perfboard, `-` or
+`:` where a bare trace crosses a pad), a hole under a part's body (the part's letter in
+lower case), a plain hole `.`.
+
+A perfboard has no strips: each hole is its own pad, so instead of copper runs its
+traces are listed after the picture, with the nets they carry.
 """
 
-from app.modules.layouts.board import Board, connector_cells, label, strip_label
+from app.modules.layouts.board import (
+    Board,
+    connector_cells,
+    jumper_path,
+    label,
+    strip_label,
+)
 from app.modules.layouts.models import BoardType, JumperSide, Mount
 
 LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -58,6 +68,12 @@ def render(board: Board) -> str:
             put(cell, end, 2 if j.side == JumperSide.TOP else 3)
     for cell in board.cut_holes:
         put(cell, "x", 4)
+    perfboard = layout.board_type == BoardType.PERFBOARD
+    if perfboard:
+        for j in layout.jumpers:
+            if j.side == JumperSide.BOTTOM and not j.insulated:
+                for cell in jumper_path(j)[1:-1]:
+                    put(cell, "-" if j.a_strip == j.b_strip else ":", 4)
 
     width = len(strip_label(layout.strips))
     # Hole numbers every five holes, over their columns.
@@ -71,8 +87,8 @@ def render(board: Board) -> str:
 
     runs: dict[int, list[str]] = {}
     for seg in board.segments:
-        if seg.a[0] != seg.b[0]:
-            continue  # a breadboard column: shown by the pattern, not per row
+        if seg.a[0] != seg.b[0] or perfboard:
+            continue  # a breadboard column or a perfboard's pad: not listed per row
         if seg.short:
             what = "SHORT " + ("+".join(seg.nets) if seg.nets else "(unwired pins)")
         elif seg.nets:
@@ -118,6 +134,31 @@ def render(board: Board) -> str:
     legend.append(
         "* top jumper end, + bottom link end, x cut at the hole, | cut between holes, . hole"
     )
+    if perfboard:
+        legend.append(
+            "Perfboard: every hole is its own pad. Only bottom links (bare: traces, or a "
+            "solder bridge between neighbouring holes) and top jumpers join holes; a bare "
+            "trace joins every pad it crosses (- along a row, : down a column)."
+        )
+        traces = []
+        for n, j in enumerate(layout.jumpers, start=1):
+            if j.side != JumperSide.BOTTOM:
+                continue
+            node = board.node((j.a_strip, j.a_hole))
+            nets = sorted(
+                {
+                    board.net_of.get(key, key)
+                    for key in board.present
+                    if board.node(key) == node and board.net_of.get(key, key) in board.nets
+                }
+            )
+            traces.append(
+                f"{n}. {label((j.a_strip, j.a_hole))}-{label((j.b_strip, j.b_hole))}"
+                + (" insulated" if j.insulated else "")
+                + (f" {'+'.join(nets)}" if nets else "")
+            )
+        if traces:
+            legend.append("Traces (jumper number, ends, nets): " + "; ".join(traces))
     if layout.board_type == BoardType.BREADBOARD:
         legend.append(
             "Breadboard pattern: rows A, B, M and N are rails along the whole board; "

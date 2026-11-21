@@ -97,7 +97,7 @@ Wokwi export stays its own item above. It reuses step 10's code names and bus da
 
 Laying parts out on a protoboard is the hard part of building one. A **layout** places a design's parts on a physical board, and the app checks it against the design's nets. The layout canvas offers cut and jumper tools, and Claude places, cuts and adds jumpers over MCP, with the check as its feedback.
 
-**Boards in mind:** the user's 24 × 37 single-sided stripboard, with 24 strips running along the long side, and a breadboard-pattern protoboard. Both are fixed copper patterns, so one engine covers them. Plain perfboard (a pad per hole, needing real routing) and double-sided boards come later.
+**Boards in mind:** the user's 24 × 37 single-sided stripboard, with 24 strips running along the long side, and a breadboard-pattern protoboard. Both are fixed copper patterns, so one engine covers them. Plain perfboard (a pad per hole, needing real routing) and double-sided boards come later; perfboard is planned below (Board stock and perfboard).
 
 ### Principles
 
@@ -203,7 +203,7 @@ Then it's compared with the design's nets:
 | `cut_under_pin` | error | a cut at a hole with a leg in it |
 | `under_body` | error | a part or top jumper on a hole under a soldered part's body |
 | `jumper_hole_taken` | error | a top jumper's end on a hole with a leg or another jumper |
-| `diagonal_jumper` | note | a jumper that isn't straight along a strip or across strips |
+| `diagonal_jumper` | note | a jumper that isn't straight along a strip or across strips (on a perfboard: along a row or down a column) |
 | `unassigned_connector_pin` | warning | a connector pin carrying nothing |
 | `off_board_unconnected` | warning | an off-board part's connection with no connector pin |
 | `layout_out_of_date` | warning | a part's footprint changed after it was placed |
@@ -394,6 +394,28 @@ jumpers: 1 B20→F20 (top)   connectors: J1 at T2 (bme)
 - A deterministic auto-placer for a first draft, only if Claude plus the checks fall short.
 - Perfboard (needs routing), double-sided boards, and specific connector parts from the library.
 - A breadboard view of designs from the same engine.
+
+## Board stock and perfboard (decided 2026-11-21, build steps 20–21)
+
+The user has several protoboards: different sizes, and plain perfboard as well as stripboard. They're stock, and stock lives in Shelf-help.
+
+### Step 20: a layout's Shelf-help board (built 2026-11-21)
+
+- **No board library.** Each board size the user owns is a Shelf-help item tagged `protoboard`. A layout stores the item's id (`Layout.shelf_item_id`, nullable, never checked here, as on parts) and keeps its own size, type and pitch, set when it's created.
+- **Not in layout revisions,** like the name and notes: a revision holds what's on the board.
+- **Frontend:** an optional Shelf-help item field in the new-layout dialog and the layout Inspector (blank clears it).
+- **Build sheet:** the shopping line adds "(Shelf-help item 12)" when it's set; Claude can put the item's name to it.
+- **MCP:** `create_layout` takes `shelf_item_id`; a new `update_layout(layout_id, name?, shelf_item_id?)` (`0` unlinks; no revision, like `update_design`). The instructions tell Claude to look up the `protoboard` items, suggest one in stock that fits, ask the user the size of the piece and store the id.
+
+### Step 21: perfboard (built 2026-11-21)
+
+- **`BoardType.PERFBOARD`:** a pad per hole, any size, pitch chosen as on a stripboard.
+- **No copper joins holes.** Bottom jumpers are its solder traces, and a link between neighbouring holes is a solder bridge, both as now. Cuts are refused, as on the breadboard pattern.
+- **Checks:** the missing connections list everything until traces are added. No new rules: the cut rules can't fire, `diagonal_jumper` speaks of rows and columns, and a short's hint says a bare trace joins every pad it crosses instead of suggesting cuts.
+- **Text picture:** pads and traces instead of strips.
+- **Canvas and print:** the board's copper comes back as one segment per pad, so pads are drawn and tinted by net like strips; traces are the bottom links already drawn; the cut tool is off. Default size 24 × 30 (about 7 × 9 cm). Adding the type rebuilds the `board_type` CHECK constraint in a migration.
+- **Build sheet:** names the board "Perfboard", lists traces and bridges hole to hole in place of cuts, and words the order of work for traces.
+- **MCP:** `create_layout` accepts it; `add_jumpers` with `side: bottom` lays traces, which its docstring says.
 
 ## Canvas: more ways to tame a busy design
 

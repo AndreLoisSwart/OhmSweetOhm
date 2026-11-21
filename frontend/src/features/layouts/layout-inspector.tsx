@@ -10,10 +10,13 @@ import type {
 } from '@/api/generated/model'
 import { NativeSelect } from '@/components/native-select'
 import { ConfirmDialog } from '@/components/confirm-dialog'
+import { CommitInput } from '@/components/commit-input'
 import { EditableText } from '@/components/editable-text'
 import { Button } from '@/components/ui/button'
 import { quietly } from '@/features/designs/use-design-actions'
+import { parseOptionalId } from '@/features/parts/fields'
 import { nextRotation } from './board/geometry'
+import { boardName, isFixed } from './boards'
 import { PitchPicker } from './pitch-picker'
 import { CONNECTOR_TYPES, type Selection } from './board/tools'
 import type { LayoutActions } from './use-layout-actions'
@@ -187,19 +190,34 @@ function LayoutDetails({
 }) {
   const s = layout.stats
   const rows: [string, ReactNode][] = [
-    [
-      'Board',
-      `${layout.board_type === 'stripboard' ? 'Stripboard' : 'Breadboard pattern'}, ${layout.strips} × ${layout.holes}`,
-    ],
+    ['Board', `${boardName(layout.board_type)}, ${layout.strips} × ${layout.holes}`],
     [
       'Hole spacing',
-      layout.board_type === 'stripboard' && !readOnly ? (
+      !isFixed(layout.board_type) && !readOnly ? (
         <PitchPicker
           value={layout.pitch_mm}
           onChange={(pitch_mm) => quietly(actions.update({ pitch_mm }))}
         />
       ) : (
         `${layout.pitch_mm} mm`
+      ),
+    ],
+    [
+      'Shelf-help item',
+      readOnly ? (
+        (layout.shelf_item_id ?? '—')
+      ) : (
+        <CommitInput
+          aria-label="Shelf-help item"
+          value={layout.shelf_item_id}
+          format={(id) => (id === null ? '' : String(id))}
+          parse={parseOptionalId}
+          onSave={(shelf_item_id) => quietly(actions.update({ shelf_item_id }))}
+          inputMode="numeric"
+          placeholder="Item id"
+          title="The board on your shelf, in Shelf-help. Claude uses it to check stock."
+          className="h-7 w-24"
+        />
       ),
     ],
     ['Parts', `${s.on_board} on, ${s.off_board} off, ${s.not_placed} not placed`],

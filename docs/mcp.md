@@ -63,12 +63,13 @@ Positions are the board's labels: `C14` is strip C, hole 14; `C9-10` is a cut be
 | Tool | Notes |
 |---|---|
 | `list_layouts(design_id)` | Each layout with its check counts and stats |
-| `create_layout(design_id, name, board_type?, strips?, holes?, pitch_mm?)` | Stripboard 24 × 37 unless sized; breadboard pattern 14 × 62; pitch 2.54 unless set |
+| `create_layout(design_id, name, board_type?, strips?, holes?, pitch_mm?, shelf_item_id?)` | Stripboard 24 × 37 unless sized; breadboard pattern 14 × 62; perfboard 24 × 30 unless sized; pitch 2.54 unless set. `shelf_item_id` is the board on the shelf (below) |
+| `update_layout(layout_id, name?, shelf_item_id?)` | Rename, or link the Shelf-help board (`0` unlinks). Like `update_design`, it saves no revision: a layout revision holds only what's on the board |
 | `get_layout(layout_id)` | `{…, picture, parts, not_placed, cuts, jumpers, connectors, checks, missing, stats}`. Each part's pins by hole, the connections still missing ("GND: led.K (Q10) to nano.GND (N1)"), and a **text picture** (below) |
 | `check_layout(layout_id)` | Only the checks, missing connections and stats: for checking after each change |
 | `place_on_board(layout_id, parts: [{ref, at?, rotation?, mount?, off_board?}])` | Place, move, turn or take parts off the board; a part keeps its rotation when none is given |
 | `cut(layout_id, at: [...])`, `uncut(layout_id, at: [...])` | `"B4"` at a hole, `"C9-10"` between holes. `uncut` is destructive (undoable) |
-| `add_jumpers(layout_id, jumpers: [{a, b, side?, insulated?, color?}])`, `remove_jumper(layout_id, a, b)` | Top jumpers by default |
+| `add_jumpers(layout_id, jumpers: [{a, b, side?, insulated?, color?}])`, `remove_jumper(layout_id, a, b)` | Top jumpers by default. On a perfboard, bare bottom links are the traces and a one-hole link is a solder bridge; the text picture marks the pads a trace crosses (`-` along a row, `:` down a column) and lists the traces with their nets |
 | `propose_connectors(layout_id)` | Read-only. One per off-board part whose connections reach the board: `{for_part, type, pins, why}`, pins in the part's own order, a screw terminal for a power part where it fits |
 | `add_connectors(layout_id, connectors: [{pins, type?, at?, rotation?, pin_count?, ref?}])`, `update_connector(layout_id, ref, at?, rotation?, type?, pin_count?, pins?)`, `remove_connector(layout_id, ref)` | Named J1, J2… unless given a ref |
 | `cut_between_rows(layout_id, ref)`, `trim_dead_copper(layout_id)` | The canvas's helpers |
@@ -108,5 +109,7 @@ Every design answer is a `DesignView`: the design with its placed parts (ref, pa
 > - **Parts you create are unverified.** Take pinouts from the datasheet or the maker's page, say where they came from in the part's notes, and ask the user to check them.
 > - **Search before creating a part.** When adding a part, also find or create its Shelf-help item and store the id.
 > - **"Do I have what this design needs?":** look up each part's Shelf-help item. Offer to mark missing ones as `need`.
+> - **Perfboard:** no strips or cuts. Join pins with bare bottom links (traces, straight along a row or down a column) and one-hole solder bridges, keeping traces off other nets' pads.
+> - **Boards are Shelf-help items tagged `protoboard`,** one per size. Before `create_layout`, look them up, suggest one that's in stock and fits, ask the user the size of the piece they'll use, and store the item's id on the layout.
 > - **Writing firmware (not ESPHome):** get the pin map, save it in the firmware as `pins.h` or `pins.py`, and use its constants rather than bare pin numbers. If a board pin has no code name, say so rather than guess.
 > - **Nothing can be deleted.** Removing parts and wires within a design is fine, since every change is undoable.

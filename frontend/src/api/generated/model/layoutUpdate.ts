@@ -5,8 +5,12 @@
  * OpenAPI spec version: 0.1.0
  */
 
+/**
+ * Only the fields sent are changed; shelf_item_id is cleared with null.
+ */
 export interface LayoutUpdate {
   name?: string | null;
   notes?: string | null;
   pitch_mm?: number | null;
+  shelf_item_id?: number | null;
 }

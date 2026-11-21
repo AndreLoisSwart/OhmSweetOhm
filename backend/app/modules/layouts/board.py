@@ -6,8 +6,9 @@ the board, x runs along the strips (hole numbers) and y across them (strip lette
 
 Connectivity is union-find over nodes: each hole is a node (its solder joint), copper
 joins neighbouring holes (stripboard: along a strip, unless cut; breadboard: its fixed
-groups), jumpers join their ends (a bare bottom link also every hole it lies across),
-and each pin joins the hole it's soldered in. Pins of a part joined inside it (its
+groups; perfboard: none, each hole its own pad), jumpers join their ends (a bare
+bottom link also every hole it lies across), and each pin joins the hole it's soldered
+in. Pins of a part joined inside it (its
 grounds, a tie) are joined here too, as in the design's nets.
 """
 
@@ -240,7 +241,8 @@ def _group(pin: Pin) -> str | None:
 
 @dataclass
 class Segment:
-    """A run of joined copper, straight: part of a strip, or a breadboard column."""
+    """A run of joined copper, straight: part of a strip, a breadboard column, or a
+    perfboard's pad (one hole)."""
 
     a: Cell
     b: Cell
@@ -277,8 +279,11 @@ class Board:
 
 
 def _copper_links(layout: Layout, copper: set[Cell], between: set[Cell]) -> list[list[Cell]]:
-    """Runs of joined copper, each a list of holes in order."""
+    """Runs of joined copper, each a list of holes in order. A perfboard's are its pads,
+    one hole each, so the board is drawn and tinted the same way."""
     runs: list[list[Cell]] = []
+    if layout.board_type == BoardType.PERFBOARD:
+        return [[cell] for cell in sorted(copper)]
     if layout.board_type == BoardType.BREADBOARD:
         for strip in BREADBOARD_RAILS:
             if strip <= layout.strips:

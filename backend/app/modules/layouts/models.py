@@ -25,6 +25,8 @@ class BoardType(StrEnum):
     # A breadboard's pattern: power rails along the edges, columns of five each side of
     # the gap. No cuts.
     BREADBOARD = "breadboard"
+    # A pad per hole, nothing joined: bottom links are its solder traces. No cuts.
+    PERFBOARD = "perfboard"
 
 
 class Mount(StrEnum):
@@ -61,6 +63,9 @@ class Layout(Base):
     # The distance between holes, in mm: 2.54 for nearly every protoboard and always
     # for a breadboard pattern; 2.0 or 1.27 for finer boards.
     pitch_mm: Mapped[float] = mapped_column(default=2.54, server_default="2.54")
+    # The board it's built on: a Shelf-help Item id (tagged protoboard there). Another
+    # database, so no foreign key and never checked here.
+    shelf_item_id: Mapped[int | None]
     notes: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)

@@ -85,6 +85,20 @@ class Sheet:
     connectors: list[SheetConnector]
     shopping: list[str]
     steps: list[str] = field(default_factory=list)
+    # On a perfboard, bare bottom links are its traces and bridges.
+    perfboard: bool = False
+
+
+BOARD_NAMES = {
+    BoardType.STRIPBOARD: "Stripboard",
+    BoardType.BREADBOARD: "Breadboard-pattern board",
+    BoardType.PERFBOARD: "Perfboard",
+}
+
+
+def link_name(holes: float) -> str:
+    """A perfboard's bare bottom link: a bridge between neighbouring holes, else a trace."""
+    return "solder bridge" if holes <= 1 else "trace"
 
 
 def _header_rows(lp) -> list[int]:
@@ -192,8 +206,10 @@ def build(layout: Layout) -> Sheet:
         )
 
     # What to have ready: the board, sockets, connectors and wire.
-    kind = "Stripboard" if layout.board_type == BoardType.STRIPBOARD else "Breadboard-pattern board"
-    shopping = [f"{kind}, {layout.strips} × {layout.holes} holes, {pitch:g} mm pitch"]
+    perfboard = layout.board_type == BoardType.PERFBOARD
+    kind = BOARD_NAMES[layout.board_type]
+    shelf = f" (Shelf-help item {layout.shelf_item_id})" if layout.shelf_item_id else ""
+    shopping = [f"{kind}, {layout.strips} × {layout.holes} holes, {pitch:g} mm pitch{shelf}"]
     headers: dict[int, int] = {}
     for lp in layout.parts:
         if lp.on_board and lp.mount == Mount.SOCKETED:
@@ -211,12 +227,20 @@ def build(layout: Layout) -> Sheet:
     if insulated:
         shopping.append(f"About {insulated / 10:.0f} cm of insulated hook-up wire for jumpers")
     if bare:
-        shopping.append(f"About {bare / 10:.0f} cm of bare tinned wire for bottom links")
+        what = "traces" if perfboard else "bottom links"
+        shopping.append(f"About {bare / 10:.0f} cm of bare tinned wire for {what}")
 
     steps = []
     if sheet_cuts:
         steps.append(f"Turn the board over and make the {len(sheet_cuts)} cuts (copper side)")
-    if any(j.side == "bottom" for j in jumpers):
+    if perfboard and any(j.side == "bottom" and not j.insulated for j in jumpers):
+        steps.append(
+            "Turn the board over and lay the traces and solder bridges, soldering the wire "
+            "to every pad it crosses"
+        )
+        if any(j.side == "bottom" and j.insulated for j in jumpers):
+            steps.append("Solder the insulated bottom links on the copper side")
+    elif any(j.side == "bottom" for j in jumpers):
         steps.append("Solder the bottom links on the copper side")
     if any(j.side == "top" for j in jumpers):
         steps.append("Fit and solder the top jumpers, shortest first")
@@ -226,8 +250,13 @@ def build(layout: Layout) -> Sheet:
         steps.append("Solder the female headers for the socketed modules")
     if connectors:
         steps.append("Solder the connectors, pin 1 where marked")
+    check = (
+        "Check each trace for breaks and for stray solder between pads"
+        if perfboard
+        else "Check for solder bridges between strips"
+    )
     steps.append(
-        "Check for solder bridges between strips, then plug in the modules"
+        f"{check}, then plug in the modules"
         + (" step by step in build order, testing each step" if ordered else "")
     )
 
@@ -245,6 +274,7 @@ def build(layout: Layout) -> Sheet:
         connectors=connectors,
         shopping=shopping,
         steps=steps,
+        perfboard=perfboard,
     )
 
 
@@ -265,10 +295,14 @@ def as_text(sheet: Sheet) -> str:
         ]
         out.append("")
     if sheet.jumpers:
-        out += ["## Jumpers"]
+        out += ["## Traces and jumpers" if sheet.perfboard else "## Jumpers"]
         out += [
-            f"- [ ] {j.number}. {j.a} → {j.b}, {j.side}"
-            + (" insulated" if j.insulated and j.side == "bottom" else "")
+            f"- [ ] {j.number}. {j.a} → {j.b}, "
+            + (
+                link_name(j.holes)
+                if sheet.perfboard and j.side == "bottom" and not j.insulated
+                else j.side + (" insulated" if j.insulated and j.side == "bottom" else "")
+            )
             + f", {j.color}, {j.holes:g} holes ({j.mm:g} mm), cut {j.cut_mm:g} mm"
             for j in sheet.jumpers
         ]

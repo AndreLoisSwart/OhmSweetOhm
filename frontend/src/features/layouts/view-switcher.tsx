@@ -21,6 +21,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
+import { parseOptionalId } from '@/features/parts/fields'
+import { BOARDS, isFixed } from './boards'
 import { PitchPicker } from './pitch-picker'
 
 /** "2 to join · 1 error", or "Matches" — a layout's state at a glance. */
@@ -32,11 +34,6 @@ function layoutState(layout: LayoutSummary): string {
   if (!bits.length && !layout.stats.on_board) return 'Empty'
   return bits.join(' · ') || 'Matches the design'
 }
-
-const BOARDS: { type: BoardType; label: string; size: string }[] = [
-  { type: 'stripboard', label: 'Stripboard', size: '24 strips × 37 holes' },
-  { type: 'breadboard', label: 'Breadboard pattern', size: '14 rows × 62 holes' },
-]
 
 function NewLayoutDialog({
   designId,
@@ -53,23 +50,37 @@ function NewLayoutDialog({
   const [type, setType] = useState<BoardType>('stripboard')
   const [name, setName] = useState('')
   const [pitch, setPitch] = useState(2.54)
+  // Blank means the board's usual size.
+  const [strips, setStrips] = useState('')
+  const [holes, setHoles] = useState('')
+  const [shelf, setShelf] = useState('')
   const create = useCreateLayout()
-  const fallback = `${BOARDS.find((b) => b.type === type)!.label} v${count + 1}`
+  const board = BOARDS.find((b) => b.type === type)!
+  const fallback = `${board.label} v${count + 1}`
+  const shelfId = parseOptionalId(shelf)
   const submit = (event: FormEvent) => {
     event.preventDefault()
+    if ('error' in shelfId) return
     create.mutate(
       {
         designId,
         data: {
           name: name.trim() || fallback,
           board_type: type,
-          ...(type === 'stripboard' && { pitch_mm: pitch }),
+          ...(!isFixed(type) && { pitch_mm: pitch }),
+          // A breadboard pattern always has its 14 rows.
+          ...(!isFixed(type) && strips && { strips: Number(strips) }),
+          ...(holes && { holes: Number(holes) }),
+          shelf_item_id: shelfId.value,
         },
       },
       {
         onSuccess: (layout) => {
           onOpenChange(false)
           setName('')
+          setStrips('')
+          setHoles('')
+          setShelf('')
           navigate(`/designs/${designId}/layouts/${layout.id}`)
         },
       },
@@ -91,12 +102,42 @@ function NewLayoutDialog({
             <NativeSelect value={type} onChange={(e) => setType(e.target.value as BoardType)}>
               {BOARDS.map((b) => (
                 <option key={b.type} value={b.type}>
-                  {b.label} ({b.size})
+                  {b.label}
                 </option>
               ))}
             </NativeSelect>
           </label>
-          {type === 'stripboard' && (
+          <div className="grid gap-1 text-sm">
+            Size
+            <div className="flex items-center gap-2">
+              <Input
+                aria-label={type === 'stripboard' ? 'Strips' : 'Rows'}
+                type="number"
+                min={2}
+                max={100}
+                value={isFixed(type) ? String(board.strips) : strips}
+                onChange={(e) => setStrips(e.target.value)}
+                placeholder={String(board.strips)}
+                disabled={isFixed(type)}
+                className="w-20"
+              />
+              <span className="text-muted-foreground">
+                {type === 'stripboard' ? 'strips' : 'rows'} ×
+              </span>
+              <Input
+                aria-label="Holes"
+                type="number"
+                min={2}
+                max={200}
+                value={holes}
+                onChange={(e) => setHoles(e.target.value)}
+                placeholder={String(board.holes)}
+                className="w-20"
+              />
+              <span className="text-muted-foreground">holes</span>
+            </div>
+          </div>
+          {!isFixed(type) && (
             <div className="grid gap-1 text-sm">
               Hole spacing
               <PitchPicker value={pitch} onChange={setPitch} />
@@ -111,11 +152,24 @@ function NewLayoutDialog({
             Name
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={fallback} />
           </label>
+          <label className="grid gap-1 text-sm">
+            Shelf-help item
+            <Input
+              value={shelf}
+              onChange={(e) => setShelf(e.target.value)}
+              inputMode="numeric"
+              placeholder="Optional: the board on your shelf"
+              aria-invalid={'error' in shelfId}
+            />
+            {'error' in shelfId && (
+              <span className="text-xs text-destructive">{shelfId.error}</span>
+            )}
+          </label>
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={create.isPending}>
+            <Button type="submit" disabled={create.isPending || 'error' in shelfId}>
               Create
             </Button>
           </DialogFooter>

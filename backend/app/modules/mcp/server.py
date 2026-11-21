@@ -117,10 +117,14 @@ designs carry Shelf-help ids (shelf_item_id, shelf_project_id).
   switches are inputs, never actuators (the bring-up sketch drives actuator pins).
 - "Do I have what this design needs?": look up each part's Shelf-help item. Offer to mark
   missing ones as need.
-- Protoboard layouts lay a design's parts out on a physical board (stripboard or the
-  breadboard pattern). The design owns the connections; a layout only places parts and
-  adds cuts, jumpers and connectors, and its checks say where the board and the design
-  disagree. Positions are the board's labels: strip letter and hole number (C14).
+- Protoboard layouts lay a design's parts out on a physical board (stripboard, the
+  breadboard pattern, or perfboard with a pad per hole). The design owns the
+  connections; a layout only places parts and adds cuts, jumpers and connectors, and
+  its checks say where the board and the design disagree. Positions are the board's
+  labels: strip letter and hole number (C14).
+- Boards are Shelf-help items tagged protoboard, one per size. Before create_layout,
+  look them up, suggest one that's in stock and fits, ask the user the size of the
+  piece they'll use, and store its id (shelf_item_id).
 - Laying out a board: get_layout and read its picture and legend. Place the board
   (ESP32, Nano) first, then cut_between_rows for it. Put each part near the pins it
   joins, turning it so different nets land on different strips. Decide with the user
@@ -129,6 +133,9 @@ designs carry Shelf-help ids (shelf_item_id, shelf_project_id).
   first no errors, then fewer and shorter jumpers and a smaller area. Show the user the
   picture as you go. If a different GPIO would save jumpers, suggest the schematic
   change; make it only with their OK. Offer trim_dead_copper at the end.
+- On a perfboard there are no strips or cuts: join pins with bare bottom links (traces,
+  straight along a row or down a column) and one-hole solder bridges. Keep traces off
+  pads of other nets, since a bare trace joins every pad it crosses.
 - Every change you make to a design or layout saves a revision first, so the user can undo it from
   History in the app. Nothing can be deleted through these tools (parts, pins, designs,
   tags); ask the user to do that in the app. Notes and descriptions can only be added to.

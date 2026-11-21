@@ -86,6 +86,11 @@ Packaging and the canvas are the riskiest parts, so they come first.
     - Tested end to end by Claude laying out a real design on the 24 × 37 board.
 19. **Export:** the 1:1 copper side, cut, jumper and cable lists, and the layout parts list.
 
+**Then: board stock and perfboard** (decided 2026-11-21; details in `future-enhancements.md`, Board stock and perfboard). Each step is built only when started:
+
+20. **A layout's Shelf-help board.** `Layout.shelf_item_id` with a migration; in the new-layout dialog, the layout Inspector, the build sheet's shopping line, and MCP (`create_layout`, a new `update_layout`, and the instructions).
+21. **Perfboard.** A third board type with a pad per hole: no copper joins holes, so bottom jumpers are its traces. The canvas, checks, text picture and build sheet learn it.
+
 ## Out of scope for phase 1
 
 - Simulation, Wokwi export and firmware generation (see `future-enhancements.md`; firmware support is planned as steps 10–13 above)
@@ -97,6 +102,7 @@ Packaging and the canvas are the riskiest parts, so they come first.
 ## Decisions
 
 Decided (2026-11-07):
+- **No board library** (2026-11-21). Each board size the user owns is a Shelf-help item tagged `protoboard`, holding its stock; a layout links one by id and keeps its own size, type and pitch. A library would have held only a few rows repeating the board types, and a new board type needs code anyway.
 - **Separate app, separate add-on.** Ohm Sweet Ohm is its own add-on rather than part of Shelf-help; the two are linked by stored ids, with Claude doing the cross-referencing.
 - **Off-the-shelf modules only.** Boards and breakouts, not custom PCBs.
 - **The canvas is a wiring diagram** of module cards, not a realistic breadboard.

@@ -17,6 +17,7 @@ export interface LayoutSummary {
   strips: number;
   holes: number;
   pitch_mm: number;
+  shelf_item_id: number | null;
   updated_at: string;
   check_summary: CheckSummary;
   stats: LayoutStats;

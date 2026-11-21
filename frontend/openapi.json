@@ -3266,7 +3266,8 @@
         "type": "string",
         "enum": [
           "stripboard",
-          "breadboard"
+          "breadboard",
+          "perfboard"
         ],
         "title": "BoardType"
       },
@@ -5068,6 +5069,17 @@
               }
             ],
             "title": "Pitch Mm"
+          },
+          "shelf_item_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shelf Item Id"
           }
         },
         "type": "object",
@@ -5104,6 +5116,17 @@
           "pitch_mm": {
             "type": "number",
             "title": "Pitch Mm"
+          },
+          "shelf_item_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shelf Item Id"
           },
           "updated_at": {
             "type": "string",
@@ -5198,6 +5221,7 @@
           "strips",
           "holes",
           "pitch_mm",
+          "shelf_item_id",
           "updated_at",
           "check_summary",
           "stats",
@@ -5465,6 +5489,17 @@
             "type": "number",
             "title": "Pitch Mm"
           },
+          "shelf_item_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shelf Item Id"
+          },
           "updated_at": {
             "type": "string",
             "format": "date-time",
@@ -5493,6 +5528,7 @@
           "strips",
           "holes",
           "pitch_mm",
+          "shelf_item_id",
           "updated_at",
           "check_summary",
           "stats",
@@ -5538,10 +5574,22 @@
               }
             ],
             "title": "Pitch Mm"
+          },
+          "shelf_item_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shelf Item Id"
           }
         },
         "type": "object",
-        "title": "LayoutUpdate"
+        "title": "LayoutUpdate",
+        "description": "Only the fields sent are changed; shelf_item_id is cleared with null."
       },
       "LinkOut": {
         "properties": {
