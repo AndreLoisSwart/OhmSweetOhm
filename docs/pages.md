@@ -120,6 +120,11 @@ Below 1280 px wide (the board needs the room) the tray and Inspector become over
   - the ref in the corner.
 - **Connectors and top jumpers:** drawn over the parts.
 - **The ratsnest:** dashed lines in the net's colour, from the API's `links`.
+- **Build order** (step 24): the header's **Build order** button, or **B**, opens a bar over the bottom of the board: ⏮ *Step 2 · 3 of 4* ⏭ with the step's refs, ← and → (or the skip buttons) to move, the **Ghost later steps** switch (shared with the schematic and remembered in this browser), and Exit (or Esc, or B). Stepping only: the order is numbered on the schematic, and with no order yet the bar links there.
+  - **Prepare the board** comes first when there are cuts or a stripboard's bottom links, listing how many.
+  - The current step's parts, jumpers, traces and connectors are drawn as they are; earlier steps are greyed; later ones are hidden, or ghosted with the switch. Cuts and copper are always drawn.
+  - The copper's tints and shorts are worked out from what's on the board by that step (in the browser, from the same joins as path tracing), so a short shows from the step that makes it. The ratsnest shows only links between parts that are in.
+  - Path tracing goes through what's shown: with later steps hidden, not through them.
 - **Path tracing** (step 23): with Select, **Shift-click** (or Cmd/Ctrl-click) a pin or hole, then another; another Shift-click replaces the second end, Shift-clicking the first again, Esc, picking a check or another tool stops it. On a tablet, **Trace from here** beside a pin in the part's Inspector starts it (closing the Inspector below 1280 px), and the next tap picks the other end.
   - **Joined:** everything else dims; the path's copper (only the stretch between where it enters and leaves a run), traces, jumpers and pins keep their own colours over one amber halo, with a moving dashed line along it. A top jumper seen from the copper side is dashed. Pins joined inside a part (its two grounds) show as a dashed arc. Ends are ringed A and B.
   - **Joined across two design nets:** the same, with a red halo: where the short runs.
@@ -147,7 +152,7 @@ The board stays fitted to its space until you pan (drag empty board) or zoom (wh
 | Trace | T | Perfboard only. Click where it starts, then along the row or column: the run snaps to whichever the pointer is further along and is laid, and the next run starts from its end, so a bent path is click, click, click. Click the same spot again, or press Esc, to finish. Each run is one undo step. Select picks a trace; drag an end (it stays on the other end's row or column) or its middle, R turns it, Delete removes it |
 | Connector | K | Pick the type (female or male header, JST-XH, 5.08 mm screw terminal; a type whose pins don't fit the board's hole spacing is marked and can't be put down) and pin count in the toolbar, then click where pin 1 goes; ghost pins show where it lands, pin 1 darker. R (or the toolbar's rotate button) turns it before it's put down. The new connector is selected, to assign its pins |
 
-- **Keys:** R turns the selected part or connector, or the selected jumper a quarter clockwise about its middle hole (also **Rotate** in its Inspector, for tablets). Delete removes the selected jumper or connector, or unplaces a part. Esc steps back: it stops path tracing, drops a jumper's first end, then goes back to Select, then clears the selection. Each tool shows a one-line hint under the toolbar.
+- **Keys:** R turns the selected part or connector, or the selected jumper a quarter clockwise about its middle hole (also **Rotate** in its Inspector, for tablets). Delete removes the selected jumper or connector, or unplaces a part. B opens or closes the build order, and ← → step through it. Esc steps back: it stops path tracing, closes the build order, drops a jumper's first end, then goes back to Select, then clears the selection. Each tool shows a one-line hint under the toolbar.
 - **The middle button** pans with any tool; the left button pans the empty board with Select.
 
 **The parts tray:**

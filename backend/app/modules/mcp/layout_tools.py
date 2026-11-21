@@ -16,8 +16,8 @@ from app.modules.designs import service as designs
 from app.modules.designs.models import WireColor
 from app.modules.designs.schemas import PinRef, Rotation
 from app.modules.layouts import board as boards
+from app.modules.layouts import build_order, picture
 from app.modules.layouts import checks as layout_checks
-from app.modules.layouts import picture
 from app.modules.layouts import revisions as layout_revisions
 from app.modules.layouts import service as layouts
 from app.modules.layouts.models import (
@@ -71,6 +71,8 @@ class JumperView(BaseModel):
     insulated: bool
     color: WireColor
     length: float
+    # Its build step (see LayoutView.build_steps).
+    step: int | None = None
 
 
 class TraceView(BaseModel):
@@ -80,6 +82,7 @@ class TraceView(BaseModel):
     # The design nets it carries; short: it joins pins the design keeps apart.
     nets: list[str]
     short: bool
+    step: int | None = None
 
 
 class ConnectorView(BaseModel):
@@ -89,6 +92,7 @@ class ConnectorView(BaseModel):
     rotation: int
     # What each pin carries, pin 1 first: `ref.PIN` or null.
     pins: list[str | None]
+    step: int | None = None
 
 
 class CheckView(BaseModel):
@@ -124,6 +128,10 @@ class LayoutView(LayoutCheckView):
     jumpers: list[JumperView]
     traces: list[TraceView]
     connectors: list[ConnectorView]
+    # The design's build order on this board: 0 prepares it (cuts, stripboard bottom
+    # links), then the design's steps, then null for parts not ordered. Each jumper,
+    # trace and connector has the step it's needed at. Empty with no build order.
+    build_steps: list[int | None] = []
 
 
 class LayoutListItem(BaseModel):
@@ -228,6 +236,7 @@ def _check_view(board: boards.Board) -> LayoutCheckView:
 
 def layout_view(layout: Layout) -> LayoutView:
     board = boards.build(layout)
+    steps = build_order.derive(layout, board)
     placed = {p.layout_part.id: p for p in board.parts}
     pitch = layout.pitch_mm
     return LayoutView(
@@ -241,6 +250,7 @@ def layout_view(layout: Layout) -> LayoutView:
         pitch_mm=pitch,
         shelf_item_id=layout.shelf_item_id,
         picture=picture.render(board),
+        build_steps=steps.steps,
         parts=[
             BoardPartView(
                 ref=lp.placement.ref,
@@ -269,12 +279,13 @@ def layout_view(layout: Layout) -> LayoutView:
                 insulated=j.insulated,
                 color=j.color,
                 length=round(boards.jumper_length(j), 1),
+                step=steps.jumpers.get(j.id),
             )
             for j in layout.jumpers
         ],
         traces=[
-            TraceView(a=t.a, b=t.b, pads=t.pads, nets=t.nets, short=t.short)
-            for t in (layouts._trace_out(board, t) for t in layout.traces)
+            TraceView(a=t.a, b=t.b, pads=t.pads, nets=t.nets, short=t.short, step=t.step)
+            for t in (layouts._trace_out(board, t, steps.traces.get(t.id)) for t in layout.traces)
         ],
         connectors=[
             ConnectorView(
@@ -282,6 +293,7 @@ def layout_view(layout: Layout) -> LayoutView:
                 type=c.type,
                 at=boards.label((c.strip, c.hole)) if c.strip is not None else None,
                 rotation=c.rotation,
+                step=steps.connectors.get(c.id),
                 pins=[
                     f"{p.placement.ref}.{p.pin.name}"
                     if (p := next((x for x in c.pins if x.index == i), None))

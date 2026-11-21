@@ -6,6 +6,7 @@ import {
   History,
   Info,
   Library,
+  ListOrdered,
   Lock,
   MoreHorizontal,
   Printer,
@@ -53,6 +54,8 @@ import { LayoutChecksBar } from './layout-checks-bar'
 import { LayoutHistoryDialog } from './layout-history-dialog'
 import { LayoutInspector } from './layout-inspector'
 import { PathChip } from './path-chip'
+import { BoardBuildBar } from './board-build-bar'
+import { useBoardBuild } from './use-board-build'
 import { PartsTray } from './parts-tray'
 import { type LayoutActions, useLayoutActions } from './use-layout-actions'
 import { ViewSwitcher } from './view-switcher'
@@ -104,9 +107,12 @@ function LayoutEditor({ layout, design }: { layout: LayoutDetail; design: Design
   const [pathEnds, setPathEnds] = useState<{ a: Cell; b: Cell | null; waiting: boolean } | null>(
     null,
   )
+  // Stepping through the build order: the board as it is by the current step.
+  const build = useBoardBuild(layout, design)
+  const shown = build.shown
   const path = useMemo(
-    () => (pathEnds?.b ? tracePath(layout, design, pathEnds.a, pathEnds.b) : null),
-    [pathEnds, layout, design],
+    () => (pathEnds?.b ? tracePath(shown, design, pathEnds.a, pathEnds.b) : null),
+    [pathEnds, shown, design],
   )
   const pathPoint = (cell: Cell) => {
     if (!inside(cell, layout)) return
@@ -272,6 +278,9 @@ function LayoutEditor({ layout, design }: { layout: LayoutDetail; design: Design
       }
       if (mod || event.altKey) return
       const key = event.key.toLowerCase()
+      if (key === 'b') return build.toggle()
+      if (build.open && event.key === 'ArrowLeft') return build.prev()
+      if (build.open && event.key === 'ArrowRight') return build.next()
       const tools: Record<string, Tool> = {
         v: 'select',
         c: 'cut',
@@ -294,6 +303,7 @@ function LayoutEditor({ layout, design }: { layout: LayoutDetail; design: Design
         selected?.kind === 'trace' ? layout.traces.find((t) => t.id === selected.id) : undefined
       if (event.key === 'Escape') {
         if (pathEnds) setPathEnds(null)
+        else if (build.open) build.close()
         else if (jumperStart) setJumperStart(null)
         else if (tool !== 'select' || armed !== null) chooseTool('select')
         else {
@@ -412,6 +422,16 @@ function LayoutEditor({ layout, design }: { layout: LayoutDetail; design: Design
           <FlipHorizontal2 />
           <span className="hidden sm:inline">{flipped ? 'Copper side' : 'Component side'}</span>
         </Button>
+        <Button
+          variant={build.open ? 'secondary' : 'ghost'}
+          size="sm"
+          aria-pressed={build.open}
+          title="Step through the design's build order on the board (B)"
+          onClick={build.toggle}
+        >
+          <ListOrdered />
+          <span className="hidden sm:inline">Build order</span>
+        </Button>
         {!readOnly && (
           <>
             <Button
@@ -498,9 +518,10 @@ function LayoutEditor({ layout, design }: { layout: LayoutDetail; design: Design
       <div className="flex min-h-0 flex-1">
         {wide && <aside className="flex w-64 shrink-0 flex-col border-r">{tray}</aside>}
         <div className="flex min-w-0 flex-1 flex-col">
-          <div className="relative min-h-0 flex-1">
+          <div className="@container relative min-h-0 flex-1">
             <BoardCanvas
-              layout={layout}
+              layout={shown}
+              shading={build.shading}
               design={design}
               flipped={flipped}
               tool={tool}
@@ -554,11 +575,16 @@ function LayoutEditor({ layout, design }: { layout: LayoutDetail; design: Design
                 pitch={layout.pitch_mm}
               />
             )}
+            {build.open && (
+              <div className="pointer-events-none absolute inset-x-2 bottom-12 z-10 flex justify-center">
+                <BoardBuildBar build={build} designId={design.id} />
+              </div>
+            )}
             <div
               className={`pointer-events-none absolute inset-x-2 z-10 flex justify-center ${readOnly ? 'top-2' : 'top-12'}`}
             >
               <PathChip
-                layout={layout}
+                layout={shown}
                 start={pathEnds && !pathEnds.b ? pathEnds.a : null}
                 waiting={pathEnds?.waiting ?? false}
                 path={path}

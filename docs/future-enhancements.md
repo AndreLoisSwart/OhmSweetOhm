@@ -476,7 +476,7 @@ Shift-click two pins (or any holes) and the board shows the copper path between 
   - **Not connected:** each end's connected copper is tinted lightly; if the design joins them, the ratsnest line between them shows and the chip says "Not connected yet (net SDA)".
 - **Built as planned,** with these settled on the way: the in-part joins come as one list on the layout (`joins`: groups of pin keys with two or more on the board or a connector) rather than a group on each pin; choosing another tool also stops tracing; and the chip names a net "not wired" only when it isn't one of the design's nets. Documented in pages.md (Layout page).
 
-### Step 24: build order on the board
+### Step 24: build order on the board (built 2026-11-21)
 
 Step through the design's build order on the board, as on the schematic. Stepping only; numbering stays on the schematic.
 
@@ -494,7 +494,7 @@ Step through the design's build order on the board, as on the schematic. Steppin
   - Path tracing (step 23) works on what's shown.
   - With no part ordered, the bar says so and links to the schematic's Number parts.
 - **Not decided:** numbering parts by clicking them on the board, and grouping the build sheet by these steps. Try stepping first.
-- **Docs to update when built:** data-model.md (Build order: the derived steps), pages.md (Layout page), mcp.md (`get_layout`'s steps).
+- **Built as planned,** with these settled on the way: the copper's tints and shorts at a step are worked out in the browser from what's on the board by then (the path tracer's joins), not just filtered by net, so a short shows from the step that makes it; the bar sits over the bottom of the board, as the toolbar holds the top; ghosts are drawn at 0.25 rather than the schematic's 0.1, to read on the copper; and `get_layout` carries the steps for Claude. Documented in data-model.md, pages.md and mcp.md.
 
 ## Canvas: more ways to tame a busy design
 

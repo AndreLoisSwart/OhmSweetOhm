@@ -17,4 +17,5 @@ export interface ConnectorOut {
   at: string | null;
   rotation: number;
   pins: ConnectorPinOut[];
+  step?: number | null;
 }

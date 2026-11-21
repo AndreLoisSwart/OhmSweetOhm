@@ -15,6 +15,7 @@ export interface TraceOut {
   b: string;
   pads: number;
   touches: string[];
+  step?: number | null;
   nets: string[];
   short: boolean;
 }

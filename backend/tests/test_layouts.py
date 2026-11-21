@@ -761,3 +761,79 @@ def test_old_perfboard_snapshot_becomes_traces(api, library):
     revs = ok(api.get(f"/api/layouts/{lid}/revisions"))
     restored = ok(api.post(f"/api/layouts/{lid}/revisions/{revs[0]['id']}/restore"))
     assert [(t["a"], t["b"]) for t in restored["traces"]] == [("B1", "B3")]
+
+
+# Build order on the board (step 24) ------------------------------------------------------
+
+
+def ordered_leds(api, library, steps: dict[str, int | None], **layout_fields):
+    """LEDs a, b, c with their anodes and cathodes wired together, in build steps."""
+    design = design_with(
+        api,
+        library,
+        {"a": "LED (5 mm)", "b": "LED (5 mm)", "c": "LED (5 mm)"},
+        wires=[("a.A", "b.A"), ("a.K", "b.K"), ("b.A", "c.A")],
+    )
+    for ref, step in steps.items():
+        ok(
+            api.patch(
+                f"/api/designs/{design['id']}/placements/{ids(design)[ref]}",
+                json={"build_step": step},
+            )
+        )
+    return design, new_layout(api, design, **layout_fields)
+
+
+def steps_of(layout, kind: str) -> list:
+    return [item["step"] for item in layout[kind]]
+
+
+def test_no_build_order_means_no_steps(api, library):
+    design, layout = ordered_leds(api, library, {})
+    layout = ok(link(api, layout["id"], (1, 5), (4, 5), side="top"))
+    assert layout["build_steps"] == [] and steps_of(layout, "jumpers") == [None]
+
+
+def test_jumpers_join_the_step_that_needs_them(api, library):
+    design, layout = ordered_leds(api, library, {"a": 1, "b": 2})
+    lid = layout["id"]
+    # Each LED across two strips: a on A–B, b on D–E, c on G–H (not ordered).
+    place(api, layout, design, a=(1, 2, 90), b=(4, 2, 90), c=(7, 2, 90))
+    # A top jumper joins the anodes (A to D): needed once b is in, at step 2.
+    layout = ok(link(api, lid, (1, 8), (4, 8), side="top"))
+    assert layout["build_steps"] == [1, 2, None]
+    assert steps_of(layout, "jumpers") == [2]
+    # One from D to G joins c's anode: needed only with c, the parts not ordered.
+    layout = ok(link(api, lid, (4, 9), (7, 9), side="top"))
+    assert steps_of(layout, "jumpers") == [2, None]
+    # A second jumper beside the first makes both spare: the last step.
+    layout = ok(link(api, lid, (1, 10), (4, 10), side="top"))
+    assert steps_of(layout, "jumpers") == [None, None, None]
+    # A cut and a bottom link are made first, in step 0.
+    ok(api.post(f"/api/layouts/{lid}/cuts", json={"cuts": [{"strip": 2, "hole": 12}]}))
+    layout = ok(link(api, lid, (2, 11), (5, 11), insulated=True))
+    assert layout["build_steps"] == [0, 1, 2, None]
+    assert steps_of(layout, "jumpers")[-1] == 0
+
+
+def test_perfboard_traces_and_connectors_get_steps(api, library):
+    design, layout = ordered_leds(api, library, {"a": 1, "b": 2, "c": 3}, board_type="perfboard")
+    lid = layout["id"]
+    layout = place(api, layout, design, a=(1, 2), b=(4, 2), c=None)
+    ok(trace(api, lid, (1, 2), (4, 2)))
+    layout = ok(trace(api, lid, (1, 3), (4, 3)))
+    assert layout["build_steps"] == [1, 2, 3]
+    assert steps_of(layout, "traces") == [2, 2]
+    # A connector takes the step of the part it carries; an empty one, the last.
+    for strip, pins in ((10, ["c.A", "c.K"]), (14, [None])):
+        res = api.post(
+            f"/api/layouts/{lid}/connectors",
+            json={"pin_count": len(pins), "strip": strip, "hole": 2, "pins": pins},
+        )
+        layout = ok(res)
+    assert steps_of(layout, "connectors") == [3, 3]
+    # A trace from b's anode down to the connector's pin 1 (c.A, at J2) is needed once c
+    # is in.
+    layout = ok(trace(api, lid, (4, 2), (10, 2)))
+    assert steps_of(layout, "traces") == [2, 2, 3]
+    assert layout["stats"]["missing"] == 0

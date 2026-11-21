@@ -10,8 +10,8 @@ from app.modules.checks.schemas import CheckSummary
 from app.modules.designs import service as designs
 from app.modules.designs.models import Placement, WireColor
 from app.modules.layouts import board as boards
+from app.modules.layouts import build_order, checks, revisions
 from app.modules.layouts import build_sheet as sheets
-from app.modules.layouts import checks, revisions
 from app.modules.layouts.board import connector_cells, footprint_sig, label
 from app.modules.layouts.models import (
     BoardType,
@@ -127,7 +127,7 @@ def _has_footprint(placement: Placement) -> bool:
     )
 
 
-def _trace_out(board: boards.Board, t: Trace) -> TraceOut:
+def _trace_out(board: boards.Board, t: Trace, step: int | None = None) -> TraceOut:
     nets, short = board.tint(("trace", t.id))
     return TraceOut(
         id=t.id,
@@ -139,6 +139,7 @@ def _trace_out(board: boards.Board, t: Trace) -> TraceOut:
         b=label((t.b_strip, t.b_hole)),
         pads=len(boards.trace_path(t)),
         touches=[label(c) for c in boards.trace_path(t)],
+        step=step,
         nets=nets,
         short=short,
     )
@@ -147,6 +148,7 @@ def _trace_out(board: boards.Board, t: Trace) -> TraceOut:
 def detail(layout: Layout) -> LayoutDetail:
     board = boards.build(layout)
     checked = checks.check(board)
+    steps = build_order.derive(layout, board)
     placed = {part.layout_part.id: part for part in board.parts}
     parts = []
     for lp in layout.parts:
@@ -189,6 +191,7 @@ def detail(layout: Layout) -> LayoutDetail:
                 hole=c.hole,
                 at=label((c.strip, c.hole)) if c.strip is not None and c.hole is not None else None,
                 rotation=c.rotation,
+                step=steps.connectors.get(c.id),
                 pins=[
                     ConnectorPinOut(
                         index=i,
@@ -239,11 +242,13 @@ def detail(layout: Layout) -> LayoutDetail:
                 color=j.color,
                 length=round(boards.jumper_length(j), 1),
                 touches=[label(c) for c in boards.jumper_touches(j, layout.board_type)],
+                step=steps.jumpers.get(j.id),
             )
             for j in layout.jumpers
         ],
-        traces=[_trace_out(board, t) for t in layout.traces],
+        traces=[_trace_out(board, t, steps.traces.get(t.id)) for t in layout.traces],
         joins=board.joins,
+        build_steps=steps.steps,
         connectors=connectors,
         segments=[
             SegmentOut(

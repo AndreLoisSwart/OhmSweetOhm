@@ -36,6 +36,7 @@ import {
 } from './geometry'
 import { type CutTarget, cutTarget, type Selection, straightEnd, type Tool } from './tools'
 import { type Grab, type JumperEnds, movedJumper, movedTrace, sameEnds } from './jumper-move'
+import type { BoardShading, Level } from './build-steps'
 import type { PathResult } from './path'
 import { PathLayer } from './path-layer'
 
@@ -59,6 +60,16 @@ function capture(event: ReactPointerEvent) {
   } catch {
     // A pointer that's already gone: nothing to capture.
   }
+}
+
+/** How strongly a build step's things are drawn: as they are, greyed, or ghosted. */
+// As the schematic greys earlier steps (canvas.css); ghosts a little stronger than there,
+// as they sit on the board's busy copper.
+const STEP_OPACITY: Record<Level, number> = { normal: 1, dim: 0.45, faded: 0.25 }
+const STEP_FILTER: Record<Level, string | undefined> = {
+  normal: undefined,
+  dim: 'grayscale(1)',
+  faded: undefined,
 }
 
 /** Bare copper, carrying no net. */
@@ -103,6 +114,7 @@ export function BoardCanvas({
   connectorPreview,
   armedRotation,
   onConnectorAt,
+  shading,
   path,
   pathStart,
   pathWaiting,
@@ -133,6 +145,8 @@ export function BoardCanvas({
   /** How a part armed from the tray will be turned when it's put down. */
   armedRotation: number
   onConnectorAt: (cell: Cell) => void
+  /** Stepping through the build order: earlier steps greyed, later ones ghosted. */
+  shading: BoardShading | null
   /** The traced path between two holes (Shift-click), drawn over the board. */
   path: PathResult | null
   /** Its first end, while the second is still to pick. */
@@ -556,7 +570,10 @@ export function BoardCanvas({
               trace={t}
               ends={traceEnds(t)}
               view={view}
-              opacity={t.short ? 1 : flipped ? 0.95 : 0.45}
+              opacity={
+                (t.short ? 1 : flipped ? 0.95 : 0.45) *
+                STEP_OPACITY[shading?.trace(t.id) ?? 'normal']
+              }
               selected={selected?.kind === 'trace' && selected.id === t.id}
             />
           ))}
@@ -632,17 +649,22 @@ export function BoardCanvas({
           {layout.jumpers
             .filter((j) => j.side === 'bottom')
             .map((j) => (
-              <JumperLine
+              <g
                 key={j.id}
-                jumper={jumperEnds(j)}
-                view={view}
-                color={j.insulated ? j.color : 'oklch(0.7 0.02 260)'}
-                opacity={flipped ? 0.95 : 0.35}
-                selected={selected?.kind === 'jumper' && selected.id === j.id}
-                selectable={selecting}
-                onPointerDown={(e) => onLinkDown(e, 'jumper', j.id)}
-                label={`Bottom link ${j.a} → ${j.b}${j.insulated ? ' (insulated)' : ''}`}
-              />
+                opacity={STEP_OPACITY[shading?.jumper(j.id) ?? 'normal']}
+                style={{ filter: STEP_FILTER[shading?.jumper(j.id) ?? 'normal'] }}
+              >
+                <JumperLine
+                  jumper={jumperEnds(j)}
+                  view={view}
+                  color={j.insulated ? j.color : 'oklch(0.7 0.02 260)'}
+                  opacity={flipped ? 0.95 : 0.35}
+                  selected={selected?.kind === 'jumper' && selected.id === j.id}
+                  selectable={selecting}
+                  onPointerDown={(e) => onLinkDown(e, 'jumper', j.id)}
+                  label={`Bottom link ${j.a} → ${j.b}${j.insulated ? ' (insulated)' : ''}`}
+                />
+              </g>
             ))}
           {/* Parts. */}
           {onBoard.map((part) => {
@@ -656,6 +678,8 @@ export function BoardCanvas({
               <g
                 key={part.placement_id}
                 transform={`translate(${dx} ${dy})`}
+                opacity={STEP_OPACITY[shading?.part(part.placement_id) ?? 'normal']}
+                style={{ filter: STEP_FILTER[shading?.part(part.placement_id) ?? 'normal'] }}
                 className={cn(
                   selecting && !readOnly && 'cursor-grab',
                   dragging && 'cursor-grabbing',
@@ -724,6 +748,8 @@ export function BoardCanvas({
                 <g
                   key={c.id}
                   transform={`translate(${dx} ${dy})`}
+                  opacity={STEP_OPACITY[shading?.connector(c.id) ?? 'normal']}
+                  style={{ filter: STEP_FILTER[shading?.connector(c.id) ?? 'normal'] }}
                   onPointerDown={(e) => onConnectorDown(e, c)}
                   className={cn(selecting && !readOnly && 'cursor-grab')}
                 >
@@ -767,17 +793,22 @@ export function BoardCanvas({
           {layout.jumpers
             .filter((j) => j.side === 'top')
             .map((j) => (
-              <JumperLine
+              <g
                 key={j.id}
-                jumper={jumperEnds(j)}
-                view={view}
-                color={j.color}
-                opacity={flipped ? 0.3 : 0.95}
-                selected={selected?.kind === 'jumper' && selected.id === j.id}
-                selectable={selecting}
-                onPointerDown={(e) => onLinkDown(e, 'jumper', j.id)}
-                label={`Jumper ${j.a} → ${j.b}`}
-              />
+                opacity={STEP_OPACITY[shading?.jumper(j.id) ?? 'normal']}
+                style={{ filter: STEP_FILTER[shading?.jumper(j.id) ?? 'normal'] }}
+              >
+                <JumperLine
+                  jumper={jumperEnds(j)}
+                  view={view}
+                  color={j.color}
+                  opacity={flipped ? 0.3 : 0.95}
+                  selected={selected?.kind === 'jumper' && selected.id === j.id}
+                  selectable={selecting}
+                  onPointerDown={(e) => onLinkDown(e, 'jumper', j.id)}
+                  label={`Jumper ${j.a} → ${j.b}`}
+                />
+              </g>
             ))}
           {/* The selected jumper's ends: drag either to move just that end. */}
           {selecting && !readOnly && selectedJumper && (

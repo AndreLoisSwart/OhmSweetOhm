@@ -20,4 +20,5 @@ export interface JumperOut {
   color: WireColor;
   length: number;
   touches: string[];
+  step?: number | null;
 }

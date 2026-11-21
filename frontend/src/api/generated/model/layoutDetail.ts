@@ -41,6 +41,7 @@ export interface LayoutDetail {
   connectors: ConnectorOut[];
   segments: SegmentOut[];
   joins: string[][];
+  build_steps: (number | null)[];
   links: LinkOut[];
   checks: LayoutCheck[];
 }

@@ -286,6 +286,9 @@ class JumperOut(BaseModel):
     length: float
     # The holes it joins: its ends, and every hole a bare stripboard link lies across.
     touches: list[str]
+    # Its step in the build order (layouts/build_order.py): 0 to prepare the board, a
+    # design step, or null (the parts not ordered, or no build order at all).
+    step: int | None = None
 
 
 class TraceOut(BaseModel):
@@ -300,6 +303,8 @@ class TraceOut(BaseModel):
     pads: int
     # Those pads, end to end.
     touches: list[str]
+    # Its step in the build order, as for jumpers.
+    step: int | None = None
     # The design nets it carries, and whether it joins pins the design keeps apart.
     nets: list[str]
     short: bool
@@ -325,6 +330,8 @@ class ConnectorOut(BaseModel):
     at: str | None
     rotation: int
     pins: list[ConnectorPinOut]
+    # Its step in the build order: the earliest of the parts it carries.
+    step: int | None = None
 
 
 class SegmentOut(BaseModel):
@@ -410,6 +417,10 @@ class LayoutDetail(LayoutSummary):
     # Pins (`ref.PIN`) joined inside their part, each group with two or more on the board
     # or a connector: a part's grounds, pins sharing a tie.
     joins: list[list[str]]
+    # The board's build steps in order (layouts/build_order.py): 0 to prepare the board
+    # when there's anything to prepare, the design's step numbers, then null for parts
+    # not ordered. Empty when the design has no build order.
+    build_steps: list[int | None]
     links: list[LinkOut]
     checks: list[LayoutCheck]
 

@@ -3885,6 +3885,17 @@
             },
             "type": "array",
             "title": "Pins"
+          },
+          "step": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Step"
           }
         },
         "type": "object",
@@ -4983,6 +4994,17 @@
             },
             "type": "array",
             "title": "Touches"
+          },
+          "step": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Step"
           }
         },
         "type": "object",
@@ -5392,6 +5414,20 @@
             "type": "array",
             "title": "Joins"
           },
+          "build_steps": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Build Steps"
+          },
           "links": {
             "items": {
               "$ref": "#/components/schemas/LinkOut"
@@ -5431,6 +5467,7 @@
           "connectors",
           "segments",
           "joins",
+          "build_steps",
           "links",
           "checks"
         ],
@@ -8165,6 +8202,17 @@
             },
             "type": "array",
             "title": "Touches"
+          },
+          "step": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Step"
           },
           "nets": {
             "items": {
