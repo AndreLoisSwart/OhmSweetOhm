@@ -109,7 +109,8 @@ export function BoardCanvas({
   onPlace: (placementId: number, at: Cell) => void
   onMove: (part: LayoutPartOut, at: Cell) => void
   onMoveConnector: (connector: ConnectorOut, at: Cell) => void
-  onMoveJumper: (jumperId: number, ends: JumperEnds) => void
+  /** Settles once the move is saved (or refused), so the canvas can stop drawing it. */
+  onMoveJumper: (jumperId: number, ends: JumperEnds) => Promise<unknown>
   onCut: (target: CutTarget) => void
   /** The jumper tool's first hole, once picked. */
   jumperStart: Cell | null
@@ -127,6 +128,9 @@ export function BoardCanvas({
   const svg = useRef<SVGSVGElement>(null)
   const [viewport, setViewport] = useState<Viewport>({ x: 0, y: 0, k: 1 })
   const [drag, setDrag] = useState<Drag | null>(null)
+  // A dropped jumper, drawn where it was dropped until the server answers: otherwise it
+  // shows at its old place for a moment in between.
+  const [settling, setSettling] = useState<{ id: number; ends: JumperEnds } | null>(null)
   const pan = useRef<{ x: number; y: number; vx: number; vy: number } | null>(null)
   // Where the pointer is on the drawing, for the tools' previews.
   const [hover, setHover] = useState<{ x: number; y: number } | null>(null)
@@ -272,7 +276,9 @@ export function BoardCanvas({
   const jumperEnds = (j: JumperOut): JumperEnds =>
     drag?.kind === 'jumper' && drag.id === j.id
       ? movedJumper(j, drag.grab ?? 'body', drag, drag.turns, drag.pivot, flipped)
-      : j
+      : settling?.id === j.id
+        ? settling.ends
+        : j
 
   const selectedJumper =
     selected?.kind === 'jumper' ? layout.jumpers.find((j) => j.id === selected.id) : undefined
@@ -326,7 +332,14 @@ export function BoardCanvas({
         // A click without moving leaves it; a turn counts even without a move.
         const by = drag.moved ? drag : { dStrip: 0, dHole: 0 }
         const to = j && movedJumper(j, drag.grab ?? 'body', by, drag.turns, drag.pivot, flipped)
-        if (j && to && !sameEnds(j, to)) onMoveJumper(j.id, to)
+        if (j && to && !sameEnds(j, to)) {
+          const id = j.id
+          setSettling({ id, ends: to })
+          // Refusals are shown by the mutation; either way, draw the saved jumper again.
+          void onMoveJumper(id, to)
+            .catch(() => {})
+            .finally(() => setSettling((s) => (s?.id === id ? null : s)))
+        }
       } else {
         const c = layout.connectors.find((x) => x.id === drag.id)
         if (c && moved && c.strip != null && c.hole != null)

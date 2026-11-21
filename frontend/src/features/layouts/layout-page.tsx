@@ -449,7 +449,7 @@ function LayoutEditor({ layout, design }: { layout: LayoutDetail; design: Design
               onMoveConnector={(c, at) =>
                 quietly(actions.updateConnector(c.id, { strip: at.strip, hole: at.hole }))
               }
-              onMoveJumper={(id, ends) => quietly(actions.updateJumper(id, ends))}
+              onMoveJumper={(id, ends) => actions.updateJumper(id, ends)}
               onCut={cut}
               jumperStart={jumperStart}
               onJumperPoint={jumperPoint}
