@@ -121,3 +121,24 @@ describe('tracePath', () => {
     expect(describePath(apart, 'stripboard').tone).toBe('open')
   })
 })
+
+describe('test points on the board', () => {
+  // TP1 at A10 "carries" esp.SDA, which is on the board at A2: no cable, only copper.
+  const tp = {
+    connectors: [{ ref: 'TP1', pins: [{ index: 1, pin: 'esp.SDA', strip: 5, hole: 10 }] }],
+  }
+  it("doesn't jump from a test point to the pin it names", () => {
+    // TP1 is on strip E, nowhere near A2: same net, but only copper could join them.
+    const path = tracePath(board(tp as never), design, at('E10'), at('A2'))
+    expect(path.a.connector).toBe('TP1 pin 1')
+    expect(path.kind).toBe('missing')
+    expect(describePath(path, 'stripboard').text).toBe('Not connected yet (net SDA)')
+    // Joined to strip A by a jumper, the path runs through the copper.
+    const jumpers = [{ id: 1, touches: ['A9', 'E9'] }]
+    const joined = tracePath(board({ ...tp, jumpers } as never), design, at('E10'), at('A2'))
+    expect(joined.kind).toBe('same')
+    expect(describePath(joined, 'stripboard').text).toBe(
+      'TP1 pin 1 (E10, esp.SDA) → esp.SDA (A2) · 2 strips, 1 jumper',
+    )
+  })
+})

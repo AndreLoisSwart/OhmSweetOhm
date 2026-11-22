@@ -140,6 +140,7 @@ class ConnectorIn(BaseModel):
     hole: Position | None = None
     rotation: Rotation = 0
     pins: list[PinRef | None] = []
+    color: WireColor | None = None
 
 
 class ConnectorUpdate(BaseModel):
@@ -153,6 +154,8 @@ class ConnectorUpdate(BaseModel):
     hole: Position | None = None
     rotation: Rotation | None = None
     pins: list[PinRef | None] | None = None
+    # Null (sent) clears it.
+    color: WireColor | None = None
 
 
 # Snapshots, for undo and revisions ------------------------------------------------------
@@ -206,6 +209,7 @@ class ConnectorSnapshot(BaseModel):
     hole: int | None
     rotation: int
     pins: list[ConnectorPinSnapshot]
+    color: WireColor | None = None
 
 
 class LayoutSnapshot(BaseModel):
@@ -332,6 +336,7 @@ class ConnectorOut(BaseModel):
     pins: list[ConnectorPinOut]
     # Its step in the build order: the earliest of the parts it carries.
     step: int | None = None
+    color: WireColor | None = None
 
 
 class SegmentOut(BaseModel):

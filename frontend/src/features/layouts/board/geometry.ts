@@ -147,6 +147,7 @@ export function snapshotOf(layout: LayoutDetail): LayoutSnapshot {
       strip: c.strip,
       hole: c.hole,
       rotation: c.rotation,
+      color: c.color ?? null,
       pins: c.pins.map((p) => ({ index: p.index, placement_id: p.placement_id, pin_id: p.pin_id })),
     })),
   }

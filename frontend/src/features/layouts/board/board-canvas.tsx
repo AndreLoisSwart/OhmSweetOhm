@@ -332,6 +332,18 @@ export function BoardCanvas({
     onSelect({ kind, id })
     if (readOnly) return
     capture(event)
+    // Grabbed close to one of its ends, selected or not: move just that end.
+    if (grab === 'body') {
+      const item =
+        kind === 'jumper'
+          ? layout.jumpers.find((j) => j.id === id)
+          : layout.traces.find((t) => t.id === id)
+      const p = toBoard(event.clientX, event.clientY)
+      const near = (strip: number, hole: number) =>
+        Math.hypot(p.x - holeX(hole, view), p.y - stripY(strip)) < STEP * 0.45
+      if (item && near(item.a_strip, item.a_hole)) grab = 'a'
+      else if (item && near(item.b_strip, item.b_hole)) grab = 'b'
+    }
     setDrag({
       kind,
       id,
@@ -744,6 +756,11 @@ export function BoardCanvas({
               const dx = dragging ? drag.dHole * STEP * (flipped ? -1 : 1) : 0
               const dy = dragging ? drag.dStrip * STEP : 0
               const isSelected = selected?.kind === 'connector' && selected.id === c.id
+              // Its outline, shown on hover, so two side by side read as two.
+              const cells = c.pins.filter((p) => p.strip != null && p.hole != null)
+              const xs = cells.map((p) => holeX(p.hole!, view))
+              const ys = cells.map((p) => stripY(p.strip!))
+              const pad = STEP * 0.6
               return (
                 <g
                   key={c.id}
@@ -751,8 +768,19 @@ export function BoardCanvas({
                   opacity={STEP_OPACITY[shading?.connector(c.id) ?? 'normal']}
                   style={{ filter: STEP_FILTER[shading?.connector(c.id) ?? 'normal'] }}
                   onPointerDown={(e) => onConnectorDown(e, c)}
-                  className={cn(selecting && !readOnly && 'cursor-grab')}
+                  className={cn('group', selecting && !readOnly && 'cursor-grab')}
                 >
+                  {cells.length > 0 && (
+                    <rect
+                      x={Math.min(...xs) - pad}
+                      y={Math.min(...ys) - pad}
+                      width={Math.max(...xs) - Math.min(...xs) + pad * 2}
+                      height={Math.max(...ys) - Math.min(...ys) + pad * 2}
+                      rx={4}
+                      className="fill-primary/10 stroke-primary/70 opacity-0 transition-opacity group-hover:opacity-100"
+                      strokeWidth={1.5}
+                    />
+                  )}
                   {c.pins.map(
                     (p) =>
                       p.strip != null &&
@@ -765,9 +793,12 @@ export function BoardCanvas({
                           height={STEP * 0.9}
                           rx={2}
                           className={cn(
-                            'fill-foreground/15',
-                            isSelected ? 'stroke-primary' : 'stroke-foreground/70',
+                            !c.color && 'fill-foreground/15',
+                            isSelected ? 'stroke-primary' : !c.color && 'stroke-foreground/70',
                           )}
+                          fill={c.color ?? undefined}
+                          fillOpacity={c.color ? 0.45 : undefined}
+                          stroke={!isSelected && c.color ? c.color : undefined}
                           strokeWidth={isSelected ? 2.5 : 1.5}
                         >
                           <title>

@@ -526,7 +526,11 @@ function LayoutEditor({ layout, design }: { layout: LayoutDetail; design: Design
               flipped={flipped}
               tool={tool}
               selected={selected}
-              onSelect={setSelected}
+              onSelect={(next) => {
+                setSelected(next)
+                // A click on the empty board, or the grey around it, also stops tracing.
+                if (next === null) setPathEnds(null)
+              }}
               highlight={highlight}
               armed={armed}
               onPlace={place}

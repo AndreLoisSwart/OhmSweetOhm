@@ -135,13 +135,16 @@ Jumper         id, layout_id, a_strip, a_hole, b_strip, b_hole, side (top | bott
 Trace          id, layout_id, a_strip, a_hole, b_strip, b_hole (perfboard only; along a
                row or down a column)
 Connector      id, layout_id, ref (unique per layout), type (header_male |
-               header_female | jst_xh | screw_508), pin_count, strip, hole, rotation
-ConnectorPin   id, connector_id, index (from 1), placement_id, pin_id (the off-board
-               pin it carries; set to null when that placement or pin goes)
+               header_female | jst_xh | screw_508), pin_count, strip, hole, rotation,
+               color (nullable)
+ConnectorPin   id, connector_id, index (from 1), placement_id, pin_id (the pin it
+               carries; set to null when that placement or pin goes)
 LayoutRevision id, layout_id, created_at, author, summary, snapshot (JSON)
 ```
 
 - **A layout holds only physical facts.** Nets come from its design; board connectivity and layout checks are computed, never stored.
+- **A connector pin carrying an off-board part's pin is the cable to it,** and joins that pin. **One carrying a pin of a part that's on the board** (a test point, or a header for the ESP's own I2C pins) joins nothing (2026-11-22): it stands in on that pin's net as `TP_3V3.1`, so copper has to reach its hole, and until it does the connection is missing. Before, it counted as a wire to the pin, which could hide a gap in the copper and sent path tracing through the test point.
+- **A connector's `color`** (nullable, a wire colour) only tells neighbouring connectors apart on the board (2026-11-22).
 - **Positions are 1-based** and read as the board's labels: strip 3, hole 14 is C14.
 - **A layout's `pitch_mm` sets its grid:** footprints (in mm) land on holes that far apart, within 0.1 mm. A breadboard pattern is always 2.54.
 - **Board types** (step 21 added perfboard): a stripboard's copper runs along each strip and can be cut; a breadboard pattern has fixed rails and columns of five, 14 rows at 2.54 mm; a perfboard has a pad per hole and nothing joined: its **traces** join every pad from end to end (solder bridges between neighbouring pads, tinned wire along longer runs), and its jumpers, top or bottom, join only their ends. On a stripboard or breadboard pattern a bare bottom link still joins every strip it lies across. Only a stripboard can be cut; only a perfboard has traces (step 22, 2026-11-21: its straight bare bottom links and solder bridges became traces, and older revisions convert the same way when restored). New layouts default to 24 × 37, 14 × 62 and 24 × 30.

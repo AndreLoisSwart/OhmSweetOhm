@@ -9,7 +9,9 @@ joins neighbouring holes (stripboard: along a strip, unless cut; breadboard: its
 groups; perfboard: none, each hole its own pad), jumpers join their ends (a bare
 bottom link on a stripboard or breadboard pattern also every hole it lies across), a
 perfboard's traces every pad from end to end, and each pin joins the hole it's soldered
-in. Pins of a part joined inside it (its
+in. A connector pin joins the off-board pin it carries (the cable); one carrying a pin
+of a part that's on the board joins nothing, but stands in on that pin's net, so the
+copper has to reach it. Pins of a part joined inside it (its
 grounds, a tie) are joined here too, as in the design's nets.
 """
 
@@ -321,6 +323,9 @@ class Board:
     segments: list[Segment] = field(default_factory=list)
     # Pins on the board (or a connector) joined inside their part: its grounds, a tie.
     joins: list[list[str]] = field(default_factory=list)
+    # Connector pins carrying a pin of a part on the board (`J1.2` → `esp.GND`): each
+    # stands in on that pin's net, joined only by copper.
+    stand_ins: dict[str, str] = field(default_factory=dict)
     # Which design nets each node carries, and every net identity on it (unwired pins
     # count), for tinting copper and spotting shorts.
     carried: dict[object, set[str]] = field(default_factory=dict)
@@ -403,6 +408,8 @@ def build(layout: Layout) -> Board:
         for pin in part.pins:
             present[pin.key] = pin.cell
             uf.join(pin.key, pin.cell)
+    on_board = {part.layout_part.placement_id for part in parts}
+    stand_ins: dict[str, str] = {}
     for connector in layout.connectors:
         cells = connector_cells(connector, pitch)
         for cpin in connector.pins:
@@ -410,10 +417,19 @@ def build(layout: Layout) -> Board:
                 continue
             node = ("connector", connector.id, cpin.index)
             uf.join(node, cells[cpin.index - 1])
-            if cpin.placement is not None and cpin.pin is not None:
-                key = f"{cpin.placement.ref}.{cpin.pin.name}"
-                present.setdefault(key, cells[cpin.index - 1])
-                uf.join(node, key)
+            if cpin.placement is None or cpin.pin is None:
+                continue
+            key = f"{cpin.placement.ref}.{cpin.pin.name}"
+            if cpin.placement_id in on_board:
+                # A test point or header for a pin already on the board: no cable to it,
+                # so the copper must reach this hole, which is on that pin's net.
+                stand = f"{connector.ref}.{cpin.index}"
+                stand_ins[stand] = key
+                present[stand] = cells[cpin.index - 1]
+                uf.join(node, stand)
+                continue
+            present.setdefault(key, cells[cpin.index - 1])
+            uf.join(node, key)
 
     # Pins joined inside their part, and each pin's design net.
     net_of: dict[str, str] = {}
@@ -437,6 +453,10 @@ def build(layout: Layout) -> Board:
                 uf.join(members[0], key)
             if len(here := [key for key in members if key in present]) > 1:
                 joins.append(here)
+    for stand, key in stand_ins.items():
+        net_of[stand] = net_of.get(key, key)
+        if net_of[stand] in nets:
+            nets[net_of[stand]].append(stand)
 
     board = Board(
         layout=layout,
@@ -452,6 +472,7 @@ def build(layout: Layout) -> Board:
         cut_holes=cut_holes,
         cut_between=cut_between,
         joins=joins,
+        stand_ins=stand_ins,
     )
     for key in present:
         name = net_of.get(key, key)

@@ -6,6 +6,7 @@
  */
 import type { ConnectorInRotation } from './connectorInRotation';
 import type { ConnectorType } from './connectorType';
+import type { WireColor } from './wireColor';
 
 /**
  * Pins are what each connector pin carries, in order: an off-board part's pin as
@@ -23,4 +24,5 @@ export interface ConnectorIn {
   hole?: number | null;
   rotation?: ConnectorInRotation;
   pins?: (string | null)[];
+  color?: WireColor | null;
 }

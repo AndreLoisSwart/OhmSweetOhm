@@ -625,9 +625,10 @@ def register_layout_tools(tool: Callable, open_session: Callable, READ, WRITE, R
         type: ConnectorType | None = None,
         pin_count: int | None = None,
         pins: list[PinRef | None] | None = None,
+        color: WireColor | None = None,
     ) -> LayoutView:
-        """Moves, turns, retypes or reassigns a connector, found by its ref. pins, when
-        given, is the whole list, pin 1 first."""
+        """Moves, turns, retypes, reassigns or colours a connector, found by its ref. pins,
+        when given, is the whole list, pin 1 first. color tells it apart from a neighbour."""
         with open_session() as session:
             layout = layouts.get_layout(session, layout_id)
             connector = next((c for c in layout.connectors if c.ref.lower() == ref.lower()), None)
@@ -640,6 +641,7 @@ def register_layout_tools(tool: Callable, open_session: Callable, READ, WRITE, R
                 ("rotation", rotation),
                 ("type", type),
                 ("pin_count", pin_count),
+                ("color", color),
                 ("pins", pins),
             ):
                 if value is not None:

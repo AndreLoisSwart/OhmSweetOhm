@@ -6,6 +6,7 @@
  */
 import type { ConnectorPinOut } from './connectorPinOut';
 import type { ConnectorType } from './connectorType';
+import type { WireColor } from './wireColor';
 
 export interface ConnectorOut {
   id: number;
@@ -18,4 +19,5 @@ export interface ConnectorOut {
   rotation: number;
   pins: ConnectorPinOut[];
   step?: number | null;
+  color?: WireColor | null;
 }

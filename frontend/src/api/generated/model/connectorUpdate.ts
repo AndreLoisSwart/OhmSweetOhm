@@ -6,6 +6,7 @@
  */
 import type { ConnectorType } from './connectorType';
 import type { ConnectorUpdateRotation } from './connectorUpdateRotation';
+import type { WireColor } from './wireColor';
 
 /**
  * Only what's sent changes. strip and hole null take it off the board; pins is the
@@ -19,4 +20,5 @@ export interface ConnectorUpdate {
   hole?: number | null;
   rotation?: ConnectorUpdateRotation;
   pins?: (string | null)[] | null;
+  color?: WireColor | null;
 }

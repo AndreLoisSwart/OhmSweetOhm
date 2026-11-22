@@ -186,6 +186,8 @@ class Connector(Base):
     strip: Mapped[int | None]
     hole: Mapped[int | None]
     rotation: Mapped[int] = mapped_column(default=0)
+    # Drawn in this colour, to tell neighbouring connectors apart; null: plain.
+    color: Mapped[WireColor | None] = mapped_column(str_enum(WireColor, "color"))
 
     pins: Mapped[list["ConnectorPin"]] = relationship(
         cascade="all, delete-orphan", order_by=lambda: ConnectorPin.index, lazy="selectin"

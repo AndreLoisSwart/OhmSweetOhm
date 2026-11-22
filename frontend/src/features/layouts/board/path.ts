@@ -9,7 +9,18 @@ export interface PathEnd {
   cell: Cell
   at: string
   pin?: string
+  /**
+   * A connector pin carrying a pin of a part that's on the board (a test point): no
+   * cable joins them, so the path starts at its hole, on that pin's net.
+   */
+  carries?: string
+  /** That connector pin, as `J1 pin 2`. */
+  connector?: string
 }
+
+/** Pins of parts on the board, by key. */
+const onBoardPins = (layout: LayoutDetail) =>
+  new Set(layout.parts.flatMap((part) => part.pins.map((pin) => pin.key)))
 
 /** A stretch drawn from one hole to another. */
 export interface Span {
@@ -70,6 +81,7 @@ function link(graph: Graph, x: string, y: string) {
 /** Every hole, pin, jumper, trace, connector pin and in-part join, and what joins them. */
 export function boardGraph(layout: LayoutDetail): Graph {
   const graph: Graph = new Map()
+  const placed = onBoardPins(layout)
   for (const seg of layout.segments) {
     const cells: Cell[] = []
     if (seg.a_strip === seg.b_strip)
@@ -90,7 +102,8 @@ export function boardGraph(layout: LayoutDetail): Graph {
       const node = `c:${c.ref}:${p.index}`
       if (p.strip != null && p.hole != null)
         link(graph, node, hole(cellLabel({ strip: p.strip, hole: p.hole })))
-      if (p.pin) link(graph, node, `p:${p.pin}`)
+      // A cable to an off-board part's pin; a pin on the board is reached by copper only.
+      if (p.pin && !placed.has(p.pin)) link(graph, node, `p:${p.pin}`)
     }
   layout.joins.forEach((group, i) => {
     for (const key of group) link(graph, `g:${i}`, `p:${key}`)
@@ -103,9 +116,13 @@ export function endAt(layout: LayoutDetail, cell: Cell): PathEnd {
   const at = cellLabel(cell)
   for (const part of layout.parts)
     for (const pin of part.pins) if (pin.at === at) return { cell, at, pin: pin.key }
+  const placed = onBoardPins(layout)
   for (const c of layout.connectors)
     for (const p of c.pins)
-      if (p.pin && p.strip === cell.strip && p.hole === cell.hole) return { cell, at, pin: p.pin }
+      if (p.pin && p.strip === cell.strip && p.hole === cell.hole)
+        return placed.has(p.pin)
+          ? { cell, at, carries: p.pin, connector: `${c.ref} pin ${p.index}` }
+          : { cell, at, pin: p.pin }
   return { cell, at }
 }
 
@@ -174,8 +191,9 @@ export function tracePath(
   const endA = endAt(layout, a)
   const endB = endAt(layout, b)
   const identity = identities(layout, design)
-  const netA = endA.pin ? identity(endA.pin) : undefined
-  const netB = endB.pin ? identity(endB.pin) : undefined
+  const pinOf = (end: PathEnd) => end.pin ?? end.carries
+  const netA = pinOf(endA) ? identity(pinOf(endA)!) : undefined
+  const netB = pinOf(endB) ? identity(pinOf(endB)!) : undefined
   const cells = new Map<string, Cell>()
   for (let s = 1; s <= layout.strips; s++)
     for (let h = 1; h <= layout.holes; h++)
@@ -251,7 +269,12 @@ export function describePath(
   path: PathResult,
   boardType: LayoutDetail['board_type'],
 ): { text: string; tone: 'ok' | 'short' | 'open' } {
-  const name = (end: PathEnd) => (end.pin ? `${end.pin} (${end.at})` : end.at)
+  const name = (end: PathEnd) =>
+    end.pin
+      ? `${end.pin} (${end.at})`
+      : end.connector
+        ? `${end.connector} (${end.at}, ${end.carries})`
+        : end.at
   const via: string[] = []
   if (path.copper.length && boardType !== 'perfboard')
     via.push(plural(path.copper.length, boardType === 'stripboard' ? 'strip' : 'copper run'))
@@ -268,7 +291,7 @@ export function describePath(
       return { text: `${name(path.a)} → ${name(path.b)} · ${route}`, tone: 'ok' }
     case 'short':
       return {
-        text: `Short: ${net(path.netA, path.wiredA, path.a.pin)} and ${net(path.netB, path.wiredB, path.b.pin)} meet through ${route}`,
+        text: `Short: ${net(path.netA, path.wiredA, path.a.pin ?? path.a.carries)} and ${net(path.netB, path.wiredB, path.b.pin ?? path.b.carries)} meet through ${route}`,
         tone: 'short',
       }
     case 'missing':

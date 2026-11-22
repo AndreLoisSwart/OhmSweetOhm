@@ -133,6 +133,10 @@ export function layoutAt(
     design.placements.filter((p) => inBy(p.build_step ?? null)).map((p) => p.ref),
   )
   const refOf = (key: string) => key.split('.')[0]
+  // A ratsnest end is a part's pin, or a connector pin standing in for a pin on the board
+  // (`TP1.1`), which is in with its connector.
+  const connectorIn = new Map(layout.connectors.map((c) => [c.ref, inBy(c.step)]))
+  const isIn = (key: string) => connectorIn.get(refOf(key)) ?? present.has(refOf(key))
   const presentIds = new Set(design.placements.filter((p) => present.has(p.ref)).map((p) => p.id))
   const hidden: LayoutDetail = {
     ...layout,
@@ -149,7 +153,7 @@ export function layoutAt(
     joins: layout.joins
       .map((g) => g.filter((key) => present.has(refOf(key))))
       .filter((g) => g.length > 1),
-    links: layout.links.filter((l) => present.has(refOf(l.a)) && present.has(refOf(l.b))),
+    links: layout.links.filter((l) => isIn(l.a) && isIn(l.b)),
   }
   hidden.segments = tints(hidden, design)
   return keepLater ? { ...layout, segments: hidden.segments, links: hidden.links } : hidden

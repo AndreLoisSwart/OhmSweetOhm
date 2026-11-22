@@ -192,6 +192,7 @@ def detail(layout: Layout) -> LayoutDetail:
                 at=label((c.strip, c.hole)) if c.strip is not None and c.hole is not None else None,
                 rotation=c.rotation,
                 step=steps.connectors.get(c.id),
+                color=c.color,
                 pins=[
                     ConnectorPinOut(
                         index=i,
@@ -644,6 +645,7 @@ def add_connector(
         strip=data.strip,
         hole=data.hole,
         rotation=data.rotation,
+        color=data.color,
     )
     layout.connectors.append(connector)
     _assign(layout, connector, data.pins)

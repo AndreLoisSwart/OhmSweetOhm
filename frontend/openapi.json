@@ -3816,6 +3816,16 @@
             "type": "array",
             "title": "Pins",
             "default": []
+          },
+          "color": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WireColor"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -3896,6 +3906,16 @@
               }
             ],
             "title": "Step"
+          },
+          "color": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WireColor"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -4067,6 +4087,16 @@
             },
             "type": "array",
             "title": "Pins"
+          },
+          "color": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WireColor"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -4192,6 +4222,16 @@
               }
             ],
             "title": "Pins"
+          },
+          "color": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WireColor"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",

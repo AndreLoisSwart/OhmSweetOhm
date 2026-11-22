@@ -78,7 +78,10 @@ def derive(layout: Layout, board: Board | None = None) -> BoardSteps:
     for t in layout.traces:
         items[("trace", t.id)] = [node(c) for c in boards.trace_path(t)]
     waiting = [k for k in items if not (k[0] == "jumper" and out.jumpers.get(k[1]) == PREPARE)]
-    pin_step = {key: step_of.get(key.split(".")[0]) for key in board.present}
+    # A connector pin standing in for a pin on the board comes with that pin's part.
+    pin_step = {
+        key: step_of.get(board.stand_ins.get(key, key).split(".")[0]) for key in board.present
+    }
 
     def joined(present: set[str], skip: tuple[str, int] | None) -> _UnionFind:
         uf = _UnionFind()

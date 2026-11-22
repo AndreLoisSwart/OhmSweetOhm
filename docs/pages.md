@@ -118,14 +118,14 @@ Below 1280 px wide (the board needs the room) the tray and Inspector become over
   - each pin a dot in its net's colour (a tooltip gives the pin, hole and net);
   - the outline dashed when socketed, solid when soldered;
   - the ref in the corner.
-- **Connectors and top jumpers:** drawn over the parts.
+- **Connectors and top jumpers:** drawn over the parts. Hovering a connector outlines the whole of it, so two side by side read as two; one with a colour has its pins filled in it.
 - **The ratsnest:** dashed lines in the net's colour, from the API's `links`.
 - **Build order** (step 24): the header's **Build order** button, or **B**, opens a bar over the bottom of the board: ⏮ *Step 2 · 3 of 4* ⏭ with the step's refs, ← and → (or the skip buttons) to move, the **Ghost later steps** switch (shared with the schematic and remembered in this browser), and Exit (or Esc, or B). Stepping only: the order is numbered on the schematic, and with no order yet the bar links there.
   - **Prepare the board** comes first when there are cuts or a stripboard's bottom links, listing how many.
   - The current step's parts, jumpers, traces and connectors are drawn as they are; earlier steps are greyed; later ones are hidden, or ghosted with the switch. Cuts and copper are always drawn.
   - The copper's tints and shorts are worked out from what's on the board by that step (in the browser, from the same joins as path tracing), so a short shows from the step that makes it. The ratsnest shows only links between parts that are in.
   - Path tracing goes through what's shown: with later steps hidden, not through them.
-- **Path tracing** (step 23): with Select, **Shift-click** (or Cmd/Ctrl-click) a pin or hole, then another; another Shift-click replaces the second end, Shift-clicking the first again, Esc, picking a check or another tool stops it. On a tablet, **Trace from here** beside a pin in the part's Inspector starts it (closing the Inspector below 1280 px), and the next tap picks the other end.
+- **Path tracing** (step 23): with Select, **Shift-click** (or Cmd/Ctrl-click) a pin or hole, then another; another Shift-click replaces the second end, Shift-clicking the first again, Esc, a click on the empty board or the grey around it, picking a check or another tool stops it. On a tablet, **Trace from here** beside a pin in the part's Inspector starts it (closing the Inspector below 1280 px), and the next tap picks the other end.
   - **Joined:** everything else dims; the path's copper (only the stretch between where it enters and leaves a run), traces, jumpers and pins keep their own colours over one amber halo, with a moving dashed line along it. A top jumper seen from the copper side is dashed. Pins joined inside a part (its two grounds) show as a dashed arc. Ends are ringed A and B.
   - **Joined across two design nets:** the same, with a red halo: where the short runs.
   - **Not joined:** each end's copper is tinted (A blue, B green), with a dashed line between them when the design joins them.
@@ -146,7 +146,7 @@ The board stays fitted to its space until you pan (drag empty board) or zoom (wh
 
 | Tool | Key | What it does |
 |---|---|---|
-| Select | V | Click a part, jumper or connector to select it; drag parts and connectors to move them by whole holes. A selected jumper shows a handle on each end: drag one to move just that end. Drag a jumper by its middle to move the whole of it, and press R while dragging to turn it a quarter clockwise about the hole you grabbed. Each move is one undo step, refused like a new jumper (e.g. a top jumper's end on a pin) |
+| Select | V | Click a part, jumper or connector to select it; drag parts and connectors to move them by whole holes. A selected jumper shows a handle on each end: drag one to move just that end; grabbing any jumper or trace close to an end does the same, selected or not. Drag a jumper by its middle to move the whole of it, and press R while dragging to turn it a quarter clockwise about the hole you grabbed. Each move is one undo step, refused like a new jumper (e.g. a top jumper's end on a pin) |
 | Cut | C | Click a hole to cut the strip there, or near the gap between two holes to cut between them; click a cut to remove it. A dashed ring or bar shows where it would cut. Cutting a hole with a leg, connector pin or jumper end in it is refused, with the reason. Stripboard only |
 | Jumper | J | Click one end, then the other; a line follows the pointer. It goes on the side you're looking at: component side for a top jumper, copper side (turned over) for a bottom link. A top jumper's end in a taken hole is refused. Esc drops the first end. New jumpers aren't selected, so on a tablet the Inspector doesn't cover the board between jumpers |
 | Trace | T | Perfboard only. Click where it starts, then along the row or column: the run snaps to whichever the pointer is further along and is laid, and the next run starts from its end, so a bent path is click, click, click. Click the same spot again, or press Esc, to finish. Each run is one undo step. Select picks a trace; drag an end (it stays on the other end's row or column) or its middle, R turns it, Delete removes it |
@@ -164,7 +164,7 @@ The board stays fitted to its space until you pan (drag empty board) or zoom (wh
 - **A selected part:** its first pin's hole and rotation, Rotate, Off board, Unplace, **Cut between rows** (stripboard), Socketed / Soldered, its pins (hole and net, with **Trace from here**), and Show in schematic.
 - **A selected jumper:** its ends and length, component or copper side, insulated (bottom links), colour, and Remove.
 - **A selected trace:** its ends, pads (a solder bridge or tinned wire), the nets it carries (or that it shorts), Rotate and Remove.
-- **A selected connector:** its type, pin count and pin 1's hole; Rotate and Remove; a picker per pin for what it carries (the off-board parts' pins, or nothing); Add a pin and Remove the last pin.
+- **A selected connector:** its type, pin count and pin 1's hole; Rotate and Remove; a picker per pin for what it carries (the off-board parts' pins, or nothing); Add a pin and Remove the last pin; its colour (or none).
 - **Nothing selected:** the layout's name (editable), board, its Shelf-help item id (editable, blank clears it), hole spacing (editable on a stripboard or perfboard; changing it re-reads every footprint, so parts may come off the grid), part counts, connections still to join, cuts, jumpers, traces (perfboard), area used, notes, **Trim dead copper** (stripboard) and Delete layout.
 
 **The checks bar:**

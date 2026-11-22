@@ -329,9 +329,14 @@ def _connections(board: Board) -> tuple[list[Result], list[Link]]:
     for name, keys in board.nets.items():
         here = [k for k in keys if k in board.present]
         # Off-board pins need a connector when their net reaches the board.
-        reaches = any(by_ref[k.split(".")[0]].id in on_board for k in keys) or here
+        # (A connector pin standing in for a pin on the board isn't a placement's pin.)
+        reaches = any(
+            (p := by_ref.get(k.split(".")[0])) is not None and p.id in on_board for k in keys
+        ) or bool(here)
         for key in keys:
-            placement = by_ref[key.split(".")[0]]
+            placement = by_ref.get(key.split(".")[0])
+            if placement is None:
+                continue
             if key not in board.present and placement.id in off_board and reaches:
                 unconnected.setdefault(placement.ref, []).append(key)
         groups: dict[object, list[str]] = {}

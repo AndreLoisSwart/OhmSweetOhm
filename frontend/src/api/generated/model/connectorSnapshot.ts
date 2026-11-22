@@ -6,6 +6,7 @@
  */
 import type { ConnectorPinSnapshot } from './connectorPinSnapshot';
 import type { ConnectorType } from './connectorType';
+import type { WireColor } from './wireColor';
 
 export interface ConnectorSnapshot {
   ref: string;
@@ -15,4 +16,5 @@ export interface ConnectorSnapshot {
   hole: number | null;
   rotation: number;
   pins: ConnectorPinSnapshot[];
+  color?: WireColor | null;
 }

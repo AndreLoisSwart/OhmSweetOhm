@@ -78,6 +78,7 @@ def snapshot_of(layout: Layout) -> LayoutSnapshot:
                 strip=c.strip,
                 hole=c.hole,
                 rotation=c.rotation,
+                color=c.color,
                 pins=[
                     ConnectorPinSnapshot(
                         index=p.index, placement_id=p.placement_id, pin_id=p.pin_id

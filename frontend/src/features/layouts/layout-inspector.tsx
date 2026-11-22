@@ -552,6 +552,31 @@ function ConnectorDetails({
           </div>
         )}
       </Section>
+      <Section title="Colour">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <button
+            type="button"
+            aria-label="No colour"
+            title="No colour"
+            aria-pressed={!c.color}
+            disabled={readOnly}
+            onClick={() => quietly(actions.updateConnector(c.id, { color: null }))}
+            className="size-6 rounded-full border-2 border-background bg-foreground/15 ring-1 ring-border aria-pressed:ring-2 aria-pressed:ring-primary"
+          />
+          {WIRE_COLORS.map((color) => (
+            <button
+              key={color}
+              type="button"
+              aria-label={color}
+              aria-pressed={c.color === color}
+              disabled={readOnly}
+              onClick={() => quietly(actions.updateConnector(c.id, { color }))}
+              className="size-6 rounded-full border-2 border-background ring-1 ring-border aria-pressed:ring-2 aria-pressed:ring-primary"
+              style={{ background: color }}
+            />
+          ))}
+        </div>
+      </Section>
     </div>
   )
 }

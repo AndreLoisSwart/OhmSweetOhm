@@ -837,3 +837,39 @@ def test_perfboard_traces_and_connectors_get_steps(api, library):
     layout = ok(trace(api, lid, (4, 2), (10, 2)))
     assert steps_of(layout, "traces") == [2, 2, 3]
     assert layout["stats"]["missing"] == 0
+
+
+def test_a_test_point_for_a_pin_on_the_board_needs_copper(api, library):
+    """A connector pin carrying a pin of a part on the board is no cable: copper must
+    reach it, and until it does the connection is missing."""
+    design = design_with(
+        api, library, {"a": "LED (5 mm)", "b": "LED (5 mm)"}, wires=[("a.A", "b.A")]
+    )
+    layout = new_layout(api, design)
+    lid = layout["id"]
+    # a across A–B and b across D–E at hole 2, anodes joined by a top jumper A5 → D5.
+    place(api, layout, design, a=(1, 2, 90), b=(4, 2, 90))
+    layout = ok(link(api, lid, (1, 5), (4, 5), side="top"))
+    assert layout["stats"]["missing"] == 0
+    # A test point on strip G "carrying" a's anode: G isn't joined to anything.
+    tp = {"type": "header_male", "pin_count": 1, "ref": "TP_A", "strip": 7, "hole": 9}
+    layout = ok(api.post(f"/api/layouts/{lid}/connectors", json={**tp, "pins": ["a.A"]}))
+    missing = [c for c in layout["checks"] if c["id"] == "layout_missing"]
+    assert len(missing) == 1 and "TP_A.1 (G9)" in missing[0]["message"]
+    assert "off_board_unconnected" not in check_ids(layout)
+    # A jumper from strip G to strip D brings it onto the net.
+    layout = ok(link(api, lid, (7, 12), (4, 12), side="top"))
+    assert layout["stats"]["missing"] == 0 and check_ids(layout, "error") == []
+
+
+def test_connector_colour(api, library):
+    design, layout = two_leds(api, library)
+    lid = layout["id"]
+    body = {"pin_count": 2, "strip": 3, "hole": 3, "color": "red"}
+    layout = ok(api.post(f"/api/layouts/{lid}/connectors", json=body))
+    cid = layout["connectors"][0]["id"]
+    assert layout["connectors"][0]["color"] == "red"
+    layout = ok(api.patch(f"/api/layouts/{lid}/connectors/{cid}", json={"color": "blue"}))
+    assert layout["connectors"][0]["color"] == "blue"
+    layout = ok(api.patch(f"/api/layouts/{lid}/connectors/{cid}", json={"color": None}))
+    assert layout["connectors"][0]["color"] is None
