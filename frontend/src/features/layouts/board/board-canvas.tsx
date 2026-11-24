@@ -846,6 +846,28 @@ export function BoardCanvas({
                 </g>
               )
             })}
+          {/* Cuts between holes again, over the outlines: one often lies on a part's or
+              housing's edge (a module between its header rows), and would vanish under it.
+              An edge in the card's colour sets it apart from the outline. */}
+          <g className="pointer-events-none">
+            {layout.cuts
+              .filter((cut) => cut.between)
+              .map((cut) => {
+                const cx = (holeX(cut.hole, view) + holeX(cut.hole + 1, view)) / 2
+                const ends = {
+                  x1: cx,
+                  x2: cx,
+                  y1: stripY(cut.strip) - STEP * 0.42,
+                  y2: stripY(cut.strip) + STEP * 0.42,
+                }
+                return (
+                  <g key={cut.id} opacity={flipped ? 1 : 0.6}>
+                    <line {...ends} className="stroke-card" strokeWidth={6} />
+                    <line {...ends} stroke="oklch(0.6 0.22 25)" strokeWidth={3} />
+                  </g>
+                )
+              })}
+          </g>
           {/* Top jumpers, over the parts. */}
           {layout.jumpers
             .filter((j) => j.side === 'top')
