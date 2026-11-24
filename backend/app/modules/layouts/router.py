@@ -5,6 +5,7 @@ from app.modules.layouts import revisions, service
 from app.modules.layouts.schemas import (
     BuildSheetOut,
     ConnectorIn,
+    ConnectorTypeOut,
     ConnectorUpdate,
     CutsIn,
     JumperIn,
@@ -24,6 +25,12 @@ router = APIRouter(tags=["layouts"])
 
 # Every change answers with the whole layout, checks included, so the board redraws
 # from one answer.
+
+
+@router.get("/connector-types")
+def list_connector_types() -> list[ConnectorTypeOut]:
+    """Each connector type's pin spacing and housing, for drawing one before it's placed."""
+    return service.connector_types()
 
 
 @router.get("/designs/{design_id}/layouts")

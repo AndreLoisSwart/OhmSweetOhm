@@ -13,6 +13,8 @@ from app.modules.layouts import board as boards
 from app.modules.layouts import build_order, checks, revisions
 from app.modules.layouts import build_sheet as sheets
 from app.modules.layouts.board import (
+    CONNECTOR_OUTLINE,
+    CONNECTOR_PITCH_MM,
     Box,
     connector_body,
     connector_cells,
@@ -41,6 +43,7 @@ from app.modules.layouts.schemas import (
     ConnectorIn,
     ConnectorOut,
     ConnectorPinOut,
+    ConnectorTypeOut,
     ConnectorUpdate,
     CutIn,
     CutOut,
@@ -744,6 +747,20 @@ def restore_revision(
     revisions.restore_revision(session, layout, revision_id, author)
     session.commit()
     return layout
+
+
+def connector_types() -> list[ConnectorTypeOut]:
+    return [
+        ConnectorTypeOut(
+            type=t,
+            pitch_mm=CONNECTOR_PITCH_MM[t],
+            end_mm=o.end,
+            back_mm=o.back,
+            front_mm=o.front,
+            clear_mm=o.clear,
+        )
+        for t, o in CONNECTOR_OUTLINE.items()
+    ]
 
 
 def _box_out(box: Box | None) -> BodyOut | None:

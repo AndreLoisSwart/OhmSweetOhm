@@ -1784,6 +1784,32 @@
         }
       }
     },
+    "/api/connector-types": {
+      "get": {
+        "tags": [
+          "layouts"
+        ],
+        "summary": "List Connector Types",
+        "description": "Each connector type's pin spacing and housing, for drawing one before it's placed.",
+        "operationId": "list_connector_types",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ConnectorTypeOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Connector Types"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/designs/{design_id}/layouts": {
       "get": {
         "tags": [
@@ -4140,6 +4166,44 @@
           "screw_508"
         ],
         "title": "ConnectorType"
+      },
+      "ConnectorTypeOut": {
+        "properties": {
+          "type": {
+            "$ref": "#/components/schemas/ConnectorType"
+          },
+          "pitch_mm": {
+            "type": "number",
+            "title": "Pitch Mm"
+          },
+          "end_mm": {
+            "type": "number",
+            "title": "End Mm"
+          },
+          "back_mm": {
+            "type": "number",
+            "title": "Back Mm"
+          },
+          "front_mm": {
+            "type": "number",
+            "title": "Front Mm"
+          },
+          "clear_mm": {
+            "type": "number",
+            "title": "Clear Mm"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "pitch_mm",
+          "end_mm",
+          "back_mm",
+          "front_mm",
+          "clear_mm"
+        ],
+        "title": "ConnectorTypeOut",
+        "description": "A connector type's pin spacing and housing, in mm from pin 1 at rotation 0 (pins\nalong x, front facing +y): `end_mm` past the first and the last pin, `back_mm` and\n`front_mm` either side of the pin row, and `clear_mm` of room for wires in front."
       },
       "ConnectorUpdate": {
         "properties": {

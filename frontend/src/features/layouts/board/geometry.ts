@@ -78,13 +78,60 @@ export function rotate(x: number, y: number, rotation: number): [number, number]
   return [x, y]
 }
 
+export interface Box {
+  strip0: number
+  hole0: number
+  strip1: number
+  hole1: number
+}
+
+/** A connector type's housing in mm from pin 1 (ConnectorTypeOut). */
+export interface ConnectorOutline {
+  end_mm: number
+  back_mm: number
+  front_mm: number
+  clear_mm: number
+}
+
+/**
+ * A connector's housing and the room its wires need in front, in board steps, with pin 1
+ * at `at`: as the server works them out (layouts/board.py), for the preview before it's
+ * put down. Lengths run along the board's holes, `step` holes between pins.
+ */
+export function connectorBoxes(
+  outline: ConnectorOutline,
+  pins: number,
+  step: number,
+  rotation: number,
+  at: Cell,
+  pitch: number,
+): { body: Box; keepClear: Box | null } {
+  const last = (pins - 1) * step * pitch
+  const box = (x0: number, y0: number, x1: number, y1: number): Box => {
+    const corners = [x0, x1].flatMap((x) => [y0, y1].map((y) => rotate(x, y, rotation)))
+    const xs = corners.map(([x]) => x / pitch)
+    const ys = corners.map(([, y]) => y / pitch)
+    return {
+      strip0: at.strip + Math.min(...ys),
+      hole0: at.hole + Math.min(...xs),
+      strip1: at.strip + Math.max(...ys),
+      hole1: at.hole + Math.max(...xs),
+    }
+  }
+  const { end_mm: end, back_mm: back, front_mm: front, clear_mm: clear } = outline
+  return {
+    body: box(-end, -back, last + end, front),
+    keepClear: clear ? box(-end, front, last + end, front + clear) : null,
+  }
+}
+
 /**
  * The front edge of a connector's housing, as a line: the side it faces (down the board
  * at rotation 0, turned clockwise), where a JST-XH's latch wall or a screw terminal's
  * wire entry is.
  */
 export function frontEdge(
-  box: { strip0: number; hole0: number; strip1: number; hole1: number },
+  box: Box,
   rotation: number,
   view: BoardView,
 ): { x1: number; y1: number; x2: number; y2: number } {

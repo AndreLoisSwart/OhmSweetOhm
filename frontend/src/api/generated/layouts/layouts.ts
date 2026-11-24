@@ -26,6 +26,7 @@ import type {
 import type {
   BuildSheetOut,
   ConnectorIn,
+  ConnectorTypeOut,
   ConnectorUpdate,
   CutsIn,
   HTTPValidationError,
@@ -64,6 +65,107 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getListConnectorTypesUrl = () => {
+
+
+
+
+  return `/api/connector-types`
+}
+
+/**
+ * Each connector type's pin spacing and housing, for drawing one before it's placed.
+ * @summary List Connector Types
+ */
+export const listConnectorTypes = async ( options?: Parameters<typeof apiFetch>[1]): Promise<ConnectorTypeOut[]> => {
+
+  return apiFetch<ConnectorTypeOut[]>(getListConnectorTypesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListConnectorTypesQueryKey = () => {
+    return [
+    `/api/connector-types`
+    ] as const;
+    }
+
+
+export const getListConnectorTypesQueryOptions = <TData = Awaited<ReturnType<typeof listConnectorTypes>>, TError = ErrorType<unknown>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listConnectorTypes>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListConnectorTypesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listConnectorTypes>>> = ({ signal }) => listConnectorTypes({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listConnectorTypes>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListConnectorTypesQueryResult = NonNullable<Awaited<ReturnType<typeof listConnectorTypes>>>
+export type ListConnectorTypesQueryError = ErrorType<unknown>
+
+
+export function useListConnectorTypes<TData = Awaited<ReturnType<typeof listConnectorTypes>>, TError = ErrorType<unknown>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listConnectorTypes>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listConnectorTypes>>,
+          TError,
+          Awaited<ReturnType<typeof listConnectorTypes>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListConnectorTypes<TData = Awaited<ReturnType<typeof listConnectorTypes>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listConnectorTypes>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listConnectorTypes>>,
+          TError,
+          Awaited<ReturnType<typeof listConnectorTypes>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListConnectorTypes<TData = Awaited<ReturnType<typeof listConnectorTypes>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listConnectorTypes>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List Connector Types
+ */
+
+export function useListConnectorTypes<TData = Awaited<ReturnType<typeof listConnectorTypes>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listConnectorTypes>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListConnectorTypesQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
 
 export const getListLayoutsUrl = (designId: number,) => {
 

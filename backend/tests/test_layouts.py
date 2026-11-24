@@ -449,6 +449,12 @@ def test_connector_rules(api, library):
     assert [c["ref"] for c in gone["connectors"]] == ["J1"]
 
 
+def test_connector_types(api):
+    types = {t["type"]: t for t in ok(api.get("/api/connector-types"))}
+    assert set(types) == {"header_male", "header_female", "jst_xh", "screw_508"}
+    assert types["jst_xh"]["pitch_mm"] == 2.5 and types["screw_508"]["clear_mm"] > 0
+
+
 def test_connector_housings(api, library):
     design, layout = two_leds(api, library)
     lid = layout["id"]

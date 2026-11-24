@@ -24,6 +24,7 @@ export * from './connectorPinOut';
 export * from './connectorPinSnapshot';
 export * from './connectorSnapshot';
 export * from './connectorType';
+export * from './connectorTypeOut';
 export * from './connectorUpdate';
 export * from './connectorUpdateRotation';
 export * from './constantChange';

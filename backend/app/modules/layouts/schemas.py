@@ -314,6 +314,19 @@ class TraceOut(BaseModel):
     short: bool
 
 
+class ConnectorTypeOut(BaseModel):
+    """A connector type's pin spacing and housing, in mm from pin 1 at rotation 0 (pins
+    along x, front facing +y): `end_mm` past the first and the last pin, `back_mm` and
+    `front_mm` either side of the pin row, and `clear_mm` of room for wires in front."""
+
+    type: ConnectorType
+    pitch_mm: float
+    end_mm: float
+    back_mm: float
+    front_mm: float
+    clear_mm: float
+
+
 class ConnectorPinOut(BaseModel):
     index: int
     # The off-board pin it carries, `ref.PIN`, or null, and its ids.

@@ -19,7 +19,12 @@ import { toast } from 'sonner'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
 import { errorMessage } from '@/api/fetcher'
 import { useGetDesign } from '@/api/generated/designs/designs'
-import { listLayoutRevisions, useDeleteLayout, useGetLayout } from '@/api/generated/layouts/layouts'
+import {
+  listLayoutRevisions,
+  useDeleteLayout,
+  useGetLayout,
+  useListConnectorTypes,
+} from '@/api/generated/layouts/layouts'
 import type { DesignDetail, LayoutCheck, LayoutDetail } from '@/api/generated/model'
 import { EmptyState } from '@/components/empty-state'
 import { usePageWidth } from '@/components/layout/page-width'
@@ -149,6 +154,8 @@ function LayoutEditor({ layout, design }: { layout: LayoutDetail; design: Design
   const taken = useMemo(() => takenHoles(layout), [layout])
   // Holes between the connector tool's pins on this board; null when they don't fit it.
   const connectorFits = connectorStep(connector.type, layout.pitch_mm)
+  const connectorTypes = useListConnectorTypes({ query: { staleTime: Infinity } })
+  const connectorOutline = connectorTypes.data?.find((t) => t.type === connector.type)
 
   const cut = (target: CutTarget) => {
     const existing = layout.cuts.find(
@@ -555,6 +562,7 @@ function LayoutEditor({ layout, design }: { layout: LayoutDetail; design: Design
                       pins: Math.max(connector.pinCount, connector.pins.length),
                       step: connectorFits,
                       rotation: connector.rotation,
+                      outline: connectorOutline,
                     }
                   : null
               }

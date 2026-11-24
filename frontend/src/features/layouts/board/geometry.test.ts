@@ -3,6 +3,7 @@ import type { PinOut } from '@/api/generated/model'
 import {
   type BoardView,
   cellAt,
+  connectorBoxes,
   frontEdge,
   cellLabel,
   footprintOffsets,
@@ -70,5 +71,21 @@ describe('frontEdge', () => {
     const e = frontEdge(box, 90, view)
     expect(e.x1).toBe(e.x2)
     expect(e.x1).toBeLessThan(frontEdge(box, 270, view).x1)
+  })
+})
+
+describe('connectorBoxes', () => {
+  const xh = { end_mm: 2.45, back_mm: 2.35, front_mm: 3.4, clear_mm: 0 }
+  it('lays a JST-XH housing round its pins, deeper in front', () => {
+    const { body, keepClear } = connectorBoxes(xh, 2, 1, 0, { strip: 5, hole: 5 }, 2.54)
+    expect(body.hole0).toBeCloseTo(5 - 2.45 / 2.54)
+    expect(body.hole1).toBeCloseTo(6 + 2.45 / 2.54)
+    expect(5 - body.strip0).toBeLessThan(body.strip1 - 5)
+    expect(keepClear).toBeNull()
+  })
+  it('turns with the connector and keeps room in front of a screw terminal', () => {
+    const screw = { end_mm: 2.54, back_mm: 3.6, front_mm: 4, clear_mm: 5 }
+    const { body, keepClear } = connectorBoxes(screw, 2, 2, 180, { strip: 5, hole: 5 }, 2.54)
+    expect(keepClear!.strip1).toBeCloseTo(body.strip0)
   })
 })

@@ -29,6 +29,8 @@ import {
   holeX,
   MARGIN,
   netColor,
+  type ConnectorOutline,
+  connectorBoxes,
   frontEdge,
   rotate,
   STEP,
@@ -142,7 +144,13 @@ export function BoardCanvas({
   jumperStart: Cell | null
   onJumperPoint: (cell: Cell) => void
   /** The connector tool's pins, for the preview: how many, and holes between them. */
-  connectorPreview: { pins: number; step: number; rotation: number } | null
+  connectorPreview: {
+    pins: number
+    step: number
+    rotation: number
+    /** Its type's housing, once the types have loaded. */
+    outline?: ConnectorOutline
+  } | null
   /** How a part armed from the tray will be turned when it's put down. */
   armedRotation: number
   onConnectorAt: (cell: Cell) => void
@@ -984,30 +992,14 @@ export function BoardCanvas({
               className="pointer-events-none fill-primary/40 stroke-primary"
             />
           )}
-          {tool === 'connector' &&
-            connectorPreview &&
-            hoverCell &&
-            Array.from({ length: connectorPreview.pins }, (_, i) => {
-              const [along, across] = rotate(
-                i * connectorPreview.step,
-                0,
-                connectorPreview.rotation,
-              )
-              return (
-                <rect
-                  key={i}
-                  x={holeX(hoverCell.hole + Math.round(along), view) - STEP * 0.45}
-                  y={stripY(hoverCell.strip + Math.round(across)) - STEP * 0.45}
-                  width={STEP * 0.9}
-                  height={STEP * 0.9}
-                  rx={2}
-                  className={cn(
-                    'pointer-events-none stroke-primary',
-                    i === 0 ? 'fill-primary/60' : 'fill-primary/30',
-                  )}
-                />
-              )
-            })}
+          {tool === 'connector' && connectorPreview && hoverCell && (
+            <ConnectorGhost
+              preview={connectorPreview}
+              at={hoverCell}
+              view={view}
+              pitch={layout.pitch_mm}
+            />
+          )}
           {/* Where an armed part would land. */}
           {armedPins.map((cell, i) => (
             <circle
@@ -1171,5 +1163,65 @@ function CutGhost({ target, view }: { target: CutTarget; view: BoardView }) {
       strokeDasharray="3 2"
       className="pointer-events-none"
     />
+  )
+}
+
+/** The connector tool's ghost: its housing, the side it faces, the room its wires need,
+ * and its pins, pin 1 darker. */
+function ConnectorGhost({
+  preview,
+  at,
+  view,
+  pitch,
+}: {
+  preview: NonNullable<Parameters<typeof BoardCanvas>[0]['connectorPreview']>
+  at: Cell
+  view: BoardView
+  pitch: number
+}) {
+  const boxes = preview.outline
+    ? connectorBoxes(preview.outline, preview.pins, preview.step, preview.rotation, at, pitch)
+    : null
+  return (
+    <g className="pointer-events-none">
+      {boxes?.keepClear && (
+        <rect
+          {...boxRect(boxes.keepClear, view)}
+          className="fill-amber-500/10 stroke-amber-600/70"
+          strokeWidth={1}
+          strokeDasharray="4 3"
+        />
+      )}
+      {boxes && (
+        <>
+          <rect
+            {...boxRect(boxes.body, view)}
+            rx={2}
+            className="fill-primary/10 stroke-primary"
+            strokeWidth={1.5}
+          />
+          <line
+            {...frontEdge(boxes.body, preview.rotation, view)}
+            className="stroke-primary"
+            strokeWidth={3}
+            strokeLinecap="round"
+          />
+        </>
+      )}
+      {Array.from({ length: preview.pins }, (_, i) => {
+        const [along, across] = rotate(i * preview.step, 0, preview.rotation)
+        return (
+          <rect
+            key={i}
+            x={holeX(at.hole + Math.round(along), view) - STEP * 0.45}
+            y={stripY(at.strip + Math.round(across)) - STEP * 0.45}
+            width={STEP * 0.9}
+            height={STEP * 0.9}
+            rx={2}
+            className={cn('stroke-primary', i === 0 ? 'fill-primary/60' : 'fill-primary/30')}
+          />
+        )
+      })}
+    </g>
   )
 }
