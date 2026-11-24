@@ -17,6 +17,7 @@ grounds, a tie) are joined here too, as in the design's nets.
 
 import hashlib
 import json
+import math
 import re
 from dataclasses import dataclass, field
 
@@ -48,6 +49,33 @@ CONNECTOR_PITCH_MM = {
     ConnectorType.JST_XH: 2.5,
     ConnectorType.SCREW_508: 5.08,
 }
+
+
+@dataclass(frozen=True)
+class ConnectorOutline:
+    """A connector type's housing, in mm from pin 1 at rotation 0 (pins along x): `end`
+    past the first and the last pin, `back` and `front` either side of the pin row.
+    Front (+y, down the board at rotation 0) is the side that matters when mating: a
+    JST-XH's latch wall, a screw terminal's wire entry. `clear` is room to leave free
+    beyond the front face for the wires, or 0. The pins are seldom in the middle, so
+    back and front differ."""
+
+    end: float
+    back: float
+    front: float
+    clear: float = 0
+
+
+# Approximate housings, from the makers' drawings: pin headers 2.54 mm square per pin;
+# JST B?B-XH-A (top entry) 2.5(n-1)+4.9 long and 5.75 deep, the pins 2.35 mm from the
+# back; a 5.08 mm screw terminal (KF301/DG301 style) 5.08 per pin and about 7.6 deep,
+# wires going in at the front. Check them against your parts' drawings.
+CONNECTOR_OUTLINE = {
+    ConnectorType.HEADER_MALE: ConnectorOutline(end=1.27, back=1.27, front=1.27),
+    ConnectorType.HEADER_FEMALE: ConnectorOutline(end=1.27, back=1.27, front=1.27),
+    ConnectorType.JST_XH: ConnectorOutline(end=2.45, back=2.35, front=3.4),
+    ConnectorType.SCREW_508: ConnectorOutline(end=2.54, back=3.6, front=4.0, clear=5.0),
+}
 # The breadboard pattern: 14 rows. Rows 1–2 and 13–14 are power rails along the whole
 # board; rows 3–7 and 8–12 are joined in columns of five, each side of the gap.
 BREADBOARD_STRIPS = 14
@@ -58,6 +86,10 @@ BREADBOARD_BLOCKS = ((3, 7), (8, 12))
 PAD_RADIUS = 0.35
 
 Cell = tuple[int, int]  # (strip, hole), from 1
+# An outline on the board: (strip0, hole0, strip1, hole1) in fractional board steps.
+Box = tuple[float, float, float, float]
+# How far two outlines may run into each other, in steps, and still count as touching.
+BOX_MARGIN = 0.05
 
 
 # Labels -------------------------------------------------------------------------------
@@ -137,8 +169,7 @@ class PartOnBoard:
     # Pins (not NC) with no hole in the footprint, and holes off the 2.54 mm grid.
     missing: list[str] = field(default_factory=list)
     off_grid: list[str] = field(default_factory=list)
-    # The body as (strip0, hole0, strip1, hole1) in fractional board steps.
-    body: tuple[float, float, float, float] | None = None
+    body: Box | None = None
 
     @property
     def ref(self) -> str:
@@ -146,11 +177,38 @@ class PartOnBoard:
 
     def covers(self, cell: Cell) -> bool:
         """Whether the hole is under the body (strictly inside its outline)."""
-        if self.body is None:
-            return False
-        s0, h0, s1, h1 = self.body
-        margin = 0.05
-        return s0 + margin < cell[0] < s1 - margin and h0 + margin < cell[1] < h1 - margin
+        return self.body is not None and box_covers(self.body, cell)
+
+
+def box_covers(box: Box, cell: Cell) -> bool:
+    """Whether the hole is strictly inside the outline."""
+    s0, h0, s1, h1 = box
+    m = BOX_MARGIN
+    return s0 + m < cell[0] < s1 - m and h0 + m < cell[1] < h1 - m
+
+
+def boxes_overlap(a: Box, b: Box) -> bool:
+    """Whether two outlines take up some of the same space (touching doesn't count)."""
+    across = min(a[2], b[2]) - max(a[0], b[0])
+    along = min(a[3], b[3]) - max(a[1], b[1])
+    return across > BOX_MARGIN and along > BOX_MARGIN
+
+
+def box_label(box: Box) -> str:
+    """The holes an outline spans, corner to corner: `B1-D3`."""
+    m = BOX_MARGIN
+    lo = (max(1, math.ceil(box[0] - m)), max(1, math.ceil(box[1] - m)))
+    hi = (math.floor(box[2] + m), math.floor(box[3] + m))
+    return f"{label(lo)}-{label(hi)}"
+
+
+def _box(
+    origin: Cell, x0: float, y0: float, x1: float, y1: float, rotation: int, pitch: float
+) -> Box:
+    """A footprint rectangle in mm (from the origin's hole, before rotating) on the board."""
+    corners = [rotate(x, y, rotation) for x in (x0, x1) for y in (y0, y1)]
+    xs, ys = [c[0] / pitch for c in corners], [c[1] / pitch for c in corners]
+    return (origin[0] + min(ys), origin[1] + min(xs), origin[0] + max(ys), origin[1] + max(xs))
 
 
 def place_part(layout_part: LayoutPart, pitch: float = PITCH_MM) -> PartOnBoard:
@@ -172,19 +230,41 @@ def place_part(layout_part: LayoutPart, pitch: float = PITCH_MM) -> PartOnBoard:
         out.pins.append(PlacedPin(f"{placement.ref}.{pin.name}", placement, pin, cell))
     if part.body_mm:
         b = part.body_mm
-        corners = [
-            rotate(x, y, layout_part.rotation)
-            for x in (b["x"], b["x"] + b["w"])
-            for y in (b["y"], b["y"] + b["h"])
-        ]
-        xs, ys = [c[0] / pitch for c in corners], [c[1] / pitch for c in corners]
-        out.body = (
-            origin[0] + min(ys),
-            origin[1] + min(xs),
-            origin[0] + max(ys),
-            origin[1] + max(xs),
+        out.body = _box(
+            origin, b["x"], b["y"], b["x"] + b["w"], b["y"] + b["h"], layout_part.rotation, pitch
         )
     return out
+
+
+def _connector_span(
+    connector: Connector, pitch: float
+) -> tuple[Cell, float, ConnectorOutline] | None:
+    step = connector_step(connector, pitch)
+    if connector.strip is None or connector.hole is None or step is None:
+        return None
+    # Along the board's holes, not the type's own pitch: a JST-XH's 2.5 mm pins are
+    # bent onto 2.54 mm holes, so a long one is longer on the board.
+    last = (connector.pin_count - 1) * step * pitch
+    return (connector.strip, connector.hole), last, CONNECTOR_OUTLINE[connector.type]
+
+
+def connector_body(connector: Connector, pitch: float = PITCH_MM) -> Box | None:
+    """The connector's housing on the board; None while it isn't on it."""
+    span = _connector_span(connector, pitch)
+    if span is None:
+        return None
+    origin, last, o = span
+    return _box(origin, -o.end, -o.back, last + o.end, o.front, connector.rotation, pitch)
+
+
+def connector_keep_clear(connector: Connector, pitch: float = PITCH_MM) -> Box | None:
+    """Room to leave free in front of the connector for its wires; None when its type
+    needs none, or it isn't on the board."""
+    span = _connector_span(connector, pitch)
+    if span is None or not span[2].clear:
+        return None
+    origin, last, o = span
+    return _box(origin, -o.end, o.front, last + o.end, o.front + o.clear, connector.rotation, pitch)
 
 
 def connector_cells(connector: Connector, pitch: float = PITCH_MM) -> list[Cell]:

@@ -198,10 +198,12 @@ Then it's compared with the design's nets:
 |---|---|---|
 | `layout_missing` | error | two pins on one design net aren't connected on the board |
 | `layout_short` | error | one board connection joins two design nets, e.g. "strip C joins GND and 3V3: cut it between C9 and C11" |
-| `layout_overlap` | error | two parts, or a part and a connector, need the same hole |
+| `layout_overlap` | error | two parts, or a part and a connector, need the same hole; or two bodies or connector housings take up the same space |
 | `layout_off_edge` | error | a part, connector or jumper goes past the board's edge |
 | `cut_under_pin` | error | a cut at a hole with a leg in it |
 | `under_body` | error | a part or top jumper on a hole under a soldered part's body |
+| `under_connector` | error | a pin, another connector's pin or a top jumper end on a hole under a connector's housing (added 2026-11-24) |
+| `connector_keep_clear` | warning | a part, connector or top jumper end in the room a screw terminal's wires need in front of it (added 2026-11-24) |
 | `jumper_hole_taken` | error | a top jumper's end on a hole with a leg or another jumper |
 | `bare_link_over_pad` | warning | a bare bottom jumper lying on copper it isn't counted as joining: a perfboard pad between its ends, or strips a diagonal stripboard link crosses (added in step 22) |
 | `diagonal_jumper` | note | a jumper that isn't straight along a strip or across strips (on a perfboard: along a row or down a column) |

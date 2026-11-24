@@ -8,7 +8,8 @@ with the copper runs on that strip and the design nets they carry. A legend foll
 Marks, strongest first: a part's pin (its letter), a connector pin (its number), a top
 jumper end `*`, a bottom link end `+`, a cut at the hole `x` (or on a perfboard, `-` or
 `:` on a pad a trace joins), a hole under a part's body (the part's letter in lower
-case), a plain hole `.`.
+case) or a connector's housing `=`, room kept clear for a connector's wires `~`, a
+plain hole `.`.
 
 A perfboard has no strips: each hole is its own pad, so instead of copper runs its
 traces are listed after the picture, with the nets they carry.
@@ -16,7 +17,10 @@ traces are listed after the picture, with the nets they carry.
 
 from app.modules.layouts.board import (
     Board,
+    box_covers,
+    connector_body,
     connector_cells,
+    connector_keep_clear,
     ends,
     label,
     strip_label,
@@ -63,6 +67,16 @@ def render(board: Board) -> str:
     for connector in layout.connectors:
         for cell in connector_cells(connector, layout.pitch_mm):
             put(cell, numbers[connector.id], 1)
+        for box, mark, rank in (
+            (connector_body(connector, layout.pitch_mm), "=", 5),
+            (connector_keep_clear(connector, layout.pitch_mm), "~", 6),
+        ):
+            if box is None:
+                continue
+            for s in range(max(1, int(box[0])), min(layout.strips, int(box[2]) + 1) + 1):
+                for h in range(max(1, int(box[1])), min(layout.holes, int(box[3]) + 1) + 1):
+                    if box_covers(box, (s, h)):
+                        put((s, h), mark, rank)
     for j in layout.jumpers:
         end = "*" if j.side == JumperSide.TOP else "+"
         for cell in ((j.a_strip, j.a_hole), (j.b_strip, j.b_hole)):
@@ -129,6 +143,10 @@ def render(board: Board) -> str:
                 + (f" at {label((c.strip, c.hole))}" if c.strip is not None else " (off the board)")
                 for c in layout.connectors
             )
+        )
+        legend.append(
+            "= under a connector's housing (blocked on top), ~ room for a screw terminal's "
+            "wires. Neighbouring housings may touch but not overlap"
         )
     legend.append(
         "* top jumper end, + bottom link end, x cut at the hole, | cut between holes, . hole"

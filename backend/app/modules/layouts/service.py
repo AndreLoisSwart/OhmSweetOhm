@@ -12,7 +12,14 @@ from app.modules.designs.models import Placement, WireColor
 from app.modules.layouts import board as boards
 from app.modules.layouts import build_order, checks, revisions
 from app.modules.layouts import build_sheet as sheets
-from app.modules.layouts.board import connector_cells, footprint_sig, label
+from app.modules.layouts.board import (
+    Box,
+    connector_body,
+    connector_cells,
+    connector_keep_clear,
+    footprint_sig,
+    label,
+)
 from app.modules.layouts.models import (
     BoardType,
     Connector,
@@ -193,6 +200,8 @@ def detail(layout: Layout) -> LayoutDetail:
                 rotation=c.rotation,
                 step=steps.connectors.get(c.id),
                 color=c.color,
+                body=_box_out(connector_body(c, layout.pitch_mm)),
+                keep_clear=_box_out(connector_keep_clear(c, layout.pitch_mm)),
                 pins=[
                     ConnectorPinOut(
                         index=i,
@@ -735,6 +744,10 @@ def restore_revision(
     revisions.restore_revision(session, layout, revision_id, author)
     session.commit()
     return layout
+
+
+def _box_out(box: Box | None) -> BodyOut | None:
+    return BodyOut(strip0=box[0], hole0=box[1], strip1=box[2], hole1=box[3]) if box else None
 
 
 # Helpers (step 17) ---------------------------------------------------------------------

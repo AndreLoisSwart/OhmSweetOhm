@@ -133,6 +133,11 @@ designs carry Shelf-help ids (shelf_item_id, shelf_project_id).
   first no errors, then fewer and shorter jumpers and a smaller area. Show the user the
   picture as you go. If a different GPIO would save jumpers, suggest the schematic
   change; make it only with their OK. Offer trim_dead_copper at the end.
+- Connectors have housings bigger than their pins (`=` in the picture): neighbours may
+  touch but not overlap, so two JST-XH in a row need a free hole between them. Rotation
+  sets which way a connector faces (down the board at 0); turn screw terminals so their
+  wires (`~`) go in at the board's edge. Before adding connectors, look up the types the
+  user has in Shelf-help and propose those.
 - On a perfboard there are no strips or cuts: join pins with add_traces (along a row or
   down a column, joining every pad on the way; bend a path with traces sharing an end)
   and use jumpers, which join only their ends, to hop over other nets. Keep traces and

@@ -118,7 +118,7 @@ Below 1280 px wide (the board needs the room) the tray and Inspector become over
   - each pin a dot in its net's colour (a tooltip gives the pin, hole and net);
   - the outline dashed when socketed, solid when soldered;
   - the ref in the corner.
-- **Connectors and top jumpers:** drawn over the parts. Hovering a connector outlines the whole of it, so two side by side read as two; one with a colour has its pins filled in it.
+- **Connectors and top jumpers:** drawn over the parts. A connector shows its housing, with a thick line on the side it faces, and a screw terminal a dashed box for the room its wires need; one with a colour has its pins filled in it.
 - **The ratsnest:** dashed lines in the net's colour, from the API's `links`.
 - **Build order** (step 24): the header's **Build order** button, or **B**, opens a bar over the bottom of the board: ⏮ *Step 2 · 3 of 4* ⏭ with the step's refs, ← and → (or the skip buttons) to move, the **Ghost later steps** switch (shared with the schematic and remembered in this browser), and Exit (or Esc, or B). Stepping only: the order is numbered on the schematic, and with no order yet the bar links there.
   - **Prepare the board** comes first when there are cuts or a stripboard's bottom links, listing how many.
@@ -173,7 +173,7 @@ The board stays fitted to its space until you pan (drag empty board) or zoom (wh
 
 **Print build sheet** (⋯ menu, step 19) opens a page laid out for one A4 sheet (10 mm margins), printed from the browser's own dialog at "Actual size":
 - **Both sides at true size,** drawn in mm:
-  - **Component side:** part outlines (dashed when socketed), legs with pin 1 square, refs, connectors with pin 1 filled, and top jumpers in their colour, numbered.
+  - **Component side:** part outlines (dashed when socketed), legs with pin 1 square, refs, connectors with their housing and pin 1 filled, and top jumpers in their colour, numbered.
   - **Copper side, mirrored:** solid strips, bold cut marks, bottom links, traces as grey bands tagged T1, T2…, a ring at every solder joint and faint part outlines.
   - Both have strip letters, hole numbers and a triangle at A1. Cuts are numbered on the drawing when there are at most 24; beyond that the marks alone are clearer, and the list's positions find them.
 - **A 50 mm scale bar** to check the print with a ruler.

@@ -449,6 +449,57 @@ def test_connector_rules(api, library):
     assert [c["ref"] for c in gone["connectors"]] == ["J1"]
 
 
+def test_connector_housings(api, library):
+    design, layout = two_leds(api, library)
+    lid = layout["id"]
+    url = f"/api/layouts/{lid}/connectors"
+
+    def xh(strip, hole, rotation=0, **fields):
+        body = {"pin_count": 2, "type": "jst_xh", "strip": strip, "hole": hole}
+        return ok(api.post(url, json={**body, "rotation": rotation, **fields}))
+
+    def clash(layout) -> list[str]:
+        return [c["message"] for c in layout["checks"] if c["id"] == "layout_overlap"]
+
+    # In one row, two JST-XH need a free hole between them: side by side they overlap.
+    layout = xh(1, 1)
+    j1 = layout["connectors"][0]
+    assert j1["body"]["hole0"] < 1 < j1["body"]["hole1"]
+    assert j1["keep_clear"] is None
+    layout = xh(1, 3)
+    assert any("J1 and J2" in m for m in clash(layout))
+    j2 = layout["connectors"][1]
+    layout = ok(api.patch(f"{url}/{j2['id']}", json={"hole": 4}))
+    assert clash(layout) == []
+    # Facing the same way, parallel rows need two free rows between them.
+    layout = ok(api.patch(f"{url}/{j2['id']}", json={"strip": 3, "hole": 1}))
+    assert clash(layout)
+    layout = ok(api.patch(f"{url}/{j2['id']}", json={"strip": 4}))
+    assert clash(layout) == []
+    # Back to back (J1 turned to face up), one free row is enough: the pins sit nearer
+    # the back of the housing.
+    layout = ok(api.patch(f"{url}/{j1['id']}", json={"rotation": 180, "hole": 2}))
+    layout = ok(api.patch(f"{url}/{j2['id']}", json={"strip": 3}))
+    assert clash(layout) == []
+
+    # Nothing may go through a hole under a housing.
+    layout = place(api, layout, design, a=(2, 10), b=(10, 10))
+    layout = xh(1, 9)
+    assert "under_connector" in check_ids(layout, "error")
+
+    # A screw terminal wants room in front for its wires.
+    for c in layout["connectors"]:
+        api.delete(f"{url}/{c['id']}")
+    layout = place(api, layout, design, a=(6, 5), b=(20, 20))
+    layout = ok(api.post(url, json={"pin_count": 2, "type": "screw_508", "strip": 3, "hole": 4}))
+    screw = layout["connectors"][0]
+    assert screw["keep_clear"]["strip0"] > screw["body"]["strip0"]
+    assert "connector_keep_clear" in check_ids(layout, "warning")
+    # Facing the board's edge instead, nothing is in the way.
+    layout = ok(api.patch(f"{url}/{screw['id']}", json={"rotation": 180}))
+    assert "connector_keep_clear" not in check_ids(layout)
+
+
 # Undo, revisions and the design changing ----------------------------------------------------
 
 

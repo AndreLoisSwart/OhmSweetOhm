@@ -93,6 +93,10 @@ class ConnectorView(BaseModel):
     # What each pin carries, pin 1 first: `ref.PIN` or null.
     pins: list[str | None]
     step: int | None = None
+    # Its housing as the holes it spans (`B1-D3`; `=` in the picture), and for a screw
+    # terminal the room its wires need in front (`~`).
+    housing: str | None = None
+    keep_clear: str | None = None
 
 
 class CheckView(BaseModel):
@@ -294,6 +298,12 @@ def layout_view(layout: Layout) -> LayoutView:
                 at=boards.label((c.strip, c.hole)) if c.strip is not None else None,
                 rotation=c.rotation,
                 step=steps.connectors.get(c.id),
+                housing=boards.box_label(body)
+                if (body := boards.connector_body(c, pitch))
+                else None,
+                keep_clear=boards.box_label(zone)
+                if (zone := boards.connector_keep_clear(c, pitch))
+                else None,
                 pins=[
                     f"{p.placement.ref}.{p.pin.name}"
                     if (p := next((x for x in c.pins if x.index == i), None))

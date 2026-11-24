@@ -3,6 +3,7 @@ import type { PinOut } from '@/api/generated/model'
 import {
   type BoardView,
   cellAt,
+  frontEdge,
   cellLabel,
   footprintOffsets,
   holeX,
@@ -54,5 +55,20 @@ describe('board geometry', () => {
     expect(netColor('3V3')).toBe(netColor('5V'))
     expect(netColor('3V3')).not.toBe(netColor('GND'))
     expect(netColor('bme.SDA')).toBe(netColor('bme.SDA'))
+  })
+})
+
+describe('frontEdge', () => {
+  const view = { strips: 10, holes: 10, flipped: false }
+  const box = { strip0: 1, hole0: 1, strip1: 3, hole1: 4 }
+  it('faces down the board at rotation 0', () => {
+    const e = frontEdge(box, 0, view)
+    expect(e.y1).toBe(e.y2)
+    expect(e.y1).toBeGreaterThan(frontEdge(box, 180, view).y1)
+  })
+  it('faces along the holes when turned', () => {
+    const e = frontEdge(box, 90, view)
+    expect(e.x1).toBe(e.x2)
+    expect(e.x1).toBeLessThan(frontEdge(box, 270, view).x1)
   })
 })

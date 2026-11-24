@@ -11,7 +11,11 @@ from app.modules.layouts.board import (
     CONNECTOR_PITCH_MM,
     Board,
     Cell,
+    box_covers,
+    boxes_overlap,
+    connector_body,
     connector_cells,
+    connector_keep_clear,
     connector_step,
     ends,
     footprint_sig,
@@ -199,9 +203,7 @@ def _physical(board: Board, users: dict[Cell, list[tuple[str, str]]]) -> list[Re
         raised = {a.layout_part.mount, b.layout_part.mount} == {Mount.SOCKETED, Mount.SOLDERED}
         if raised:
             continue
-        overlap_s = min(a.body[2], b.body[2]) - max(a.body[0], b.body[0])
-        overlap_h = min(a.body[3], b.body[3]) - max(a.body[1], b.body[1])
-        if overlap_s > 0.05 and overlap_h > 0.05:
+        if boxes_overlap(a.body, b.body):
             out.append(
                 Result(
                     "layout_overlap",
@@ -226,7 +228,93 @@ def _physical(board: Board, users: dict[Cell, list[tuple[str, str]]]) -> list[Re
                     holes=[label(a), label(b)],
                 )
             )
+    out += _connector_space(board, users)
     out += _bare_links(board)
+    return out
+
+
+def _connector_space(board: Board, users: dict[Cell, list[tuple[str, str]]]) -> list[Result]:
+    """Connector housings: nothing else may sit in or under one, and a screw terminal's
+    wires need room in front of it."""
+    out = []
+    pitch = board.layout.pitch_mm
+    housed = [(c, body) for c in board.layout.connectors if (body := connector_body(c, pitch))]
+
+    def holes_in(box) -> list[str]:
+        return [
+            label((s, h))
+            for s in range(1, board.layout.strips + 1)
+            for h in range(1, board.layout.holes + 1)
+            if box_covers(box, (s, h))
+        ]
+
+    for c, body in housed:
+        own = {f"{c.ref} pin {i}" for i in range(1, c.pin_count + 1)}
+        blocked = sorted(
+            (cell, name)
+            for cell, here in users.items()
+            if box_covers(body, cell)
+            for _, name in here
+            if name not in own
+        )
+        if blocked:
+            out.append(
+                Result(
+                    "under_connector",
+                    Severity.ERROR,
+                    f"Under {c.ref}'s housing: "
+                    f"{', '.join(f'{name} at {label(cell)}' for cell, name in blocked)}. "
+                    f"Move them, or {c.ref}",
+                    pins=[name for _, name in blocked if "." in name],
+                    holes=[label(cell) for cell, _ in blocked],
+                )
+            )
+    for (a, a_body), (b, b_body) in combinations(housed, 2):
+        if boxes_overlap(a_body, b_body):
+            out.append(
+                Result(
+                    "layout_overlap",
+                    Severity.ERROR,
+                    f"{a.ref} and {b.ref} take up the same space on the board: their housings "
+                    "need a free hole between them",
+                    holes=[label((a.strip, a.hole)), label((b.strip, b.hole))],
+                )
+            )
+    for c, body in housed:
+        for part in board.parts:
+            if part.body is not None and boxes_overlap(body, part.body):
+                out.append(
+                    Result(
+                        "layout_overlap",
+                        Severity.ERROR,
+                        f"{c.ref} and {part.ref} take up the same space on the board",
+                        holes=[label((c.strip, c.hole))],
+                    )
+                )
+    for c, _ in housed:
+        zone = connector_keep_clear(c, pitch)
+        if zone is None:
+            continue
+        in_way = [
+            other.ref
+            for other, other_body in housed
+            if other is not c and boxes_overlap(zone, other_body)
+        ]
+        in_way += [p.ref for p in board.parts if p.body is not None and boxes_overlap(zone, p.body)]
+        in_way += sorted(
+            {name for cell, here in users.items() if box_covers(zone, cell) for _, name in here}
+        )
+        if in_way:
+            out.append(
+                Result(
+                    "connector_keep_clear",
+                    Severity.WARNING,
+                    f"{c.ref}'s wires go in on its front, where {', '.join(in_way)} "
+                    f"{'is' if len(in_way) == 1 else 'are'} in the way. Turn it to face the "
+                    "board's edge, or leave room",
+                    holes=holes_in(zone),
+                )
+            )
     return out
 
 

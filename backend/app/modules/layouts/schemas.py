@@ -337,6 +337,11 @@ class ConnectorOut(BaseModel):
     # Its step in the build order: the earliest of the parts it carries.
     step: int | None = None
     color: WireColor | None = None
+    # Its housing on the board, and room to leave free in front of it for the wires (a
+    # screw terminal's); null off the board. Its front faces down the board at rotation
+    # 0, turned clockwise by rotation.
+    body: BodyOut | None = None
+    keep_clear: BodyOut | None = None
 
 
 class SegmentOut(BaseModel):

@@ -4,6 +4,7 @@
  * Ohm Sweet Ohm
  * OpenAPI spec version: 0.1.0
  */
+import type { BodyOut } from './bodyOut';
 import type { ConnectorPinOut } from './connectorPinOut';
 import type { ConnectorType } from './connectorType';
 import type { WireColor } from './wireColor';
@@ -20,4 +21,6 @@ export interface ConnectorOut {
   pins: ConnectorPinOut[];
   step?: number | null;
   color?: WireColor | null;
+  body?: BodyOut | null;
+  keep_clear?: BodyOut | null;
 }

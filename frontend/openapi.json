@@ -3916,6 +3916,26 @@
                 "type": "null"
               }
             ]
+          },
+          "body": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BodyOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "keep_clear": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BodyOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",

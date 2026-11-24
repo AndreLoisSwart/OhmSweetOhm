@@ -29,6 +29,7 @@ import {
   holeX,
   MARGIN,
   netColor,
+  frontEdge,
   rotate,
   STEP,
   stripLabel,
@@ -756,11 +757,10 @@ export function BoardCanvas({
               const dx = dragging ? drag.dHole * STEP * (flipped ? -1 : 1) : 0
               const dy = dragging ? drag.dStrip * STEP : 0
               const isSelected = selected?.kind === 'connector' && selected.id === c.id
-              // Its outline, shown on hover, so two side by side read as two.
-              const cells = c.pins.filter((p) => p.strip != null && p.hole != null)
-              const xs = cells.map((p) => holeX(p.hole!, view))
-              const ys = cells.map((p) => stripY(p.strip!))
-              const pad = STEP * 0.6
+              // Its housing, the edge it faces, and the room its wires need in front.
+              const body = c.body ? boxRect(c.body, view) : null
+              const clear = c.keep_clear ? boxRect(c.keep_clear, view) : null
+              const front = c.body ? frontEdge(c.body, c.rotation, view) : null
               return (
                 <g
                   key={c.id}
@@ -770,15 +770,33 @@ export function BoardCanvas({
                   onPointerDown={(e) => onConnectorDown(e, c)}
                   className={cn('group', selecting && !readOnly && 'cursor-grab')}
                 >
-                  {cells.length > 0 && (
+                  {clear && (
                     <rect
-                      x={Math.min(...xs) - pad}
-                      y={Math.min(...ys) - pad}
-                      width={Math.max(...xs) - Math.min(...xs) + pad * 2}
-                      height={Math.max(...ys) - Math.min(...ys) + pad * 2}
-                      rx={4}
-                      className="fill-primary/10 stroke-primary/70 opacity-0 transition-opacity group-hover:opacity-100"
-                      strokeWidth={1.5}
+                      {...clear}
+                      className="pointer-events-none fill-amber-500/5 stroke-amber-600/60"
+                      strokeWidth={1}
+                      strokeDasharray="4 3"
+                    >
+                      <title>Room for {c.ref}'s wires</title>
+                    </rect>
+                  )}
+                  {body && (
+                    <rect
+                      {...body}
+                      rx={2}
+                      className={cn(
+                        'fill-foreground/5 transition-colors group-hover:fill-primary/10',
+                        isSelected ? 'stroke-primary' : 'stroke-foreground/45',
+                      )}
+                      strokeWidth={isSelected ? 2 : 1.25}
+                    />
+                  )}
+                  {front && (
+                    <line
+                      {...front}
+                      className={isSelected ? 'stroke-primary' : 'stroke-foreground/70'}
+                      strokeWidth={3}
+                      strokeLinecap="round"
                     />
                   )}
                   {c.pins.map(

@@ -79,6 +79,29 @@ export function rotate(x: number, y: number, rotation: number): [number, number]
 }
 
 /**
+ * The front edge of a connector's housing, as a line: the side it faces (down the board
+ * at rotation 0, turned clockwise), where a JST-XH's latch wall or a screw terminal's
+ * wire entry is.
+ */
+export function frontEdge(
+  box: { strip0: number; hole0: number; strip1: number; hole1: number },
+  rotation: number,
+  view: BoardView,
+): { x1: number; y1: number; x2: number; y2: number } {
+  const [along, across] = rotate(0, 1, rotation)
+  const x0 = holeX(box.hole0, view)
+  const x1 = holeX(box.hole1, view)
+  const y0 = stripY(box.strip0)
+  const y1 = stripY(box.strip1)
+  if (across !== 0) {
+    const y = across > 0 ? y1 : y0
+    return { x1: x0, y1: y, x2: x1, y2: y }
+  }
+  const x = along > 0 ? x1 : x0
+  return { x1: x, y1: y0, x2: x, y2: y1 }
+}
+
+/**
  * Where a part's pins land, as offsets in holes from its origin, from its footprint in
  * mm: for previews before the server answers. Pins off the grid or without a hole are
  * left out.

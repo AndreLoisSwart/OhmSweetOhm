@@ -342,9 +342,20 @@ export const BoardPrint = forwardRef<
               </g>
             )
           })}
-          {/* Connectors: a box per pin, pin 1 filled. */}
+          {/* Connectors: the housing, a box per pin, pin 1 filled. */}
           {layout.connectors.map((c) => (
             <g key={c.id}>
+              {c.body && (
+                <rect
+                  x={Math.min(x(c.body.hole0), x(c.body.hole1))}
+                  y={y(c.body.strip0)}
+                  width={Math.abs(x(c.body.hole1) - x(c.body.hole0))}
+                  height={y(c.body.strip1) - y(c.body.strip0)}
+                  fill="none"
+                  stroke="black"
+                  strokeWidth={0.25}
+                />
+              )}
               {c.pins
                 .filter((pin) => pin.strip != null && pin.hole != null)
                 .map((pin) => (

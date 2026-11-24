@@ -65,7 +65,7 @@ Positions are the board's labels: `C14` is strip C, hole 14; `C9-10` is a cut be
 | `list_layouts(design_id)` | Each layout with its check counts and stats |
 | `create_layout(design_id, name, board_type?, strips?, holes?, pitch_mm?, shelf_item_id?)` | Stripboard 24 × 37 unless sized; breadboard pattern 14 × 62; perfboard 24 × 30 unless sized; pitch 2.54 unless set. `shelf_item_id` is the board on the shelf (below) |
 | `update_layout(layout_id, name?, shelf_item_id?)` | Rename, or link the Shelf-help board (`0` unlinks). Like `update_design`, it saves no revision: a layout revision holds only what's on the board |
-| `get_layout(layout_id)` | `{…, picture, parts, not_placed, cuts, jumpers, traces, connectors, build_steps, checks, missing, stats}`. With a build order, `build_steps` lists the board's steps (0 to prepare it, the design's numbers, null for parts not ordered) and each jumper, trace and connector has the `step` it's needed at (step 24). Each part's pins by hole, the connections still missing ("GND: led.K (Q10) to nano.GND (N1)"), and a **text picture** (below) |
+| `get_layout(layout_id)` | `{…, picture, parts, not_placed, cuts, jumpers, traces, connectors, build_steps, checks, missing, stats}`. With a build order, `build_steps` lists the board's steps (0 to prepare it, the design's numbers, null for parts not ordered) and each jumper, trace and connector has the `step` it's needed at (step 24). Each connector has its `housing` and, for a screw terminal, `keep_clear`, as the holes they span (`B1-D3`). Each part's pins by hole, the connections still missing ("GND: led.K (Q10) to nano.GND (N1)"), and a **text picture** (below) |
 | `check_layout(layout_id)` | Only the checks, missing connections and stats: for checking after each change |
 | `place_on_board(layout_id, parts: [{ref, at?, rotation?, mount?, off_board?}])` | Place, move, turn or take parts off the board; a part keeps its rotation when none is given |
 | `cut(layout_id, at: [...])`, `uncut(layout_id, at: [...])` | `"B4"` at a hole, `"C9-10"` between holes. `uncut` is destructive (undoable) |
@@ -85,6 +85,7 @@ Positions are the board's labels: `C14` is strip C, hole 14; `C9-10` is a cut be
   - `*` a top jumper end, `+` a bottom link end;
   - `x` a cut at the hole;
   - lower case: a hole under that part's body;
+  - `=` a hole under a connector's housing, `~` room kept clear for a screw terminal's wires;
   - `.` a hole.
 - A ruler of hole numbers heads it. Each line ends with the copper runs on that strip and their nets, or `SHORT`.
 - A legend names the parts (and which are socketed) and connectors.
