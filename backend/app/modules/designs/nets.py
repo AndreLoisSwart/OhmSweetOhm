@@ -2,6 +2,7 @@
 Computed whenever read, never stored."""
 
 from dataclasses import dataclass
+from enum import StrEnum
 
 from app.modules.designs.models import Design
 from app.modules.parts.models import PinKind
@@ -13,10 +14,35 @@ class NetPin:
     kind: PinKind
 
 
+class NetRole(StrEnum):
+    """What a net carries: ground, a supply (3V3, 5V, VIN, battery +) or a signal."""
+
+    GROUND = "ground"
+    SUPPLY = "supply"
+    SIGNAL = "signal"
+
+
+SUPPLY_KINDS = (PinKind.POWER_OUT, PinKind.POWER_IN)
+
+
+def pin_role(kind: PinKind) -> NetRole:
+    if kind == PinKind.GROUND:
+        return NetRole.GROUND
+    return NetRole.SUPPLY if kind in SUPPLY_KINDS else NetRole.SIGNAL
+
+
 @dataclass
 class Net:
     name: str
     pins: list[NetPin]
+
+    @property
+    def role(self) -> NetRole:
+        """Ground if it has a ground pin, else supply if it has a power pin, else signal."""
+        kinds = {p.kind for p in self.pins}
+        if PinKind.GROUND in kinds:
+            return NetRole.GROUND
+        return NetRole.SUPPLY if kinds & set(SUPPLY_KINDS) else NetRole.SIGNAL
 
 
 # A net is named after the first of these it contains, else after its lowest `ref.PIN`.

@@ -21,8 +21,8 @@ import math
 import re
 from dataclasses import dataclass, field
 
-from app.modules.designs.models import Design, Placement
-from app.modules.designs.nets import compute_nets
+from app.modules.designs.models import Design, Placement, WireColor
+from app.modules.designs.nets import NetRole, compute_nets, pin_role
 from app.modules.layouts.models import (
     BoardType,
     Connector,
@@ -365,6 +365,10 @@ class _UnionFind:
             self.parent[ra] = rb
 
 
+# Jumpers on a rail take its colour, whatever they were given.
+RAIL_COLORS = {NetRole.SUPPLY: WireColor.RED, NetRole.GROUND: WireColor.BLACK}
+
+
 def _group(pin: Pin) -> str | None:
     """The pins of a part joined inside it: its grounds, and pins sharing a tie."""
     return "\0ground" if pin.kind == PinKind.GROUND else pin.tie
@@ -397,6 +401,8 @@ class Board:
     net_of: dict[str, str]
     # Each design net's pins, by net name.
     nets: dict[str, list[str]]
+    # Each design net's role: ground, supply or signal.
+    roles: dict[str, NetRole]
     copper: set[Cell]
     cut_holes: set[Cell]
     cut_between: set[Cell]
@@ -421,6 +427,28 @@ class Board:
         """The design nets on what key is joined to, and whether it's a short."""
         node = self.uf.find(key)
         return sorted(self.carried.get(node, set())), len(self.identities.get(node, set())) > 1
+
+    def role(self, key) -> NetRole | None:
+        """Ground or supply when everything joined to key is that (rails), signal when
+        it carries only signals, null when it carries nothing or both ground and supply."""
+        roles = {self.roles[n] for n in self.carried.get(self.uf.find(key), set())}
+        if roles == {NetRole.SIGNAL}:
+            return NetRole.SIGNAL
+        roles.discard(NetRole.SIGNAL)
+        return roles.pop() if len(roles) == 1 else None
+
+    def jumper_color(self, jumper: Jumper) -> tuple[WireColor, bool]:
+        """The colour to draw a jumper in, and whether its net forces it: red on a
+        supply, black on ground, else the colour it was given."""
+        forced = RAIL_COLORS.get(self.role(("jumper", jumper.id)))
+        return (forced, True) if forced else (jumper.color, False)
+
+    def connector_pin_role(self, connector_id: int, index: int, pin: Pin | None) -> NetRole | None:
+        """A connector pin's role: its own pin's when it carries a ground or power pin,
+        else whatever its hole is joined to."""
+        if pin is not None and (own := pin_role(pin.kind)) != NetRole.SIGNAL:
+            return own
+        return self.role(("connector", connector_id, index))
 
 
 def _copper_links(layout: Layout, copper: set[Cell], between: set[Cell]) -> list[list[Cell]]:
@@ -514,9 +542,11 @@ def build(layout: Layout) -> Board:
     # Pins joined inside their part, and each pin's design net.
     net_of: dict[str, str] = {}
     nets: dict[str, list[str]] = {}
+    roles: dict[str, NetRole] = {}
     joins: list[list[str]] = []
     for net in compute_nets(design):
         nets[net.name] = [p.key for p in net.pins]
+        roles[net.name] = net.role
         for pin in net.pins:
             net_of[pin.key] = net.name
     for placement in design.placements:
@@ -548,6 +578,7 @@ def build(layout: Layout) -> Board:
         present=present,
         net_of=net_of,
         nets=nets,
+        roles=roles,
         copper=copper,
         cut_holes=cut_holes,
         cut_between=cut_between,

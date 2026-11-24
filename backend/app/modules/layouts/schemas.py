@@ -13,6 +13,7 @@ from pydantic import (
 from app.core.schemas import Name, reject_null
 from app.modules.checks.schemas import CheckSummary, Severity
 from app.modules.designs.models import WireColor
+from app.modules.designs.nets import NetRole
 from app.modules.designs.schemas import PinRef, Rotation
 from app.modules.layouts.models import BoardType, ConnectorType, JumperSide, Mount
 from app.modules.parts.models import Author
@@ -285,7 +286,10 @@ class JumperOut(BaseModel):
     b: str
     side: JumperSide
     insulated: bool
+    # The colour to draw it in: red on a supply net, black on ground (forced), else the
+    # colour it was given.
     color: WireColor
+    color_forced: bool = False
     # In holes.
     length: float
     # The holes it joins: its ends, and every hole a bare stripboard link lies across.
@@ -335,6 +339,8 @@ class ConnectorPinOut(BaseModel):
     pin_id: int | None
     strip: int | None
     hole: int | None
+    # Ground or supply (marked - and + on the build sheet), signal, or null (nothing).
+    role: NetRole | None = None
 
 
 class ConnectorOut(BaseModel):

@@ -930,3 +930,37 @@ def test_connector_colour(api, library):
     assert layout["connectors"][0]["color"] == "blue"
     layout = ok(api.patch(f"/api/layouts/{lid}/connectors/{cid}", json={"color": None}))
     assert layout["connectors"][0]["color"] is None
+
+
+def test_rails_force_jumper_colours_and_mark_connector_pins(api, library):
+    design = design_with(
+        api,
+        library,
+        {"nano": "Arduino Nano", "bme": "BME280 breakout (4-pin)"},
+        [("bme.VIN", "nano.3V3"), ("bme.GND", "nano.GND"), ("bme.SDA", "nano.A4")],
+    )
+    layout = new_layout(api, design)
+    lid = layout["id"]
+    # A header carrying the sensor's power, ground and data, down strips E, F and G.
+    url = f"/api/layouts/{lid}/connectors"
+    body = {"pin_count": 4, "pins": ["bme.VIN", "bme.GND", "bme.SDA"], "strip": 5, "hole": 5}
+    layout = ok(api.post(url, json={**body, "rotation": 90}))
+    pins = layout["connectors"][0]["pins"]
+    assert len({p["strip"] for p in pins}) == 4
+    assert [p["role"] for p in pins] == ["supply", "ground", "signal", None]
+    # A top jumper on each strip, all asked to be green.
+    for p in pins[:3]:
+        res = link(api, lid, (p["strip"], 10), (p["strip"], 20), side="top", color="green")
+        layout = ok(res)
+    colours = {j["a"]: (j["color"], j["color_forced"]) for j in layout["jumpers"]}
+    vin, gnd, sda = (f"{chr(64 + p['strip'])}10" for p in pins[:3])
+    assert colours[vin] == ("red", True)
+    assert colours[gnd] == ("black", True)
+    assert colours[sda] == ("green", False)
+    # A second strip joined to the 3V3 strip by a jumper is a rail too: its jumpers red.
+    ok(link(api, lid, (pins[0]["strip"], 25), (1, 25), side="top", color="blue"))
+    layout = ok(link(api, lid, (1, 30), (1, 35), side="top", color="yellow"))
+    colours = {j["a"]: j["color"] for j in layout["jumpers"]}
+    assert colours["A30"] == "red"
+    sheet = ok(api.get(f"/api/layouts/{lid}/build-sheet"))
+    assert {j["a"]: j["color"] for j in sheet["jumpers"]}["A30"] == "red"

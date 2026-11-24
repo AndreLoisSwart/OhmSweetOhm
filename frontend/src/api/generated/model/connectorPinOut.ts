@@ -4,6 +4,7 @@
  * Ohm Sweet Ohm
  * OpenAPI spec version: 0.1.0
  */
+import type { NetRole } from './netRole';
 
 export interface ConnectorPinOut {
   index: number;
@@ -12,4 +13,5 @@ export interface ConnectorPinOut {
   pin_id: number | null;
   strip: number | null;
   hole: number | null;
+  role?: NetRole | null;
 }

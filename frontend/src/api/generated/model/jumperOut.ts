@@ -18,6 +18,7 @@ export interface JumperOut {
   side: JumperSide;
   insulated: boolean;
   color: WireColor;
+  color_forced?: boolean;
   length: number;
   touches: string[];
   step?: number | null;

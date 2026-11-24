@@ -281,7 +281,7 @@ def layout_view(layout: Layout) -> LayoutView:
                 b=boards.label((j.b_strip, j.b_hole)),
                 side=j.side,
                 insulated=j.insulated,
-                color=j.color,
+                color=board.jumper_color(j)[0],
                 length=round(boards.jumper_length(j), 1),
                 step=steps.jumpers.get(j.id),
             )
@@ -480,7 +480,8 @@ def register_layout_tools(tool: Callable, open_session: Callable, READ, WRITE, R
         through two free holes. side bottom: on the copper; on a stripboard a bare one
         joins every strip it lies across (insulated: only its ends). Keep them straight
         along or across the strips. On a perfboard a jumper, top or bottom, joins only its
-        ends: join pads with add_traces, and use jumpers to hop over other nets."""
+        ends: join pads with add_traces, and use jumpers to hop over other nets. A jumper
+        on a supply net is always red and one on ground black, whatever color says."""
         with open_session() as session:
             items = []
             for j in jumpers:

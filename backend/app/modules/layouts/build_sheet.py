@@ -155,7 +155,7 @@ def build(layout: Layout) -> Sheet:
                 b=label((j.b_strip, j.b_hole)),
                 side=j.side.value,
                 insulated=j.insulated,
-                color=j.color.value,
+                color=board.jumper_color(j)[0].value,
                 holes=round(holes, 1),
                 mm=round(mm, 1),
                 cut_mm=round(mm + (LEG_ALLOWANCE_MM if legs else 0)),

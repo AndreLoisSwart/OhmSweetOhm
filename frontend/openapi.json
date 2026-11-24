@@ -4038,6 +4038,16 @@
               }
             ],
             "title": "Hole"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NetRole"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -5108,6 +5118,11 @@
           "color": {
             "$ref": "#/components/schemas/WireColor"
           },
+          "color_forced": {
+            "type": "boolean",
+            "title": "Color Forced",
+            "default": false
+          },
           "length": {
             "type": "number",
             "title": "Length"
@@ -6064,6 +6079,16 @@
         ],
         "title": "NetOut",
         "description": "Pins joined by wires. Computed on every read, never stored."
+      },
+      "NetRole": {
+        "type": "string",
+        "enum": [
+          "ground",
+          "supply",
+          "signal"
+        ],
+        "title": "NetRole",
+        "description": "What a net carries: ground, a supply (3V3, 5V, VIN, battery +) or a signal."
       },
       "OwnerType": {
         "type": "string",

@@ -388,6 +388,11 @@ function JumperDetails({
         )}
       </Section>
       <Section title="Colour">
+        {j.color_forced && (
+          <p className="mb-1.5 text-xs text-muted-foreground">
+            {j.color === 'red' ? 'On a supply rail: always red.' : 'On ground: always black.'}
+          </p>
+        )}
         <div className="flex flex-wrap gap-1.5">
           {WIRE_COLORS.map((color) => (
             <button
@@ -395,7 +400,7 @@ function JumperDetails({
               type="button"
               aria-label={color}
               aria-pressed={j.color === color}
-              disabled={readOnly}
+              disabled={readOnly || j.color_forced}
               onClick={() => save({ color })}
               className="size-6 rounded-full border-2 border-background ring-1 ring-border aria-pressed:ring-2 aria-pressed:ring-primary"
               style={{ background: color }}

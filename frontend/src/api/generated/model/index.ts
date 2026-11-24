@@ -75,6 +75,7 @@ export * from './logicVoltage';
 export * from './mcpToken';
 export * from './mount';
 export * from './netOut';
+export * from './netRole';
 export * from './ownerType';
 export * from './partCreate';
 export * from './partDetail';

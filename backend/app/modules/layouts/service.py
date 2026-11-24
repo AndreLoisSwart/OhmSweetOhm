@@ -215,6 +215,11 @@ def detail(layout: Layout) -> LayoutDetail:
                         pin_id=p.pin_id if (p := assigned.get(i)) else None,
                         strip=cells[i - 1][0] if cells else None,
                         hole=cells[i - 1][1] if cells else None,
+                        role=board.connector_pin_role(
+                            c.id, i, p.pin if (p := assigned.get(i)) else None
+                        )
+                        if cells
+                        else None,
                     )
                     for i in range(1, c.pin_count + 1)
                 ],
@@ -252,7 +257,8 @@ def detail(layout: Layout) -> LayoutDetail:
                 b=label((j.b_strip, j.b_hole)),
                 side=j.side,
                 insulated=j.insulated,
-                color=j.color,
+                color=(colored := board.jumper_color(j))[0],
+                color_forced=colored[1],
                 length=round(boards.jumper_length(j), 1),
                 touches=[label(c) for c in boards.jumper_touches(j, layout.board_type)],
                 step=steps.jumpers.get(j.id),
