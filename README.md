@@ -12,26 +12,6 @@ It runs as a Home Assistant add-on and sits alongside its sibling app, Shelf-hel
 
 > This is a personal project. I build and maintain it alone, so I'm not accepting contributions. You're welcome to read the code.
 
-Design canvas
-
-![Design canvas](docs/screenshots/design_canvas.png)
-
-Design canvas with component focus
-
-![Design canvas with focus](docs/screenshots/design_canvas_with_focus.png)
-
-Design canvas with rules engine
-
-![Design canvas Rules engine](docs/screenshots/design_canvas_with_rules_engine.png)
-
-Design stripboard component side
-
-![Design stripboard component side](docs/screenshots/design_stripboard_component_side.png)
-
-Design stripboard copper side
-
-![Design stripboard copper side](docs/screenshots/design_stripboard_copper_side.png)
-
 ## What it does
 
 **Part library**
@@ -104,6 +84,42 @@ To install it on Home Assistant, clone the repo into `/addons` and install it fr
 ## How it was built
 
 I designed and directed this project and built it with Claude Code as a pair programmer. The specs in `docs/` and the rules in [`CLAUDE.md`](CLAUDE.md) came first, and they steered the work step by step.
+
+Design canvas
+
+![Design canvas](docs/screenshots/design_canvas.png)
+
+Design canvas with component focus
+
+![Design canvas with focus](docs/screenshots/design_canvas_with_focus.png)
+
+Design canvas with build order
+
+![Design canvas with build order](docs/screenshots/design_canvas_build_order.png)
+
+Design canvas with rules engine
+
+![Design canvas Rules engine](docs/screenshots/design_canvas_with_rules_engine.png)
+
+Design stripboard component side
+
+![Design stripboard component side](docs/screenshots/design_stripboard_component_side.png)
+
+Design stripboard copper side
+
+![Design stripboard copper side](docs/screenshots/design_stripboard_copper_side.png)
+
+Design Perfboard with unconnected pin traces
+
+![Design perfboard pin traces](docs/screenshots/design_perfboard_component_side.png)
+
+Build Sheet copper side cut and jumpers list
+
+![Build Sheet page 1](docs/screenshots/build_sheet_1.png)
+
+Build Sheet component side component and jumpers list
+
+![Build Sheet page 2](docs/screenshots/build_sheet_2.png)
 
 ## License
 

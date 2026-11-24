@@ -2,7 +2,7 @@
 
 ## Navigation
 
-- **Desktop:** a sidebar with Designs, Parts and Settings.
+- **Desktop:** a sidebar with Designs, Parts and Settings. A button beside the name collapses it to its icons (the app's mark and each item's, named in a tooltip) and back; remembered in the browser (2026-11-24).
 - **Mobile:** a bottom bar with Designs, Parts and Settings.
 - **Inside the HA app:** it runs as an Ingress panel, like Shelf-help, and must work inside the companion app's frame.
 
@@ -56,6 +56,7 @@ The design page has four areas around the canvas:
 **As built in steps 4 to 7:**
 - **Saving:** every change is sent straight away and the server answers with the whole design (placements, wires as `ref.PIN`, the parts used, computed nets); the canvas redraws from that answer. React Flow keeps only what is in flight: positions while dragging and the selection. A refused change shows a toast and the canvas stays as the server has it.
 - **Library:** on a desktop, a column on the left; drag a part onto the canvas to place it where it's dropped. On a tablet, a **Parts** button opens it over the canvas, and **+** on a part adds it near the middle of the view, beside (not on top of) the parts already there.
+- **Closing the side panels** (2026-11-24): on a desktop, a button at the canvas's top left hides and shows the library, and one at its top right the Inspector; each sits at the panel's edge and moves with it, so the canvas can take the whole width. Drag the Inspector's left edge (or focus it and use the arrow keys) to make it 240–560 px wide. Both choices and the width are remembered in the browser, for every design.
 - **Inspector:** on a desktop, a column on the right. Below desktop width it is a sheet over the bottom of the canvas that opens when a part or wire is selected or a pin is tapped (and from the ⓘ button for the design itself). A part shows its ref (editable), part, Rotate and Remove, a note and its pins with the net each is on. A wire shows its two ends, colour swatches, a label and Remove wire. Nothing selected: description, tags, Shelf-help project id, firmware repo (step 13: a path or URL, with a link for a URL), the nets, files and Delete design.
 - **The app sidebar** is hidden on the design page below desktop width, to give the canvas the room; the header's back arrow goes to Designs.
 - **Highlighting:** hovering a pin or wire highlights its net on the canvas; tapping a pin pins the highlight and shows the net in the Inspector. The Inspector shows only pinned nets, never hovered ones: content appearing on hover moved the Remove button out from under the pointer mid-click.

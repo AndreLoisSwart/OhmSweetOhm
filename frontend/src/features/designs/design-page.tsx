@@ -12,12 +12,16 @@ import {
   ListOrdered,
   Lock,
   MoreHorizontal,
+  PanelLeftClose,
+  PanelLeftOpen,
+  PanelRightClose,
+  PanelRightOpen,
   Redo2,
   Undo2,
   Workflow,
   X,
 } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { type PointerEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
 import { errorMessage } from '@/api/fetcher'
 import { listRevisions, useDeleteDesign, useGetDesign } from '@/api/generated/designs/designs'
@@ -50,6 +54,7 @@ import { buildEdges, buildNodes, type PartNodeType, type WireEdgeType } from './
 import { Inspector } from './inspector'
 import { LibraryPanel } from './library-panel'
 import { type DesignActions, quietly, useDesignActions } from './use-design-actions'
+import { INSPECTOR_MAX, INSPECTOR_MIN, usePanels } from './use-panels'
 
 function DesignEditor({ design }: { design: DesignDetail }) {
   const navigate = useNavigate()
@@ -64,6 +69,8 @@ function DesignEditor({ design }: { design: DesignDetail }) {
   const [pinMapOpen, setPinMapOpen] = useState(false)
   const [filesOpen, setFilesOpen] = useState<FirmwareFilesKind | null>(null)
   const [checksOpen, setChecksOpen] = useState(false)
+  // On desktop: the library and inspector beside the canvas, each closable.
+  const panels = usePanels()
   const changedBy = useOutsideChanges(design, actions)
   // While stepping through the build order, later steps can be left out of the canvas.
   const build = useBuildOrder(design, actions)
@@ -283,7 +290,7 @@ function DesignEditor({ design }: { design: DesignDetail }) {
             </div>
           )}
           <div className="flex min-h-0 flex-1">
-            {wide && !readOnly && (
+            {wide && !readOnly && panels.library && (
               <aside className="w-60 shrink-0 border-r">
                 <LibraryPanel design={design} actions={actions} />
               </aside>
@@ -315,6 +322,36 @@ function DesignEditor({ design }: { design: DesignDetail }) {
                       }
                     />
                   </div>
+                )}
+                {wide && !readOnly && (
+                  <Button
+                    variant="outline"
+                    size="icon-sm"
+                    className="absolute top-2 left-2 z-10 bg-card"
+                    onClick={panels.toggleLibrary}
+                    aria-pressed={panels.library}
+                    aria-label={
+                      panels.library ? 'Hide the parts library' : 'Show the parts library'
+                    }
+                    title={panels.library ? 'Hide the parts library' : 'Show the parts library'}
+                  >
+                    {panels.library ? <PanelLeftClose /> : <PanelLeftOpen />}
+                  </Button>
+                )}
+                {wide && (
+                  <Button
+                    variant="outline"
+                    size="icon-sm"
+                    className="absolute top-2 right-2 z-10 bg-card"
+                    onClick={panels.toggleInspector}
+                    aria-pressed={panels.inspector}
+                    aria-label={
+                      panels.inspector ? 'Hide the details panel' : 'Show the details panel'
+                    }
+                    title={panels.inspector ? 'Hide the details panel' : 'Show the details panel'}
+                  >
+                    {panels.inspector ? <PanelRightClose /> : <PanelRightOpen />}
+                  </Button>
                 )}
                 {!wide && !readOnly && (
                   <>
@@ -360,8 +397,11 @@ function DesignEditor({ design }: { design: DesignDetail }) {
                 onPick={() => !wide && setChecksOpen(false)}
               />
             </div>
-            {wide && (
-              <aside className="w-80 shrink-0 overflow-y-auto border-l p-4">{inspector}</aside>
+            {wide && panels.inspector && (
+              <aside className="relative shrink-0 border-l" style={{ width: panels.width }}>
+                <ResizeHandle width={panels.width} onResize={panels.resize} />
+                <div className="h-full overflow-y-auto p-4">{inspector}</div>
+              </aside>
             )}
           </div>
         </div>
@@ -388,6 +428,53 @@ function useOutsideChanges(design: DesignDetail, actions: DesignActions) {
       .catch(() => setWho('elsewhere'))
   }, [design.updated_at, design.id, actions])
   return { who, dismiss: () => setWho(null) }
+}
+
+/**
+ * The inspector's left edge: drag it (or use the arrow keys) to make the panel wider or
+ * narrower. The width is saved when the drag ends.
+ */
+function ResizeHandle({
+  width,
+  onResize,
+}: {
+  width: number
+  onResize: (px: number, save?: boolean) => void
+}) {
+  const start = useRef<{ x: number; width: number } | null>(null)
+  const move = (e: PointerEvent<HTMLDivElement>) => {
+    if (start.current) onResize(start.current.width + start.current.x - e.clientX)
+  }
+  const end = (e: PointerEvent<HTMLDivElement>) => {
+    if (!start.current) return
+    onResize(start.current.width + start.current.x - e.clientX, true)
+    start.current = null
+  }
+  return (
+    <div
+      role="separator"
+      aria-orientation="vertical"
+      aria-label="Resize the details panel"
+      aria-valuenow={width}
+      aria-valuemin={INSPECTOR_MIN}
+      aria-valuemax={INSPECTOR_MAX}
+      tabIndex={0}
+      className="absolute inset-y-0 -left-1 z-10 w-2 cursor-col-resize outline-none hover:bg-primary/30 focus-visible:bg-primary/40"
+      onPointerDown={(e) => {
+        e.currentTarget.setPointerCapture(e.pointerId)
+        start.current = { x: e.clientX, width }
+      }}
+      onPointerMove={move}
+      onPointerUp={end}
+      onPointerCancel={end}
+      onKeyDown={(e) => {
+        const by = e.key === 'ArrowLeft' ? 16 : e.key === 'ArrowRight' ? -16 : 0
+        if (!by) return
+        e.preventDefault()
+        onResize(width + by, true)
+      }}
+    />
+  )
 }
 
 /** Below the canvas on tablets and phones: the inspector, when there is something to show. */
