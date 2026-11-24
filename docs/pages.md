@@ -15,7 +15,7 @@
 | `/` | Designs | List of designs, most recently changed first: name, part count, check summary (error/warning counts), Shelf-help project link marker. New design button. Filter by tag |
 | `/designs/:id` | Design | The canvas (below), with the name editable in the header |
 | `/designs/:id/layouts/:layoutId` | Board layout | The design's parts on a protoboard (step 16; see Layout page below) |
-| `/designs/:id/layouts/:layoutId/print` | Build sheet | One A4 page to print, outside the app's frame (step 19; see Layout page below) |
+| `/designs/:id/layouts/:layoutId/print` | Build sheet | Two A4 pages to print (copper side, then component side), outside the app's frame (step 19; see Layout page below) |
 | `/parts` | Parts | The library: search, filter by kind and tag, an "Unverified" filter. Rows show name, kind, logic voltage, pin count and the unverified badge. **New part** opens a dialog (name, kind, logic voltage) and goes to the new part's page, as Shelf-help's New item does. **Starter parts** lists the 21 starter modules, ticks the ones already in the library, and adds the rest (unverified), then shows the Unverified filter |
 | `/parts/:id` | Part | Fields (kind, voltages, I2C addresses, datasheet, Shelf-help item id, Wokwi type; for boards also platform and PlatformIO board), libraries (under the description: each spec, for all boards or one platform, added and removed in place), the pin editor (each pin's roles, flags, tie, code name and Wokwi name behind its details button), the footprint editor (step 14: holes and outline in mm, Generate from sides, a preview on a 2.54 mm grid), notes (markdown), attachments (datasheets, pinout images), "Used in" designs, and "Mark verified" |
 | `/settings` | Settings | Claude (MCP): the token (hidden until shown; copy; make a new one), and the Claude Code command and Claude Desktop config for the add-on's host port 8097. Tag management |
@@ -171,15 +171,12 @@ The board stays fitted to its space until you pan (drag empty board) or zoom (wh
 - It shows the counts and "N to join", "Nothing on the board yet", or "The board matches the design".
 - Picking a result lights up its holes and pins on the board.
 
-**Print build sheet** (⋯ menu, step 19) opens a page laid out for one A4 sheet (10 mm margins), printed from the browser's own dialog at "Actual size":
-- **Both sides at true size,** drawn in mm:
-  - **Component side:** part outlines (dashed when socketed), legs with pin 1 square, refs, connectors with their housing and pin 1 filled, and top jumpers in their colour, numbered.
-  - **Copper side, mirrored:** solid strips, bold cut marks, bottom links, traces as grey bands tagged T1, T2…, a ring at every solder joint and faint part outlines.
-  - Both have strip letters, hole numbers and a triangle at A1. Cuts are numbered on the drawing when there are at most 24; beyond that the marks alone are clearer, and the list's positions find them.
-- **A 50 mm scale bar** to check the print with a ruler.
-- **A warning box** at the top while the layout has errors or missing connections.
-- **The lists, with tick boxes:** order of work; cuts strip by strip as seen from the copper side; jumpers (ends, side, colour, length, wire to cut); traces (ends, pads, solder bridge or tinned wire); parts in the design's build order, each with its step (pin 1's hole, rotation, mount; unordered parts last, by ref); connectors and their cables (straight or crossed); and what to have ready (board, socket headers by size, connectors, wire).
-- **Component side SVG** and **Copper side SVG** download each drawing.
+**Print build sheet** (⋯ menu, step 19; split into two pages 2026-11-24) opens a sheet laid out for A4 (10 mm margins), printed from the browser's own dialog at "Actual size". Every drawing is at true size, in mm, with strip letters, hole numbers and a triangle at A1, and sits with its list beside it (below it when the board is too wide):
+- **Page 1, copper side** (mirrored: turned over, left and right swap), with a 50 mm scale bar to check the print with a ruler, a warning box while the layout has errors or missing connections, and the order of work:
+  1. **Cuts** (a perfboard's **traces**): solid strips, faint dashed part and connector outlines, bold cut marks with a white edge so a cut on a part's outline stands out from it, traces as grey bands tagged T1, T2…. The cut list (strip by strip, as seen from the copper side) or trace list is always there, saying "No cuts" when there are none. Cuts are numbered on the drawing when there are at most 24; beyond that the marks alone are clearer, and the list's positions find them.
+  2. **Bottom links** (a perfboard's bottom jumpers), only when there are some: each in its colour (red on a supply rail, black on ground; bare wire dashed), numbered, with cuts faint and a ring at every joint to solder, and their list.
+- **Page 2, component side:** part outlines (dashed when socketed), legs with pin 1 square, connectors with their housing, pin 1 filled and − on a ground pin, + on a supply pin, and top jumpers in their colour, numbered, with the top jumper list. Part and connector names sit beside their outline where they cover the least (other bodies, pins, jumpers, other names), with a white edge. Then the parts in the design's build order, each with its step (pin 1's hole, rotation, mount; unordered parts last, by ref); connectors and their cables (straight or crossed); and what to have ready (board, socket headers by size, connectors, wire). Every list has tick boxes.
+- **Cuts SVG** (Traces SVG), **Bottom jumpers SVG** and **Component side SVG** download each drawing.
 
 **History** (⋯ menu) lists the layout's revisions with Restore. Changes made elsewhere (Claude, another tab) show a "Claude changed this layout" notice with a link to History, and drop the undo steps, as on the design page.
 

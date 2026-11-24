@@ -1,22 +1,34 @@
-import { forwardRef } from 'react'
+import { forwardRef, type ReactNode } from 'react'
 import type { BuildSheetOut, LayoutDetail } from '@/api/generated/model'
 import { stripLabel } from '../board/geometry'
+import { type LabelIn, type Obstacle, placeLabels, type Rect } from './labels'
 
 /** Above this many cuts, the copper side shows them unnumbered. */
 export const MAX_NUMBERED_CUTS = 24
 
 /**
+ * Which drawing: the copper side with its cuts (a perfboard's traces), the copper side
+ * with its bottom jumpers and every joint to solder, or the component side.
+ */
+export type PrintView = 'cuts' | 'jumpers' | 'component'
+
+const MONO = 'ui-monospace, monospace'
+const FAINT = '#9a9a9a'
+
+/** A wire colour that shows on white paper: black prints dark grey inside its edge. */
+const ink = (color: string) => (color === 'black' ? '#444' : color)
+
+/**
  * One side of the board at true size, for printing (build step 19). Drawn in mm, so it
- * prints 1:1 at "Actual size"; black on white, with cut and jumper numbers matching the
- * build sheet. The copper side is mirrored left to right, as the board is when turned
- * over.
+ * prints 1:1 at "Actual size", with cut, jumper and trace numbers matching the build
+ * sheet. The copper side is mirrored left to right, as the board is when turned over.
  */
 export const BoardPrint = forwardRef<
   SVGSVGElement,
-  { layout: LayoutDetail; sheet: BuildSheetOut; side: 'component' | 'copper' }
->(function BoardPrint({ layout, sheet, side }, ref) {
+  { layout: LayoutDetail; sheet: BuildSheetOut; view: PrintView }
+>(function BoardPrint({ layout, sheet, view }, ref) {
   const p = layout.pitch_mm
-  const copper = side === 'copper'
+  const copper = view !== 'component'
   // Room for the strip letters and hole numbers.
   const margin = 2.2 * p
   const x = (hole: number) => margin + (copper ? layout.holes - hole : hole - 1) * p + p / 2
@@ -33,6 +45,37 @@ export const BoardPrint = forwardRef<
   const strips = Array.from({ length: layout.strips }, (_, i) => i + 1)
   const holes = Array.from({ length: layout.holes }, (_, i) => i + 1)
   const onBoard = layout.parts.filter((part) => part.on_board)
+  const top = layout.jumpers.filter((j) => j.side === 'top')
+  const bottom = layout.jumpers.filter((j) => j.side === 'bottom')
+  const placedPins = (c: LayoutDetail['connectors'][number]) =>
+    c.pins.filter(
+      (pin): pin is typeof pin & { strip: number; hole: number } =>
+        pin.strip != null && pin.hole != null,
+    )
+
+  const bodyRect = (b: { strip0: number; hole0: number; strip1: number; hole1: number }) => ({
+    x: Math.min(x(b.hole0), x(b.hole1)),
+    y: y(b.strip0),
+    w: Math.abs(x(b.hole1) - x(b.hole0)),
+    h: y(b.strip1) - y(b.strip0),
+  })
+  const cellRect = (strip: number, hole: number, size: number): Rect => ({
+    x: x(hole) - size / 2,
+    y: y(strip) - size / 2,
+    w: size,
+    h: size,
+  })
+  const spanRect = (cells: { strip: number; hole: number }[]): Rect => {
+    const xs = cells.map((c) => x(c.hole))
+    const ys = cells.map((c) => y(c.strip))
+    const pad = p * 0.45
+    return {
+      x: Math.min(...xs) - pad,
+      y: Math.min(...ys) - pad,
+      w: Math.max(...xs) - Math.min(...xs) + 2 * pad,
+      h: Math.max(...ys) - Math.min(...ys) + 2 * pad,
+    }
+  }
 
   const numberTag = (cx: number, cy: number, n: number | string, key: string) => (
     <g key={key}>
@@ -42,13 +85,233 @@ export const BoardPrint = forwardRef<
         y={cy + font * 0.27}
         fontSize={font * 0.75}
         textAnchor="middle"
-        fontFamily="ui-monospace, monospace"
+        fontFamily={MONO}
         fontWeight={700}
       >
         {n}
       </text>
     </g>
   )
+
+  /** A wire: a dark edge with its colour inside; a bare link's colour is dashed. */
+  const wire = (j: LayoutDetail['jumpers'][number], key: string, bare = false): ReactNode => {
+    const ends = { x1: x(j.a_hole), y1: y(j.a_strip), x2: x(j.b_hole), y2: y(j.b_strip) }
+    return (
+      <g key={key}>
+        <line {...ends} stroke="black" strokeWidth={0.75} strokeLinecap="round" />
+        <line
+          {...ends}
+          stroke={ink(j.color)}
+          strokeWidth={0.45}
+          strokeLinecap="round"
+          strokeDasharray={bare ? '0.9 0.5' : undefined}
+        />
+        {numberTag(
+          (ends.x1 + ends.x2) / 2,
+          (ends.y1 + ends.y2) / 2,
+          jumperNumber.get(j.id) ?? 0,
+          `${key}n`,
+        )}
+      </g>
+    )
+  }
+
+  /** Faint part and connector outlines, to find your way on the copper side. */
+  const outlines = (
+    <>
+      {onBoard.map(
+        (part) =>
+          part.body && (
+            <rect
+              key={`o${part.placement_id}`}
+              {...rectProps(bodyRect(part.body))}
+              fill="none"
+              stroke={FAINT}
+              strokeWidth={0.15}
+              strokeDasharray="0.8 0.6"
+            />
+          ),
+      )}
+      {layout.connectors.map(
+        (c) =>
+          c.body && (
+            <rect
+              key={`oc${c.id}`}
+              {...rectProps(bodyRect(c.body))}
+              fill="none"
+              stroke={FAINT}
+              strokeWidth={0.15}
+              strokeDasharray="0.8 0.6"
+            />
+          ),
+      )}
+    </>
+  )
+
+  /**
+   * Cuts. Bold and numbered on the cuts drawing, with a white edge so a cut on a part's
+   * outline stands out from it; faint and unnumbered on the jumpers drawing.
+   */
+  const cuts = (bold: boolean) =>
+    layout.cuts.map((c) => {
+      const n = cutNumber.get(c.id) ?? 0
+      const tone = bold ? 'black' : FAINT
+      const lines: [number, number, number, number][] = []
+      const stroke = bold ? 0.5 : 0.3
+      let tag: [number, number]
+      if (c.between) {
+        const cx = (x(c.hole) + x(c.hole + 1)) / 2
+        lines.push([cx, y(c.strip) - p * 0.5, cx, y(c.strip) + p * 0.5])
+        tag = [cx, y(c.strip) - p * 0.95]
+      } else {
+        const cx = x(c.hole)
+        const cy = y(c.strip)
+        const d = p * 0.38
+        lines.push([cx - d, cy - d, cx + d, cy + d], [cx - d, cy + d, cx + d, cy - d])
+        tag = [cx + p * 0.6, cy - p * 0.6]
+      }
+      return (
+        <g key={c.id}>
+          {bold &&
+            lines.map(([x1, y1, x2, y2], i) => (
+              <line
+                key={`h${i}`}
+                {...{ x1, y1, x2, y2 }}
+                stroke="white"
+                strokeWidth={stroke + 0.5}
+                strokeLinecap="round"
+              />
+            ))}
+          {lines.map(([x1, y1, x2, y2], i) => (
+            <line key={i} {...{ x1, y1, x2, y2 }} stroke={tone} strokeWidth={stroke} />
+          ))}
+          {bold && numberCuts && numberTag(tag[0], tag[1], n, `n${c.id}`)}
+        </g>
+      )
+    })
+
+  /** Traces: solder along every pad they run over, numbered T1, T2… on the cuts drawing. */
+  const traces = (numbered: boolean) =>
+    layout.traces.map((t) => (
+      <g key={`t${t.id}`}>
+        <line
+          x1={x(t.a_hole)}
+          y1={y(t.a_strip)}
+          x2={x(t.b_hole)}
+          y2={y(t.b_strip)}
+          stroke={numbered ? '#888' : '#bbb'}
+          strokeWidth={p * 0.45}
+          strokeLinecap="round"
+        />
+        {numbered &&
+          numberTag(
+            (x(t.a_hole) + x(t.b_hole)) / 2,
+            (y(t.a_strip) + y(t.b_strip)) / 2 - (t.a_strip === t.b_strip ? p * 0.7 : 0),
+            `T${traceNumber.get(t.id) ?? 0}`,
+            `tn${t.id}`,
+          )}
+      </g>
+    ))
+
+  /** A ring at every joint: each leg, connector pin and top jumper end. */
+  const joints = [
+    ...onBoard.flatMap((part) =>
+      part.pins.map((pin) => ({ key: pin.key, strip: pin.strip, hole: pin.hole })),
+    ),
+    ...layout.connectors.flatMap((c) =>
+      placedPins(c).map((pin) => ({ key: `${c.id}-${pin.index}`, ...pin })),
+    ),
+    ...top.flatMap((j) => [
+      { key: `ja${j.id}`, strip: j.a_strip, hole: j.a_hole },
+      { key: `jb${j.id}`, strip: j.b_strip, hole: j.b_hole },
+    ]),
+  ].map((j) => (
+    <circle
+      key={j.key}
+      cx={x(j.hole)}
+      cy={y(j.strip)}
+      r={p * 0.3}
+      fill="none"
+      stroke="black"
+      strokeWidth={0.2}
+    />
+  ))
+
+  /** Names beside what they name, clear of bodies, pins, jumpers and each other. */
+  const labels = () => {
+    const obstacles: Obstacle[] = [
+      ...onBoard.flatMap((part) => [
+        ...(part.body ? [{ rect: bodyRect(part.body), owner: part.ref }] : []),
+        ...part.pins.map((pin) => ({ rect: cellRect(pin.strip, pin.hole, p * 0.6) })),
+      ]),
+      ...layout.connectors.flatMap((c) => [
+        ...(c.body ? [{ rect: bodyRect(c.body), owner: c.ref }] : []),
+        ...placedPins(c).map((pin) => ({ rect: cellRect(pin.strip, pin.hole, p * 0.9) })),
+      ]),
+      ...top.flatMap((j) => {
+        const line = spanRect([
+          { strip: j.a_strip, hole: j.a_hole },
+          { strip: j.b_strip, hole: j.b_hole },
+        ])
+        const cx = (x(j.a_hole) + x(j.b_hole)) / 2
+        const cy = (y(j.a_strip) + y(j.b_strip)) / 2
+        const r = font * 0.62
+        return [{ rect: line }, { rect: { x: cx - r, y: cy - r, w: 2 * r, h: 2 * r } }]
+      }),
+    ]
+    const wanted: LabelIn[] = [
+      ...onBoard
+        .filter((part) => part.body || part.pins.length)
+        .map((part) => ({
+          key: part.ref,
+          text: part.ref,
+          size: font * 1.1,
+          around: part.body ? bodyRect(part.body) : spanRect(part.pins),
+        })),
+      ...layout.connectors
+        .filter((c) => c.body || placedPins(c).length)
+        .map((c) => ({
+          key: c.ref,
+          text: c.ref,
+          size: font,
+          around: c.body ? bodyRect(c.body) : spanRect(placedPins(c)),
+        })),
+    ]
+    const board = {
+      x: margin - p * 0.3,
+      y: margin - p * 0.3,
+      w: layout.holes * p + p * 0.6,
+      h: layout.strips * p + p * 0.6,
+    }
+    const placed = placeLabels(wanted, obstacles, board)
+    return wanted.map((label) => {
+      const at = placed.get(label.key)
+      if (!at) return null
+      return (
+        <text
+          key={`l${label.key}`}
+          x={at.x}
+          y={at.y}
+          fontSize={label.size}
+          fontFamily={MONO}
+          fontWeight={700}
+          stroke="white"
+          strokeWidth={label.size * 0.3}
+          strokeLinejoin="round"
+          paintOrder="stroke"
+        >
+          {label.text}
+        </text>
+      )
+    })
+  }
+
+  const side =
+    view === 'component'
+      ? 'component side'
+      : view === 'cuts'
+        ? 'copper side (mirrored), cuts'
+        : 'copper side (mirrored), bottom jumpers'
 
   return (
     <svg
@@ -59,7 +322,7 @@ export const BoardPrint = forwardRef<
       viewBox={`0 0 ${width} ${height}`}
       className="block"
       role="img"
-      aria-label={`${layout.name}, ${copper ? 'copper side (mirrored)' : 'component side'}, true size`}
+      aria-label={`${layout.name}, ${side}, true size`}
     >
       <rect width={width} height={height} fill="white" />
       {/* The board's edge. */}
@@ -81,7 +344,7 @@ export const BoardPrint = forwardRef<
           y={y(s) + font * 0.35}
           fontSize={font}
           textAnchor="middle"
-          fontFamily="ui-monospace, monospace"
+          fontFamily={MONO}
         >
           {stripLabel(s)}
         </text>
@@ -93,7 +356,7 @@ export const BoardPrint = forwardRef<
           y={margin - p * 0.75}
           fontSize={font * 0.8}
           textAnchor="middle"
-          fontFamily="ui-monospace, monospace"
+          fontFamily={MONO}
         >
           {h}
         </text>
@@ -127,295 +390,119 @@ export const BoardPrint = forwardRef<
             cy={y(s)}
             r={p * 0.16}
             fill="white"
-            stroke="#9a9a9a"
+            stroke={FAINT}
             strokeWidth={0.1}
           />
         )),
       )}
 
-      {copper ? (
+      {view === 'cuts' && (
         <>
-          {/* Cuts, bold and numbered as on the cut list. */}
-          {layout.cuts.map((c) => {
-            const n = cutNumber.get(c.id) ?? 0
-            if (c.between) {
-              const cx = (x(c.hole) + x(c.hole + 1)) / 2
-              return (
-                <g key={c.id}>
-                  <line
-                    x1={cx}
-                    x2={cx}
-                    y1={y(c.strip) - p * 0.5}
-                    y2={y(c.strip) + p * 0.5}
-                    stroke="black"
-                    strokeWidth={0.5}
+          {outlines}
+          {traces(true)}
+          {cuts(true)}
+        </>
+      )}
+
+      {view === 'jumpers' && (
+        <>
+          {outlines}
+          {traces(false)}
+          {cuts(false)}
+          {joints}
+          {bottom.map((j) => wire(j, `b${j.id}`, !j.insulated))}
+        </>
+      )}
+
+      {view === 'component' && (
+        <>
+          {/* Parts: outline, legs (pin 1 square). */}
+          {onBoard.map((part) => (
+            <g key={part.placement_id}>
+              {part.body && (
+                <rect
+                  {...rectProps(bodyRect(part.body))}
+                  rx={p * 0.15}
+                  fill="none"
+                  stroke="black"
+                  strokeWidth={0.25}
+                  strokeDasharray={part.mount === 'socketed' ? '1.2 0.6' : undefined}
+                />
+              )}
+              {part.pins.map((pin, i) =>
+                i === 0 ? (
+                  <rect
+                    key={pin.key}
+                    x={x(pin.hole) - p * 0.28}
+                    y={y(pin.strip) - p * 0.28}
+                    width={p * 0.56}
+                    height={p * 0.56}
+                    fill="black"
                   />
-                  {numberCuts && numberTag(cx, y(c.strip) - p * 0.95, n, `n${c.id}`)}
-                </g>
-              )
-            }
-            const cx = x(c.hole)
-            const cy = y(c.strip)
-            const d = p * 0.38
-            return (
-              <g key={c.id}>
-                <line
-                  x1={cx - d}
-                  y1={cy - d}
-                  x2={cx + d}
-                  y2={cy + d}
-                  stroke="black"
-                  strokeWidth={0.45}
-                />
-                <line
-                  x1={cx - d}
-                  y1={cy + d}
-                  x2={cx + d}
-                  y2={cy - d}
-                  stroke="black"
-                  strokeWidth={0.45}
-                />
-                {numberCuts && numberTag(cx + p * 0.6, cy - p * 0.6, n, `n${c.id}`)}
-              </g>
-            )
-          })}
-          {/* Traces: solder along every pad they run over, numbered T1, T2… */}
-          {layout.traces.map((t) => (
-            <g key={`t${t.id}`}>
-              <line
-                x1={x(t.a_hole)}
-                y1={y(t.a_strip)}
-                x2={x(t.b_hole)}
-                y2={y(t.b_strip)}
-                stroke="#888"
-                strokeWidth={p * 0.45}
-                strokeLinecap="round"
-              />
-              {numberTag(
-                (x(t.a_hole) + x(t.b_hole)) / 2,
-                (y(t.a_strip) + y(t.b_strip)) / 2 - (t.a_strip === t.b_strip ? p * 0.7 : 0),
-                `T${traceNumber.get(t.id) ?? 0}`,
-                `tn${t.id}`,
+                ) : (
+                  <circle
+                    key={pin.key}
+                    cx={x(pin.hole)}
+                    cy={y(pin.strip)}
+                    r={p * 0.25}
+                    fill="black"
+                  />
+                ),
               )}
             </g>
           ))}
-          {/* Bottom links. */}
-          {layout.jumpers
-            .filter((j) => j.side === 'bottom')
-            .map((j) => (
-              <g key={j.id}>
-                <line
-                  x1={x(j.a_hole)}
-                  y1={y(j.a_strip)}
-                  x2={x(j.b_hole)}
-                  y2={y(j.b_strip)}
-                  stroke="black"
-                  strokeWidth={0.5}
-                  strokeLinecap="round"
-                  strokeDasharray={j.insulated ? '1 0.6' : undefined}
-                />
-                {numberTag(
-                  (x(j.a_hole) + x(j.b_hole)) / 2,
-                  (y(j.a_strip) + y(j.b_strip)) / 2,
-                  jumperNumber.get(j.id) ?? 0,
-                  `j${j.id}`,
-                )}
-              </g>
-            ))}
-          {/* Where to solder: every leg, connector pin and top jumper end. */}
-          {onBoard.flatMap((part) =>
-            part.pins.map((pin) => (
-              <circle
-                key={pin.key}
-                cx={x(pin.hole)}
-                cy={y(pin.strip)}
-                r={p * 0.3}
-                fill="none"
-                stroke="black"
-                strokeWidth={0.2}
-              />
-            )),
-          )}
-          {layout.connectors.flatMap((c) =>
-            c.pins
-              .filter((pin) => pin.strip != null && pin.hole != null)
-              .map((pin) => (
-                <circle
-                  key={`${c.id}-${pin.index}`}
-                  cx={x(pin.hole!)}
-                  cy={y(pin.strip!)}
-                  r={p * 0.3}
-                  fill="none"
-                  stroke="black"
-                  strokeWidth={0.2}
-                />
-              )),
-          )}
-          {layout.jumpers
-            .filter((j) => j.side === 'top')
-            .flatMap((j) => [
-              [j.a_strip, j.a_hole],
-              [j.b_strip, j.b_hole],
-            ])
-            .map(([s, h], i) => (
-              <circle
-                key={`t${i}`}
-                cx={x(h)}
-                cy={y(s)}
-                r={p * 0.3}
-                fill="none"
-                stroke="black"
-                strokeWidth={0.2}
-              />
-            ))}
-          {/* Faint outlines, to find your way. */}
-          {onBoard.map(
-            (part) =>
-              part.body && (
-                <rect
-                  key={part.placement_id}
-                  x={Math.min(x(part.body.hole0), x(part.body.hole1))}
-                  y={y(part.body.strip0)}
-                  width={Math.abs(x(part.body.hole1) - x(part.body.hole0))}
-                  height={y(part.body.strip1) - y(part.body.strip0)}
-                  fill="none"
-                  stroke="#9a9a9a"
-                  strokeWidth={0.15}
-                  strokeDasharray="0.8 0.6"
-                />
-              ),
-          )}
-        </>
-      ) : (
-        <>
-          {/* Parts: outline, legs (pin 1 square), ref. */}
-          {onBoard.map((part) => {
-            const body = part.body
-            const first = part.pins[0]
-            const bx = body ? Math.min(x(body.hole0), x(body.hole1)) : 0
-            return (
-              <g key={part.placement_id}>
-                {body && (
-                  <rect
-                    x={bx}
-                    y={y(body.strip0)}
-                    width={Math.abs(x(body.hole1) - x(body.hole0))}
-                    height={y(body.strip1) - y(body.strip0)}
-                    rx={p * 0.15}
-                    fill="none"
-                    stroke="black"
-                    strokeWidth={0.25}
-                    strokeDasharray={part.mount === 'socketed' ? '1.2 0.6' : undefined}
-                  />
-                )}
-                {part.pins.map((pin, i) =>
-                  i === 0 ? (
-                    <rect
-                      key={pin.key}
-                      x={x(pin.hole) - p * 0.28}
-                      y={y(pin.strip) - p * 0.28}
-                      width={p * 0.56}
-                      height={p * 0.56}
-                      fill="black"
-                    />
-                  ) : (
-                    <circle
-                      key={pin.key}
-                      cx={x(pin.hole)}
-                      cy={y(pin.strip)}
-                      r={p * 0.25}
-                      fill="black"
-                    />
-                  ),
-                )}
-                {(body || first) && (
-                  <text
-                    x={body ? bx + p * 0.3 : x(first.hole) + p * 0.4}
-                    y={body ? y(body.strip0) + font * 1.1 : y(first.strip) - p * 0.4}
-                    fontSize={font * 1.1}
-                    fontFamily="ui-monospace, monospace"
-                    fontWeight={700}
-                  >
-                    {part.ref}
-                  </text>
-                )}
-              </g>
-            )
-          })}
-          {/* Connectors: the housing, a box per pin, pin 1 filled. */}
+          {/* Connectors: the housing, a box per pin (pin 1 filled), − on ground, + on a supply. */}
           {layout.connectors.map((c) => (
             <g key={c.id}>
               {c.body && (
                 <rect
-                  x={Math.min(x(c.body.hole0), x(c.body.hole1))}
-                  y={y(c.body.strip0)}
-                  width={Math.abs(x(c.body.hole1) - x(c.body.hole0))}
-                  height={y(c.body.strip1) - y(c.body.strip0)}
+                  {...rectProps(bodyRect(c.body))}
                   fill="none"
                   stroke="black"
                   strokeWidth={0.25}
                 />
               )}
-              {c.pins
-                .filter((pin) => pin.strip != null && pin.hole != null)
-                .map((pin) => (
-                  <rect
-                    key={pin.index}
-                    x={x(pin.hole!) - p * 0.45}
-                    y={y(pin.strip!) - p * 0.45}
-                    width={p * 0.9}
-                    height={p * 0.9}
-                    fill={pin.index === 1 ? 'black' : 'white'}
-                    stroke="black"
-                    strokeWidth={0.2}
-                  />
-                ))}
-              {c.pins[0]?.strip != null && c.pins[0]?.hole != null && (
-                <text
-                  x={x(c.pins[0].hole) + p * 0.6}
-                  y={y(c.pins[0].strip) - p * 0.55}
-                  fontSize={font}
-                  fontFamily="ui-monospace, monospace"
-                  fontWeight={700}
-                >
-                  {c.ref}
-                </text>
-              )}
+              {placedPins(c).map((pin) => {
+                const first = pin.index === 1
+                const sign = pin.role === 'ground' ? '−' : pin.role === 'supply' ? '+' : null
+                return (
+                  <g key={pin.index}>
+                    <rect
+                      x={x(pin.hole) - p * 0.45}
+                      y={y(pin.strip) - p * 0.45}
+                      width={p * 0.9}
+                      height={p * 0.9}
+                      fill={first ? 'black' : 'white'}
+                      stroke="black"
+                      strokeWidth={0.2}
+                    />
+                    {sign && (
+                      <text
+                        x={x(pin.hole)}
+                        y={y(pin.strip) + p * 0.27}
+                        fontSize={p * 0.8}
+                        textAnchor="middle"
+                        fontFamily={MONO}
+                        fontWeight={700}
+                        fill={first ? 'white' : 'black'}
+                      >
+                        {sign}
+                      </text>
+                    )}
+                  </g>
+                )
+              })}
             </g>
           ))}
           {/* Top jumpers in their colour, numbered as on the jumper list. */}
-          {layout.jumpers
-            .filter((j) => j.side === 'top')
-            .map((j) => (
-              <g key={j.id}>
-                <line
-                  x1={x(j.a_hole)}
-                  y1={y(j.a_strip)}
-                  x2={x(j.b_hole)}
-                  y2={y(j.b_strip)}
-                  stroke="black"
-                  strokeWidth={0.75}
-                  strokeLinecap="round"
-                />
-                <line
-                  x1={x(j.a_hole)}
-                  y1={y(j.a_strip)}
-                  x2={x(j.b_hole)}
-                  y2={y(j.b_strip)}
-                  stroke={j.color === 'black' ? '#444' : j.color}
-                  strokeWidth={0.45}
-                  strokeLinecap="round"
-                />
-                {numberTag(
-                  (x(j.a_hole) + x(j.b_hole)) / 2,
-                  (y(j.a_strip) + y(j.b_strip)) / 2,
-                  jumperNumber.get(j.id) ?? 0,
-                  `j${j.id}`,
-                )}
-              </g>
-            ))}
+          {top.map((j) => wire(j, `j${j.id}`))}
+          {labels()}
         </>
       )}
     </svg>
   )
 })
+
+function rectProps(r: Rect) {
+  return { x: r.x, y: r.y, width: r.w, height: r.h }
+}
