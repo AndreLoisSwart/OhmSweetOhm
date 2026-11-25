@@ -227,6 +227,13 @@ def test_changing_and_undoing(mcp, api):
         "update_wire", design_id=d, a="sensor.GND", b="esp.GND", color="green", label="0 V"
     )
     assert ("green", "0 V") in [(w["color"], w["label"]) for w in colored["wires"]]
+    # Moving an end: new_b replaces the b end as given (esp.GND), whichever way the wire
+    # was drawn. Then back again.
+    moved_wire = mcp("update_wire", design_id=d, a="sensor.GND", b="esp.GND", new_b="esp.3V3")
+    assert ("esp.3V3", "sensor.GND", "green") in [
+        (w["a"], w["b"], w["color"]) for w in moved_wire["wires"]
+    ]
+    mcp("update_wire", design_id=d, a="sensor.GND", b="esp.3V3", new_b="esp.GND")
     assert len(mcp("disconnect", design_id=d, a="sensor.GND", b="esp.GND")["wires"]) == 1
     with pytest.raises(ToolError, match="aren't wired together"):
         mcp("disconnect", design_id=d, a="sensor.GND", b="esp.GND")
@@ -236,7 +243,8 @@ def test_changing_and_undoing(mcp, api):
     history = mcp("list_revisions", design_id=d)["revisions"]
     assert history[0]["summary"] == "Removed sensor and its 1 wire"
     assert history[1]["summary"] == "Disconnected sensor.GND from esp.GND"
-    assert history[3]["summary"] == "Moved and rotated bme (now sensor)"
+    assert history[2]["summary"] == "Changed the wire sensor.GND to esp.3V3"
+    assert history[5]["summary"] == "Moved and rotated bme (now sensor)"
     # Undo the removal.
     restored = mcp("restore_revision", design_id=d, revision_id=history[0]["id"])
     assert sorted(p["ref"] for p in restored["parts"]) == ["esp", "sensor"]

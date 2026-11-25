@@ -701,12 +701,19 @@ def build_server(open_session: SessionOpener) -> MCPServer:
         b: PinRef,
         color: WireColor | None = None,
         label: Annotated[str, Field(max_length=100)] | None = None,
+        new_a: PinRef | None = None,
+        new_b: PinRef | None = None,
     ) -> DesignView:
-        """Changes the colour or label of the wire between two pins."""
+        """Changes the colour or label of the wire between two pins, or moves its ends:
+        new_a replaces the a end, new_b the b end (the wire keeps its colour and label)."""
         with open_session() as session:
             design = designs.get_design(session, design_id)
             wire = designs.wire_between(design, a, b)
-            data = WireUpdate(**_set(color=color, label=label))
+            # wire_between takes either order: match new_a and new_b to the wire's ends.
+            if new_a or new_b:
+                if designs.resolve_pin(design, a) != (wire.a_placement, wire.a_pin):
+                    new_a, new_b = new_b, new_a
+            data = WireUpdate(**_set(color=color, label=label, a=new_a, b=new_b))
             summary = f"Changed the wire {a} to {b}"
             return _view(designs.update_wire(session, design.id, wire.id, data, claude=summary))
 

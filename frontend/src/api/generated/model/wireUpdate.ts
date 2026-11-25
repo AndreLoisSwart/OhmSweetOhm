@@ -7,6 +7,8 @@
 import type { WireColor } from './wireColor';
 
 export interface WireUpdate {
+  a?: string | null;
+  b?: string | null;
   color?: WireColor | null;
   label?: string | null;
 }

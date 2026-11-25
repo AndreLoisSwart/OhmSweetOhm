@@ -89,6 +89,22 @@
 .ohm-canvas .wire-halo {
   stroke: color-mix(in oklch, var(--primary) 50%, transparent);
 }
+/* Grab zones (grab.ts): the stretch of wire by each pin that drags that end elsewhere. */
+.ohm-canvas .wire-grab {
+  stroke: transparent;
+  pointer-events: stroke;
+  cursor: grab;
+  touch-action: none;
+}
+.ohm-canvas .wire-grab-cue {
+  stroke: color-mix(in oklch, var(--primary) 70%, transparent);
+  stroke-linecap: round;
+  pointer-events: none;
+}
+.ohm-canvas .wire-dragging,
+.ohm-canvas .wire-dragging * {
+  pointer-events: none;
+}
 /* Trace through (trace.ts): the nets beyond a series part, fainter and dashed. */
 .ohm-canvas .wire-halo-traced {
   stroke: color-mix(in oklch, var(--primary) 30%, transparent);

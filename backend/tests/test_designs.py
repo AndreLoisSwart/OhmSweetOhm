@@ -217,6 +217,30 @@ def test_update_and_remove_wire(api, design, esp, bme):
     assert res.json()["wires"] == [] and res.json()["nets"] == []
 
 
+def test_moving_a_wire_end_keeps_the_wire(api, design, esp, bme):
+    place(api, design, esp, bme)
+    wires = connect(
+        api, design, ("esp.GND", "bme.GND"), {"a": "esp.3V3", "b": "bme.VIN", "label": "power"}
+    ).json()["wires"]
+    url = f"/api/designs/{design['id']}/wires/{wires[1]['id']}"
+    res = api.patch(url, json={"b": "bme.SDA"})
+    assert res.status_code == 200, res.text
+    moved = next(w for w in res.json()["wires"] if w["id"] == wires[1]["id"])
+    assert (moved["a"], moved["b"], moved["color"], moved["label"]) == (
+        "esp.3V3",
+        "bme.SDA",
+        "red",
+        "power",
+    )
+    # Refused as a new wire would be: to its own other end, or onto an existing wire.
+    assert api.patch(url, json={"b": "esp.3V3"}).status_code == 409
+    assert api.patch(url, json={"a": "esp.GND", "b": "bme.GND"}).status_code == 409
+    assert api.patch(url, json={"b": "bme.NOPE"}).status_code == 404
+    assert api.patch(url, json={"b": None}).status_code == 422
+    after = api.get(f"/api/designs/{design['id']}").json()["wires"]
+    assert [(w["a"], w["b"]) for w in after] == [("esp.GND", "bme.GND"), ("esp.3V3", "bme.SDA")]
+
+
 def test_removing_a_placement_removes_its_wires(api, design, esp, bme):
     res = place(api, design, esp, bme)
     bme_id = res["placements"][1]["id"]

@@ -179,10 +179,14 @@ class WiresAdd(BaseModel):
 
 
 class WireUpdate(BaseModel):
+    # New ends move the wire (dragging its end to another pin); it keeps its id, colour
+    # and label.
+    a: PinRef | None = None
+    b: PinRef | None = None
     color: WireColor | None = None
     label: Annotated[str, StringConstraints(max_length=100)] | None = None
 
-    _not_null = field_validator("color", "label")(reject_null)
+    _not_null = field_validator("a", "b", "color", "label")(reject_null)
 
 
 # Revisions and undo

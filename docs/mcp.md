@@ -45,7 +45,7 @@ These are the same as Shelf-help's:
 | `suggest_build_order(design_id)` | A proposed build order, `{steps: {ref: step}}` (rules in data-model.md). Read-only: Claude shows it and sets the agreed order with `set_build_order` |
 | `remove_placement(design_id, ref)` | Remove a part and its wires (revision saved first) |
 | `connect(design_id, wires: [{a: "esp.GPIO21", b: "bme.SDA", color?, label?}])` | Add one or more wires |
-| `update_wire(design_id, a, b, color?, label?)` | Change a wire's colour or label |
+| `update_wire(design_id, a, b, color?, label?, new_a?, new_b?)` | Change a wire's colour or label, or move its ends: `new_a` replaces the end given as `a`, `new_b` the one given as `b`. Refused like a new wire (to itself, or onto a pair already wired) |
 | `disconnect(design_id, a, b)` | Remove a wire |
 | `check_design(design_id)` | Run every check (see `checks.md`) |
 | `list_revisions(design_id)`, `restore_revision(design_id, revision_id)` | History, and undo |

@@ -30,7 +30,16 @@ import {
 import type { DesignDetail } from '@/api/generated/model'
 import { GRID } from '@/features/parts/card/layout'
 import { type DesignActions, quietly } from '../use-design-actions'
-import { FIT, PART_DRAG_TYPE, PHONE_FIT, PinEventsContext, RoutesContext } from './context'
+import {
+  FIT,
+  PART_DRAG_TYPE,
+  PHONE_FIT,
+  PinEventsContext,
+  type PinTarget,
+  RoutesContext,
+  WireMoveContext,
+} from './context'
+import { grabZones } from './grab'
 import { Focus as FocusIcon, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { BuildOrderBar } from '../build-order-bar'
@@ -38,7 +47,14 @@ import type { BuildOrder } from '../use-build-order'
 import { FocusContext, focusClass, focusOf, netLevels } from './focus'
 import { HighlightContext } from './highlight'
 import { makeTracer } from './trace'
-import { netsByPin, type PartNodeType, routeInput, turned, type WireEdgeType } from './model'
+import {
+  netsByPin,
+  type PartNodeType,
+  pinName,
+  routeInput,
+  turned,
+  type WireEdgeType,
+} from './model'
 import { PartNode } from './part-node'
 import { placeLabels } from './labels'
 import { route } from './routing'
@@ -118,7 +134,11 @@ export function DesignCanvas({
       design.wires.filter((w) => w.label).map((w) => ({ id: String(w.id), text: w.label })),
       cards,
     )
-    return { routing: { routes, labels }, junctions }
+    const grabs = grabZones(
+      routes,
+      design.wires.map((w) => ({ id: String(w.id), a: w.a, b: w.b })),
+    )
+    return { routing: { routes, labels, grabs }, junctions }
   }, [design])
 
   // Focus (focus.ts): the chosen parts and their wires; everything else greyed or faded.
@@ -171,6 +191,27 @@ export function DesignCanvas({
       })
     },
     [design, endOf],
+  )
+
+  // A wire's end dragged to another pin. Dropped back on its own pin, on its other end's
+  // pin, or onto a pair already wired: nothing changes and it snaps back.
+  const moveWireEnd = useCallback(
+    (wireId: string, end: 'a' | 'b', to: PinTarget) => {
+      const wire = design.wires.find((w) => String(w.id) === wireId)
+      if (!wire) return
+      const moved = endOf(to.nodeId, to.handle)
+      if (moved.toLowerCase() === wire[end].toLowerCase()) return
+      const other = end === 'a' ? 'b' : 'a'
+      const placementId = wire[`${other}_placement_id`]
+      const valid = isValidConnection({
+        source: String(placementId),
+        sourceHandle: pinName(wire[other]),
+        target: to.nodeId,
+        targetHandle: to.handle,
+      })
+      if (valid) quietly(actions.updateWire(wire.id, { [end]: moved }))
+    },
+    [design, endOf, isValidConnection, actions],
   )
 
   const onConnect = useCallback(
@@ -301,111 +342,116 @@ export function DesignCanvas({
     <PinEventsContext.Provider value={pinEvents}>
       <FocusContext.Provider value={shading}>
         <RoutesContext.Provider value={routing}>
-          <ReactFlow
-            className={cn('ohm-canvas', readOnly && 'read-only')}
-            colorMode="system"
-            nodes={nodes}
-            edges={edges}
-            nodeTypes={nodeTypes}
-            edgeTypes={edgeTypes}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            onConnect={onConnect}
-            onBeforeDelete={onBeforeDelete}
-            onNodeDragStop={onNodeDragStop}
-            isValidConnection={isValidConnection}
-            connectionMode={ConnectionMode.Loose}
-            connectionRadius={14}
-            snapToGrid
-            snapGrid={[GRID, GRID]}
-            fitViewOptions={fit}
-            minZoom={0.2}
-            maxZoom={3}
-            nodesDraggable={!readOnly}
-            nodesConnectable={!readOnly}
-            // Otherwise a tap on a pin starts a wire even when nodesConnectable is off.
-            connectOnClick={!readOnly}
-            edgesReconnectable={false}
-            deleteKeyCode={readOnly ? null : ['Delete', 'Backspace']}
-            onEdgeMouseEnter={(_, e) => store.hover(nets.get(e.data!.wire.a)?.pins ?? [])}
-            onEdgeMouseLeave={() => store.hover([])}
-            onPaneClick={() => {
-              store.clear()
-              setFocusIds(null)
-            }}
-            // While focusing, Ctrl/Cmd-click adds a part to the focus or takes it out.
-            onNodeClick={(e, node) => {
-              if (build.numbering) {
-                build.numberPart(node.id, e.shiftKey)
-                return
-              }
-              if (!focusIds || !(e.ctrlKey || e.metaKey)) return
-              setFocusIds((ids) =>
-                ids?.includes(node.id)
-                  ? ids.filter((id) => id !== node.id)
-                  : [...(ids ?? []), node.id],
-              )
-            }}
-            onDragOver={onDragOver}
-            onDrop={onDrop}
-            proOptions={{ hideAttribution: true }}
-          >
-            <Background variant={BackgroundVariant.Dots} gap={GRID * 2} size={1.2} />
-            <Controls showInteractive={false} fitViewOptions={fit} />
-            <MiniMap pannable zoomable className="!bg-card max-lg:!hidden" />
-            <ViewportPortal>
-              {junctions.map((j) => (
-                <div
-                  key={`${j.x},${j.y},${j.net}`}
-                  className={cn('junction', focusClass(junctionStyle.level.get(j.net) ?? 'normal'))}
-                  style={{
-                    transform: `translate(${j.x}px, ${j.y}px) translate(-50%, -50%)`,
-                    background: `var(--wire-${junctionStyle.color.get(j.net) ?? 'gray'})`,
-                  }}
-                />
-              ))}
-            </ViewportPortal>
-            <Panel position="top-center">
-              {build.open ? (
-                <BuildOrderBar build={build} readOnly={readOnly} />
-              ) : focus ? (
-                <div className="flex items-center gap-2 rounded-full border bg-card py-1 pr-1 pl-3 text-xs shadow-sm">
-                  <FocusIcon className="size-3.5 text-primary" />
-                  <span>
-                    Focused on{' '}
-                    <span className="font-mono">
-                      {[...focus.nodes].map((id) => names.get(id)).join(', ')}
+          <WireMoveContext.Provider value={readOnly ? null : moveWireEnd}>
+            <ReactFlow
+              className={cn('ohm-canvas', readOnly && 'read-only')}
+              colorMode="system"
+              nodes={nodes}
+              edges={edges}
+              nodeTypes={nodeTypes}
+              edgeTypes={edgeTypes}
+              onNodesChange={onNodesChange}
+              onEdgesChange={onEdgesChange}
+              onConnect={onConnect}
+              onBeforeDelete={onBeforeDelete}
+              onNodeDragStop={onNodeDragStop}
+              isValidConnection={isValidConnection}
+              connectionMode={ConnectionMode.Loose}
+              connectionRadius={14}
+              snapToGrid
+              snapGrid={[GRID, GRID]}
+              fitViewOptions={fit}
+              minZoom={0.2}
+              maxZoom={3}
+              nodesDraggable={!readOnly}
+              nodesConnectable={!readOnly}
+              // Otherwise a tap on a pin starts a wire even when nodesConnectable is off.
+              connectOnClick={!readOnly}
+              edgesReconnectable={false}
+              deleteKeyCode={readOnly ? null : ['Delete', 'Backspace']}
+              onEdgeMouseEnter={(_, e) => store.hover(nets.get(e.data!.wire.a)?.pins ?? [])}
+              onEdgeMouseLeave={() => store.hover([])}
+              onPaneClick={() => {
+                store.clear()
+                setFocusIds(null)
+              }}
+              // While focusing, Ctrl/Cmd-click adds a part to the focus or takes it out.
+              onNodeClick={(e, node) => {
+                if (build.numbering) {
+                  build.numberPart(node.id, e.shiftKey)
+                  return
+                }
+                if (!focusIds || !(e.ctrlKey || e.metaKey)) return
+                setFocusIds((ids) =>
+                  ids?.includes(node.id)
+                    ? ids.filter((id) => id !== node.id)
+                    : [...(ids ?? []), node.id],
+                )
+              }}
+              onDragOver={onDragOver}
+              onDrop={onDrop}
+              proOptions={{ hideAttribution: true }}
+            >
+              <Background variant={BackgroundVariant.Dots} gap={GRID * 2} size={1.2} />
+              <Controls showInteractive={false} fitViewOptions={fit} />
+              <MiniMap pannable zoomable className="!bg-card max-lg:!hidden" />
+              <ViewportPortal>
+                {junctions.map((j) => (
+                  <div
+                    key={`${j.x},${j.y},${j.net}`}
+                    className={cn(
+                      'junction',
+                      focusClass(junctionStyle.level.get(j.net) ?? 'normal'),
+                    )}
+                    style={{
+                      transform: `translate(${j.x}px, ${j.y}px) translate(-50%, -50%)`,
+                      background: `var(--wire-${junctionStyle.color.get(j.net) ?? 'gray'})`,
+                    }}
+                  />
+                ))}
+              </ViewportPortal>
+              <Panel position="top-center">
+                {build.open ? (
+                  <BuildOrderBar build={build} readOnly={readOnly} />
+                ) : focus ? (
+                  <div className="flex items-center gap-2 rounded-full border bg-card py-1 pr-1 pl-3 text-xs shadow-sm">
+                    <FocusIcon className="size-3.5 text-primary" />
+                    <span>
+                      Focused on{' '}
+                      <span className="font-mono">
+                        {[...focus.nodes].map((id) => names.get(id)).join(', ')}
+                      </span>
                     </span>
-                  </span>
+                    <Button
+                      variant="ghost"
+                      size="xs"
+                      className="rounded-full"
+                      onClick={() => setFocusIds(null)}
+                      title="Esc, or click the canvas"
+                    >
+                      <X />
+                      Exit
+                    </Button>
+                  </div>
+                ) : selectedIds.length > 0 ? (
                   <Button
-                    variant="ghost"
+                    variant="outline"
                     size="xs"
-                    className="rounded-full"
-                    onClick={() => setFocusIds(null)}
-                    title="Esc, or click the canvas"
+                    className="rounded-full bg-card shadow-sm"
+                    onClick={focusSelection}
+                    title="Show only these parts and their wires (F)"
                   >
-                    <X />
-                    Exit
+                    <FocusIcon />
+                    Focus on{' '}
+                    {selectedIds.length === 1
+                      ? names.get(selectedIds[0])
+                      : `${selectedIds.length} parts`}
                   </Button>
-                </div>
-              ) : selectedIds.length > 0 ? (
-                <Button
-                  variant="outline"
-                  size="xs"
-                  className="rounded-full bg-card shadow-sm"
-                  onClick={focusSelection}
-                  title="Show only these parts and their wires (F)"
-                >
-                  <FocusIcon />
-                  Focus on{' '}
-                  {selectedIds.length === 1
-                    ? names.get(selectedIds[0])
-                    : `${selectedIds.length} parts`}
-                </Button>
-              ) : null}
-            </Panel>
-            {children}
-          </ReactFlow>
+                ) : null}
+              </Panel>
+              {children}
+            </ReactFlow>
+          </WireMoveContext.Provider>
         </RoutesContext.Provider>
       </FocusContext.Provider>
     </PinEventsContext.Provider>

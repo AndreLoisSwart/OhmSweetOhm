@@ -8752,6 +8752,30 @@
       },
       "WireUpdate": {
         "properties": {
+          "a": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[^.\\s]+\\.[^.\\s]+$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "A"
+          },
+          "b": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[^.\\s]+\\.[^.\\s]+$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "B"
+          },
           "color": {
             "anyOf": [
               {

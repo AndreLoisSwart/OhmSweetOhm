@@ -389,13 +389,36 @@ def _get_wire(design: Design, wire_id: int) -> Wire:
     return wire
 
 
+def _move_wire(design: Design, wire: Wire, a: str | None, b: str | None) -> None:
+    """Moves a wire's ends to other pins, refused as add_wires refuses a new wire."""
+    a_placement, a_pin = _resolve(design, a) if a else (wire.a_placement, wire.a_pin)
+    b_placement, b_pin = _resolve(design, b) if b else (wire.b_placement, wire.b_pin)
+    ends = frozenset({(a_placement.id, a_pin.id), (b_placement.id, b_pin.id)})
+    name_a = f"{a_placement.ref}.{a_pin.name}"
+    if len(ends) == 1:
+        raise ConflictError(f"A wire can't join {name_a} to itself")
+    for other in design.wires:
+        if other is not wire and ends == frozenset(
+            {(other.a_placement_id, other.a_pin_id), (other.b_placement_id, other.b_pin_id)}
+        ):
+            raise ConflictError(
+                f"{name_a} and {b_placement.ref}.{b_pin.name} are already wired together"
+            )
+    wire.a_placement, wire.a_pin = a_placement, a_pin
+    wire.b_placement, wire.b_pin = b_placement, b_pin
+
+
 def update_wire(
     session: Session, design_id: int, wire_id: int, data: WireUpdate, claude: str | None = None
 ) -> Design:
     design = get_design(session, design_id)
     revisions.before_change(session, design, claude)
     wire = _get_wire(design, wire_id)
-    for field, value in data.model_dump(exclude_unset=True).items():
+    fields = data.model_dump(exclude_unset=True)
+    a, b = fields.pop("a", None), fields.pop("b", None)
+    if a or b:
+        _move_wire(design, wire, a, b)
+    for field, value in fields.items():
         setattr(wire, field, value)
     _touch(design)
     session.commit()

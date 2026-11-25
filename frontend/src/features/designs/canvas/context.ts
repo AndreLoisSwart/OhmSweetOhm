@@ -1,4 +1,5 @@
 import { createContext } from 'react'
+import type { Grab } from './grab'
 import type { Point } from './routing'
 
 /** Pin hover and tap, handled by the canvas (it knows the nets). Stable for its life. */
@@ -7,11 +8,24 @@ export const PinEventsContext = createContext<{
   tap: (key: string) => void
 }>({ hover: () => {}, tap: () => {} })
 
-/** Each wire's routed corner points, and where its label goes (labels.ts), by edge id. */
+/** Each wire's routed corner points, where its label goes (labels.ts) and its ends' grab
+ * zones (grab.ts), by edge id. */
 export const RoutesContext = createContext<{
   routes: Map<string, Point[]>
   labels: Map<string, Point>
-}>({ routes: new Map(), labels: new Map() })
+  grabs: Map<string, Grab>
+}>({ routes: new Map(), labels: new Map(), grabs: new Map() })
+
+/** A pin on the canvas: its card (placement id) and handle (pin name). */
+export interface PinTarget {
+  nodeId: string
+  handle: string
+}
+
+/** Moves one end of a wire to another pin (a dragged grab zone); null when read-only. */
+export const WireMoveContext = createContext<
+  ((wireId: string, end: 'a' | 'b', to: PinTarget) => void) | null
+>(null)
 
 /** Fit, but never past 1.25×: labels are sized to be read at 1×. The padding leaves
  * room for wires that loop round the outside of the cards. */
