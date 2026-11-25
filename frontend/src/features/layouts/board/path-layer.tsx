@@ -66,7 +66,7 @@ export function PathLayer({
 }) {
   const flipped = view.flipped
   const halo = path.kind === 'short' ? SHORT : HALO
-  const joined = path.kind === 'same' || path.kind === 'short' || path.kind === 'joined'
+  const joined = path.kind !== 'missing' && path.kind !== 'apart'
   const jumpers = path.jumpers.flatMap((used) => {
     const j = layout.jumpers.find((x) => x.id === used.id)
     return j ? [{ used, j }] : []
@@ -75,7 +75,7 @@ export function PathLayer({
     const t = layout.traces.find((x) => x.id === used.id)
     return t ? [{ used, t }] : []
   })
-  const arcs = path.inside.flatMap(({ a, b }) => {
+  const arc = (a: string, b: string) => {
     const from = pinCells.get(a)
     const to = pinCells.get(b)
     if (!from || !to) return []
@@ -84,8 +84,13 @@ export function PathLayer({
     // Bowed sideways, so it doesn't lie along the copper between them.
     const mx = (p.x + q.x) / 2 - (q.y - p.y) * 0.25
     const my = (p.y + q.y) / 2 + (q.x - p.x) * 0.25
-    return [{ key: `${a}-${b}`, d: `M ${p.x} ${p.y} Q ${mx} ${my} ${q.x} ${q.y}` }]
-  })
+    // The label sits at the bow's peak, halfway between the midpoint and the control point.
+    const label = { x: (p.x + q.x) / 4 + mx / 2, y: (p.y + q.y) / 4 + my / 2 }
+    return [{ key: `${a}-${b}`, d: `M ${p.x} ${p.y} Q ${mx} ${my} ${q.x} ${q.y}`, label }]
+  }
+  const arcs = path.inside.flatMap(({ a, b }) => arc(a, b))
+  // Trace through: the hop across a series part, fainter, with its ref.
+  const hops = path.series.flatMap(({ ref, a, b }) => arc(a, b).map((h) => ({ ...h, ref })))
   const ends = [
     { end: path.a, name: 'A' },
     { end: path.b, name: 'B' },
@@ -151,6 +156,11 @@ export function PathLayer({
               <path key={arc.key} d={arc.d} strokeWidth={8} />
             ))}
           </g>
+          <g stroke={halo} strokeLinecap="round" fill="none" opacity={0.3}>
+            {hops.map((hop) => (
+              <path key={hop.key} d={hop.d} strokeWidth={8} />
+            ))}
+          </g>
           {/* The path's own items, in their own colours. */}
           {path.copper.map((span, i) => (
             <line
@@ -201,6 +211,24 @@ export function PathLayer({
               strokeWidth={2}
               strokeDasharray="4 3"
             />
+          ))}
+          {hops.map((hop) => (
+            <g key={hop.key}>
+              <path d={hop.d} fill="none" stroke={halo} strokeWidth={2.5} strokeDasharray="6 4" />
+              <text
+                x={hop.label.x}
+                y={hop.label.y}
+                textAnchor="middle"
+                dominantBaseline="middle"
+                fontSize={10}
+                className="fill-foreground font-mono"
+                stroke="var(--card)"
+                strokeWidth={3}
+                paintOrder="stroke"
+              >
+                {hop.ref}
+              </text>
+            </g>
           ))}
           {spans.map((span, i) => (
             <Ants key={i} span={span} view={view} />

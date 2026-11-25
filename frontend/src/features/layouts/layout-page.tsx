@@ -12,6 +12,7 @@ import {
   Printer,
   Redo2,
   Undo2,
+  Waypoints,
   X,
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -37,6 +38,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { savedTracing, saveTracing } from '@/features/designs/canvas/highlight'
 import { quietly } from '@/features/designs/use-design-actions'
 import { PHONE_QUERY, useMediaQuery } from '@/lib/use-media-query'
 import { BoardCanvas } from './board/board-canvas'
@@ -115,9 +117,11 @@ function LayoutEditor({ layout, design }: { layout: LayoutDetail; design: Design
   // Stepping through the build order: the board as it is by the current step.
   const build = useBoardBuild(layout, design)
   const shown = build.shown
+  // Trace through: a path may cross series parts (a resistor). Shared with the schematic.
+  const [throughSeries, setThroughSeries] = useState(savedTracing)
   const path = useMemo(
-    () => (pathEnds?.b ? tracePath(shown, design, pathEnds.a, pathEnds.b) : null),
-    [pathEnds, shown, design],
+    () => (pathEnds?.b ? tracePath(shown, design, pathEnds.a, pathEnds.b, throughSeries) : null),
+    [pathEnds, shown, design, throughSeries],
   )
   const pathPoint = (cell: Cell) => {
     if (!inside(cell, layout)) return
@@ -428,6 +432,19 @@ function LayoutEditor({ layout, design }: { layout: LayoutDetail; design: Design
         >
           <FlipHorizontal2 />
           <span className="hidden sm:inline">{flipped ? 'Copper side' : 'Component side'}</span>
+        </Button>
+        <Button
+          variant={throughSeries ? 'secondary' : 'ghost'}
+          size="sm"
+          aria-label="Trace through series parts"
+          aria-pressed={throughSeries}
+          title="Trace through series parts: a traced path may cross a resistor"
+          onClick={() => {
+            saveTracing(!throughSeries)
+            setThroughSeries(!throughSeries)
+          }}
+        >
+          <Waypoints />
         </Button>
         <Button
           variant={build.open ? 'secondary' : 'ghost'}

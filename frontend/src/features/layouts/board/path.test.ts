@@ -92,6 +92,50 @@ describe('tracePath', () => {
     })
   })
 
+  describe('trace through', () => {
+    // A pull-down r from SDA (A9) to the GND copper right of the cut (C9).
+    const r = { key: 'r.A', at: 'A9', strip: 1, hole: 9 }
+    const rb = { key: 'r.B', at: 'C9', strip: 3, hole: 9 }
+    const withR = (extra: Partial<LayoutDetail> = {}) => {
+      const b = board(extra)
+      return { ...b, parts: [...b.parts, { pins: [r, rb] }] } as unknown as LayoutDetail
+    }
+    const pulled = {
+      nets: [
+        { name: 'SDA', pins: ['esp.SDA', 'bme.SDA', 'r.A'] },
+        { name: 'GND', pins: ['esp.GND', 'bme.GND', 'r.B'] },
+      ],
+      parts: [
+        { id: 1, series: false, pins: [] },
+        { id: 2, series: true, pins: [{ name: 'A' }, { name: 'B' }] },
+      ],
+      placements: [{ ref: 'r', part_id: 2 }],
+    } as unknown as DesignDetail
+
+    it('crosses a series part only when it is on', () => {
+      expect(tracePath(withR(), pulled, at('A2'), at('C8')).kind).toBe('apart')
+      const path = tracePath(withR(), pulled, at('A2'), at('C8'), true)
+      expect(path.kind).toBe('through')
+      expect(path.series).toEqual([{ ref: 'r', a: 'r.A', b: 'r.B' }])
+      expect(describePath(path, 'stripboard')).toEqual({
+        text: 'esp.SDA (A2) → bme.GND (C8) · 2 strips, through r',
+        tone: 'ok',
+      })
+    })
+
+    it('prefers copper, so a real short still shows', () => {
+      const jumpers = [{ id: 1, touches: ['A5', 'B5', 'C5'] }]
+      const path = tracePath(withR({ jumpers } as never), pulled, at('A2'), at('C8'), true)
+      expect(path.kind).toBe('short')
+      expect(path.series).toEqual([])
+    })
+
+    it("doesn't stand in for a connection the design still needs", () => {
+      // esp.GND (C2) and bme.GND (C8): the cut keeps them apart, and r mustn't bridge it.
+      expect(tracePath(withR(), pulled, at('C2'), at('C8'), true).kind).toBe('missing')
+    })
+  })
+
   it('goes through pins joined inside a part', () => {
     const joins = [['esp.GND', 'esp.GND2']]
     const path = tracePath(board({ joins } as never), design, at('E2'), at('C3'))

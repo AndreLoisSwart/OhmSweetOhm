@@ -39,6 +39,11 @@ export type PathKind =
   | 'missing'
   /** Not joined, and the design doesn't join them either. */
   | 'apart'
+  /**
+   * Joined only by passing through series parts (a resistor), with trace through on:
+   * the nets differ, as the design means them to.
+   */
+  | 'through'
 
 export interface PathResult {
   a: PathEnd
@@ -51,6 +56,8 @@ export interface PathResult {
   traces: (Span & { id: number })[]
   /** Pins joined inside a part on the way (a board's GND and GND2), as pin keys. */
   inside: { a: string; b: string }[]
+  /** Series parts passed through with trace through on: the ref and the pins in and out. */
+  series: { ref: string; a: string; b: string }[]
   /** Pins and holes on the path. */
   pins: string[]
   holes: string[]
@@ -109,6 +116,24 @@ export function boardGraph(layout: LayoutDetail): Graph {
     for (const key of group) link(graph, `g:${i}`, `p:${key}`)
   })
   return graph
+}
+
+/**
+ * Trace through (docs/pages.md): the board's graph plus a hop across each series part
+ * (a resistor), between its pins that are on the board or cabled to it.
+ */
+function withSeries(graph: Graph, design: DesignDetail): Graph {
+  const series = new Set(design.parts.filter((p) => p.series).map((p) => p.id))
+  const out: Graph = new Map([...graph].map(([node, next]) => [node, new Set(next)]))
+  for (const placement of design.placements) {
+    if (!series.has(placement.part_id)) continue
+    const part = design.parts.find((p) => p.id === placement.part_id)!
+    for (const pin of part.pins) {
+      const node = `p:${placement.ref}.${pin.name}`
+      if (out.has(node)) link(out, `s:${placement.ref}`, node)
+    }
+  }
+  return out
 }
 
 /** What's at a hole: the part pin in it, else the off-board pin a connector carries there. */
@@ -186,6 +211,8 @@ export function tracePath(
   design: DesignDetail,
   a: Cell,
   b: Cell,
+  /** Trace through: when copper alone doesn't join them, try through series parts. */
+  throughSeries = false,
 ): PathResult {
   const graph = boardGraph(layout)
   const endA = endAt(layout, a)
@@ -209,6 +236,7 @@ export function tracePath(
     jumpers: [],
     traces: [],
     inside: [],
+    series: [],
     pins: [],
     holes: [],
     connectors: [],
@@ -219,7 +247,15 @@ export function tracePath(
     wiredA: design.nets.some((n) => n.name === netA),
     wiredB: design.nets.some((n) => n.name === netB),
   }
-  const nodes = route(graph, nodeOf(endA), nodeOf(endB))
+  let nodes = route(graph, nodeOf(endA), nodeOf(endB))
+  // Copper first: a series part is crossed only when nothing else joins them, and never
+  // for two ends the design joins (that's a connection still to make).
+  const sameNet = netA && netA === netB && result.wiredA
+  let crossed = false
+  if (!nodes && throughSeries && !sameNet) {
+    nodes = route(withSeries(graph, design), nodeOf(endA), nodeOf(endB))
+    crossed = nodes != null
+  }
   if (!nodes) {
     result.kind = netA && netA === netB && result.wiredA ? 'missing' : 'apart'
     result.reachA = graph.has(nodeOf(endA)) ? reach(graph, nodeOf(endA)) : [endA.at]
@@ -227,6 +263,23 @@ export function tracePath(
     return result
   }
   result.kind = netA && netB ? (netA === netB ? 'same' : 'short') : 'joined'
+  if (crossed) {
+    // Between series parts each stretch is one net; two wired nets meeting in a stretch
+    // is still a short.
+    const wired = new Set(design.nets.map((n) => n.name))
+    let net: string | null = null
+    let short = false
+    for (const node of nodes) {
+      if (node.startsWith('s:')) net = null
+      else if (node.startsWith('p:')) {
+        const id = identity(node.slice(2))
+        if (!wired.has(id)) continue
+        if (net && net !== id) short = true
+        net = id
+      }
+    }
+    result.kind = short ? 'short' : 'through'
+  }
 
   let stretch: Span | null = null
   nodes.forEach((node, i) => {
@@ -255,6 +308,8 @@ export function tracePath(
     if (kind === 'j') result.jumpers.push({ id, ...span() })
     else if (kind === 't') result.traces.push({ id, ...span() })
     else if (kind === 'p') result.pins.push(node.slice(2))
+    else if (kind === 's' && prev && next)
+      result.series.push({ ref: rest[0], a: prev.slice(2), b: next.slice(2) })
     else if (kind === 'g' && prev && next)
       result.inside.push({ a: prev.slice(2), b: next.slice(2) })
     else if (kind === 'c' && !result.connectors.includes(rest[0])) result.connectors.push(rest[0])
@@ -282,12 +337,14 @@ export function describePath(
   if (path.jumpers.length) via.push(plural(path.jumpers.length, 'jumper'))
   for (const ref of path.connectors) via.push(`through ${ref}`)
   for (const join of path.inside) via.push(`inside ${join.a.split('.')[0]}`)
+  for (const hop of path.series) via.push(`through ${hop.ref}`)
   const route = via.join(', ') || 'the same hole'
   const net = (n: string | undefined, wired: boolean, pin?: string) =>
     wired ? n : `${pin} (not wired)`
   switch (path.kind) {
     case 'same':
     case 'joined':
+    case 'through':
       return { text: `${name(path.a)} → ${name(path.b)} · ${route}`, tone: 'ok' }
     case 'short':
       return {

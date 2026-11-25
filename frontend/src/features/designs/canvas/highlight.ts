@@ -3,11 +3,20 @@ import { NO_TRACE, type Trace } from './trace'
 
 const TRACING_KEY = 'ohm.trace-through'
 
-function savedTracing(): boolean {
+/** Trace through, as last set in this browser: shared by the schematic and the board. */
+export function savedTracing(): boolean {
   try {
     return localStorage.getItem(TRACING_KEY) === '1'
   } catch {
     return false
+  }
+}
+
+export function saveTracing(on: boolean) {
+  try {
+    localStorage.setItem(TRACING_KEY, on ? '1' : '0')
+  } catch {
+    // A per-viewer convenience: without storage it just isn't remembered.
   }
 }
 
@@ -70,11 +79,7 @@ export class HighlightStore {
 
   setTracing(on: boolean) {
     this.tracingOn = on
-    try {
-      localStorage.setItem(TRACING_KEY, on ? '1' : '0')
-    } catch {
-      // A per-viewer convenience: without storage it just isn't remembered.
-    }
+    saveTracing(on)
     this.emit()
   }
 
