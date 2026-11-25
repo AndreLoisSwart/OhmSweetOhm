@@ -63,6 +63,16 @@ def test_power_short(bench):
     assert set(result["pins"]) == {"reg.OUT", "led.K"}
 
 
+def test_power_short_from_a_supply_input(bench):
+    # A board's 5V input wired to a charger's B- (ground inside the charger, like OUT-).
+    bench.part("esp", ("GND", "ground"), ("5V", "power_in", {"voltage": 5}), kind="board")
+    bench.part("lipo", ("B_N", "ground"), ("OUT_N", "ground"), kind="power")
+    bench.wire(("esp.GND", "lipo.OUT_N"), ("esp.5V", "lipo.B_N"))
+    [result] = bench.results("power_short")
+    # Names the wire that makes the short, not pins joined inside a part.
+    assert result["pins"] == ["esp.5V", "lipo.B_N"]
+
+
 def test_no_power_short_into_a_supply_pin(bench):
     bench.part("reg", SUPPLY_3V3, kind="power")
     bench.part("bme", ("VIN", "power_in"))

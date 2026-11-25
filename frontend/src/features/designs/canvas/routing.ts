@@ -10,7 +10,8 @@
 // further pin to the nearest point of what's already there, so branches meet the trunk
 // in a clean T. Each wire is drawn as its path through the tree. Running on a track of
 // the wire's own net (another group on it) is cheaper than a fresh step, and the points
-// where a net branches are returned as junctions (drawn as dots, as on a schematic).
+// where a net branches are returned as junctions (drawn as dots, as on a schematic). Two
+// of a net's groups merely crossing get no dot: they don't meet there.
 import type { PinSide } from '@/api/generated/model'
 import { GRID } from '@/features/parts/card/layout'
 
@@ -224,10 +225,10 @@ export function route(cards: Rect[], wires: WireToRoute[]): Routing {
   // The same, for the net being routed only: filled from netCells before each group.
   const sameH = new Uint16Array(cols * rows)
   const sameV = new Uint16Array(cols * rows)
-  // The cells each net's tracks run through, and the directions met at each cell, for
-  // finding junctions.
+  // The cells each net's tracks run through, and for finding junctions, the directions
+  // each of its groups meets at each cell.
   const netCells = new Map<string, { h: number[]; v: number[] }>()
-  const netDirs = new Map<string, Map<number, number>>()
+  const netDirs = new Map<string, Map<number, number[]>>()
 
   const cost = new Float64Array(cols * rows * 4)
   const came = new Int32Array(cols * rows * 4)
@@ -318,7 +319,7 @@ export function route(cards: Rect[], wires: WireToRoute[]): Routing {
   for (const { wires: group } of groups) {
     const net = group[0].net ?? `\0${group[0].id}`
     const mine = netCells.get(net) ?? { h: [], v: [] }
-    const dirs = netDirs.get(net) ?? new Map<number, number>()
+    const dirs = new Map<number, number>()
     const meet = (c: number, d: number) => dirs.set(c, (dirs.get(c) ?? 0) | (1 << d))
     for (const c of mine.h) sameH[c]++
     for (const c of mine.v) sameV[c]++
@@ -425,7 +426,9 @@ export function route(cards: Rect[], wires: WireToRoute[]): Routing {
     for (const c of mine.h) sameH[c]--
     for (const c of mine.v) sameV[c]--
     netCells.set(net, mine)
-    netDirs.set(net, dirs)
+    const netGroups = netDirs.get(net) ?? new Map<number, number[]>()
+    for (const [c, mask] of dirs) netGroups.set(c, [...(netGroups.get(c) ?? []), mask])
+    netDirs.set(net, netGroups)
 
     // Each wire: the path through the tree between its pins' stub ends.
     for (const w of group) {
@@ -439,13 +442,23 @@ export function route(cards: Rect[], wires: WireToRoute[]): Routing {
     }
   }
 
-  // Three or more ways meeting on one net is a branch (or the net crossing itself).
-  for (const [net, dirs] of netDirs) {
+  // A junction is where wires really meet: a group's tree branching (three or more ways),
+  // or groups of one net running on a shared track and parting there. Groups that only
+  // cross aren't joined at that point (they may be on one net through a part), so a
+  // crossing gets no dot, as on a schematic.
+  const ways = (mask: number) => {
+    let n = 0
+    for (let m = mask; m; m &= m - 1) n++
+    return n
+  }
+  for (const [net, cells] of netDirs) {
     if (net.startsWith('\0')) continue
-    for (const [c, mask] of dirs) {
-      let ways = 0
-      for (let m = mask; m; m &= m - 1) ways++
-      if (ways >= 3) junctions.push({ ...toPoint(c), net })
+    for (const [c, masks] of cells) {
+      const branches = masks.some((m) => ways(m) >= 3)
+      const parting =
+        ways(masks.reduce((a, m) => a | m, 0)) >= 3 &&
+        masks.some((m, i) => masks.some((o, j) => j > i && m & o))
+      if (branches || parting) junctions.push({ ...toPoint(c), net })
     }
   }
   return { routes, junctions }

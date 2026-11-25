@@ -30,16 +30,28 @@ def other_parts(net: CNet, pin: CPin) -> list[CPin]:
 
 @rule
 def power_short(ctx: Context) -> Iterator[CheckResult]:
+    # Any supply rail on a ground net is a short: an output, and an input too (a board's
+    # 5V pin is fed from its USB port, so grounding it shorts that).
+    wires = {
+        frozenset((f"{w.a_placement.ref}.{w.a_pin.name}", f"{w.b_placement.ref}.{w.b_pin.name}"))
+        for w in ctx.design.wires
+    }
     for net in ctx.nets:
-        sources, grounds = net.of_kind(PinKind.POWER_OUT), net.of_kind(PinKind.GROUND)
-        if sources and grounds:
-            yield CheckResult(
-                id="power_short",
-                severity=Severity.ERROR,
-                message=f"{sources[0].key} is wired straight to ground ({grounds[0].key})",
-                pins=[sources[0].key, grounds[0].key],
-                net=net.name,
-            )
+        grounds = net.of_kind(PinKind.GROUND)
+        sources = net.of_kind(PinKind.POWER_OUT) + net.of_kind(PinKind.POWER_IN)
+        if not (sources and grounds):
+            continue
+        # Name the wire that makes the short, if one joins a supply to a ground directly,
+        # rather than pins only joined to them inside a part.
+        pairs = [(s, g) for s in sources for g in grounds]
+        s, g = next((p for p in pairs if frozenset((p[0].key, p[1].key)) in wires), pairs[0])
+        yield CheckResult(
+            id="power_short",
+            severity=Severity.ERROR,
+            message=f"{s.key} is wired straight to ground ({g.key})",
+            pins=[s.key, g.key],
+            net=net.name,
+        )
 
 
 @rule

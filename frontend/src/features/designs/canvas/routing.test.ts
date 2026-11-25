@@ -186,6 +186,39 @@ describe('same-net wires', () => {
     expect(route([A, B], pair()).junctions).toEqual([])
   })
 
+  it('cross without a junction when they share no pin', () => {
+    // One net only through a part (a charger's B- and OUT-, both ground inside it): p
+    // goes under B to its right side, q turns up across p to B's left side.
+    const wires: WireToRoute[] = [
+      {
+        id: 'p',
+        a: { x: 200, y: 290, side: 'right' },
+        b: { x: 520, y: 110, side: 'right' },
+        net: 'GND',
+      },
+      {
+        id: 'q',
+        a: { x: 200, y: 310, side: 'right' },
+        b: { x: 400, y: 150, side: 'left' },
+        net: 'GND',
+      },
+    ]
+    const { routes, junctions } = route([A, B], wires)
+    const cells = (r: Point[]) => {
+      const out = new Set<string>()
+      for (let i = 1; i < r.length; i++) {
+        const [s, e] = [r[i - 1], r[i]]
+        const n = Math.max(Math.abs(e.x - s.x), Math.abs(e.y - s.y)) / 10
+        for (let k = 0; k <= n; k++)
+          out.add(`${s.x + ((e.x - s.x) * k) / n},${s.y + ((e.y - s.y) * k) / n}`)
+      }
+      return out
+    }
+    const [p, q] = [cells(routes.get('p')!), cells(routes.get('q')!)]
+    expect([...p].filter((c) => q.has(c))).toHaveLength(1) // they cross once
+    expect(junctions).toEqual([])
+  })
+
   it('branch at the stub when two wires leave one pin', () => {
     const { junctions } = route(
       [A, B],
