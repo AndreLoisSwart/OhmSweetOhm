@@ -213,6 +213,14 @@ def test_copy(api):
     assert api.post(f"/api/parts/{part['id']}/copy").json()["name"] == "BME280 (copy 2)"
 
 
+def test_series_is_kept_and_copied(api):
+    part = make(api, pins=[pin("A", "other"), pin("B", "other")])
+    assert part["series"] is False
+    part = api.patch(f"/api/parts/{part['id']}", json={"series": True}).json()
+    assert part["series"] is True and part["verified"] is True
+    assert api.post(f"/api/parts/{part['id']}/copy").json()["series"] is True
+
+
 def test_delete(api):
     part = make(api, pins=[pin("VIN", "power_in")])
     assert api.delete(f"/api/parts/{part['id']}").status_code == 204

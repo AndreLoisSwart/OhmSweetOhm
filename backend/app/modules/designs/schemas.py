@@ -35,6 +35,7 @@ class CanvasPart(BaseModel):
     kind: PartKind
     logic_voltage: LogicVoltage
     verified: bool
+    series: bool
     pins: list[PinOut]
 
 

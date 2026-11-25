@@ -20,6 +20,7 @@ export interface PartCreate {
   kind: PartKind;
   logic_voltage?: LogicVoltage;
   description?: string;
+  series?: boolean;
   supply_min_v?: number | null;
   supply_max_v?: number | null;
   /**

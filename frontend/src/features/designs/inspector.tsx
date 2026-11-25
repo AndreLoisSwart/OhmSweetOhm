@@ -21,7 +21,7 @@ import { pinColor, powerRole } from '@/features/parts/card/pin-style'
 import { parseOptionalId } from '@/features/parts/fields'
 import { TagEditor } from '@/features/tags/tag-editor'
 import { BoardsContext } from './canvas/context'
-import { HighlightContext, usePinnedNet } from './canvas/highlight'
+import { HighlightContext, usePinnedNet, usePinnedTrace } from './canvas/highlight'
 import { describeNet, netsByPin, powerNote, turned } from './canvas/model'
 import { SuggestWiringDialog } from './suggest-wiring-dialog'
 import { type DesignActions, quietly } from './use-design-actions'
@@ -468,7 +468,42 @@ function NetNotice({ design }: { design: DesignDetail }) {
     <div className="rounded-md bg-primary/10 p-2 text-xs">
       <div className="font-medium">{described ? described.title : `${pins[0]} (not wired)`}</div>
       {described && <div className="mt-0.5 text-muted-foreground">{described.detail}</div>}
+      <TracePath />
     </div>
+  )
+}
+
+/** Where the pinned net leads through series parts, one hop per line. */
+function TracePath() {
+  const { hops } = usePinnedTrace()
+  if (!hops.length) return null
+  return (
+    <ul className="mt-1.5 grid gap-0.5 border-t border-primary/20 pt-1.5">
+      {hops.map((hop, i) => (
+        <li key={i} className="flex flex-wrap items-baseline gap-x-1">
+          <span className="text-muted-foreground">→ through</span>
+          <span className="font-mono font-medium" title={hop.part}>
+            {hop.through}
+          </span>
+          <span className="text-muted-foreground">→</span>
+          {hop.net === null ? (
+            <span className="text-muted-foreground">{hop.pins[0]} (not wired)</span>
+          ) : (
+            <span className="font-mono">
+              {hop.net}
+              {hop.end ? (
+                <span className="font-sans text-muted-foreground"> (stops here)</span>
+              ) : (
+                <span className="font-sans text-muted-foreground">
+                  {' '}
+                  ({hop.pins.filter((p) => !p.startsWith(`${hop.through}.`)).join(', ')})
+                </span>
+              )}
+            </span>
+          )}
+        </li>
+      ))}
+    </ul>
   )
 }
 

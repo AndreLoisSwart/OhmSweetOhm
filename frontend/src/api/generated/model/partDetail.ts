@@ -25,6 +25,7 @@ export interface PartDetail {
   pin_count: number;
   updated_at: string;
   description: string;
+  series: boolean;
   supply_min_v: number | null;
   supply_max_v: number | null;
   i2c_addresses: number[];

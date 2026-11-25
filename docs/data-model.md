@@ -7,7 +7,7 @@ Part         id, name (unique, ignoring case), kind, description,
              logic_voltage, supply_min_v, supply_max_v,
              i2c_addresses (JSON list of ints, first is the default),
              datasheet_url, notes_md,
-             verified, created_by,
+             verified, series (bool, default false), created_by,
              shelf_item_id (nullable, Shelf-help Item id),
              wokwi_type (nullable, e.g. "board-esp32-devkit-c-v4"),
              platform (nullable: espressif32, espressif8266, atmelavr),
@@ -88,6 +88,7 @@ Attachment   id, original_filename, mime_type, size, stored_path, created_at,
   - A wire from a pin to itself is refused, and so is a second wire between the same two pins (in either direction).
   - A pin can have many wires.
 - **Wire colour:** when none is given, it defaults by pin kind: red for power, black for ground, otherwise the next colour in a fixed rotation (blue, green, yellow, orange, purple, white, brown), counting only the design's signal wires.
+- **Series parts:** `series` marks a two-terminal part a signal passes through (resistor, inductor, ferrite). It never joins nets: the two ends stay separate nets, so checks and net names stay electrically true. It only lets the canvas trace a highlight on through the part (pages.md, trace through). A part that is just a wire (removable link, fuse, switch) ties its two pins instead, so the net really does run through it. Capacitors are neither.
 - **Pins joined inside a part:** all of a part's ground pins are one node, and so are its pins with the same `tie` (two 3V3 pins both tied `3V3`). Nets include them once any of them is wired, so a board's GND and GND2 are one net, and a short to either is caught.
 - **Nets** are computed from wires and those joins (union-find) whenever they are read, and never stored. A net is named after its power or ground pin when it has one (`3V3`, `GND`; a `power_out` pin first, then ground, then `power_in`), otherwise after its lowest `ref.PIN`. Two separate nets that would share a name are numbered (`GND`, `GND_2`).
 - **Net roles** (2026-11-24): a net with a ground pin is *ground*, else one with a `power_out` or `power_in` pin is a *supply* (3V3, 5V, VIN, battery +), else a *signal*. Computed with the net, never stored.

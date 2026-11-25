@@ -11,6 +11,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     case,
+    false,
     func,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -112,6 +113,9 @@ class Part(Base):
     datasheet_url: Mapped[str] = mapped_column(String(2000), default="")
     notes_md: Mapped[str] = mapped_column(Text, default="")
     verified: Mapped[bool] = mapped_column(default=True)
+    # A two-terminal part a signal passes through (resistor, inductor, ferrite): the
+    # canvas can trace a net on through it. Never joins nets: that is a tie.
+    series: Mapped[bool] = mapped_column(default=False, server_default=false())
     created_by: Mapped[Author] = mapped_column(str_enum(Author, "created_by"))
     # A Shelf-help Item id: another database, so no foreign key and never checked here.
     shelf_item_id: Mapped[int | None]

@@ -391,6 +391,7 @@ def build_server(open_session: SessionOpener) -> MCPServer:
         pins: list[PinIn],
         logic_voltage: LogicVoltage = LogicVoltage.V3V3,
         description: str = "",
+        series: bool = False,
         supply_min_v: float | None = None,
         supply_max_v: float | None = None,
         i2c_addresses: list[int] | None = None,
@@ -415,13 +416,17 @@ def build_server(open_session: SessionOpener) -> MCPServer:
         id, e.g. esp32dev). libraries: what firmware for the part needs, as PlatformIO
         specs (`owner/Name@^major.minor`), each limited to some platforms when it only
         works there (e.g. ESP32Servo on espressif32). Footprint: x_mm and y_mm on each
-        pin and body_mm, or set it afterwards with set_footprint."""
+        pin and body_mm, or set it afterwards with set_footprint. series: true for a
+        two-terminal part a signal passes through (resistor, inductor, ferrite), so the
+        canvas can trace a net through it; a part that is just a wire (link, fuse,
+        switch) ties its pins instead."""
         data = PartCreate(
             name=name,
             kind=kind,
             pins=pins,
             logic_voltage=logic_voltage,
             description=description,
+            series=series,
             supply_min_v=supply_min_v,
             supply_max_v=supply_max_v,
             i2c_addresses=i2c_addresses or [],
@@ -446,6 +451,7 @@ def build_server(open_session: SessionOpener) -> MCPServer:
         kind: PartKind | None = None,
         logic_voltage: LogicVoltage | None = None,
         description: str | None = None,
+        series: bool | None = None,
         supply_min_v: float | None = None,
         supply_max_v: float | None = None,
         i2c_addresses: list[int] | None = None,
@@ -464,12 +470,13 @@ def build_server(open_session: SessionOpener) -> MCPServer:
         possible here. Changing the pins, platform, platformio_board or libraries
         sets the part unverified. libraries, when given, is the whole list. Notes are added with
         append_part_notes. shelf_item_id: 0 unlinks; look the id up in Shelf-help before
-        storing it, since this app can't check it."""
+        storing it, since this app can't check it. series: see create_part."""
         fields = _set(
             name=name,
             kind=kind,
             logic_voltage=logic_voltage,
             description=description,
+            series=series,
             supply_min_v=supply_min_v,
             supply_max_v=supply_max_v,
             i2c_addresses=i2c_addresses,

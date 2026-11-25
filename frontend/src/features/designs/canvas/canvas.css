@@ -89,6 +89,14 @@
 .ohm-canvas .wire-halo {
   stroke: color-mix(in oklch, var(--primary) 50%, transparent);
 }
+/* Trace through (trace.ts): the nets beyond a series part, fainter and dashed. */
+.ohm-canvas .wire-halo-traced {
+  stroke: color-mix(in oklch, var(--primary) 30%, transparent);
+  stroke-dasharray: 6 5;
+}
+.ohm-canvas .pin-handle.pin-traced {
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--primary) 40%, transparent);
+}
 
 /* Cards draw their own selected state. */
 .ohm-canvas .react-flow__node-part.selected,

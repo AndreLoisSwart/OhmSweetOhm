@@ -18,6 +18,7 @@ import {
   PanelRightOpen,
   Redo2,
   Undo2,
+  Waypoints,
   Workflow,
   X,
 } from 'lucide-react'
@@ -49,7 +50,7 @@ import { ChecksBar } from './checks-bar'
 import { HistoryDialog } from './history-dialog'
 import { FirmwareFilesDialog, type FirmwareFilesKind } from './firmware-files-dialog'
 import { PinMapDialog } from './pin-map-dialog'
-import { HighlightContext, HighlightStore, usePinnedNet } from './canvas/highlight'
+import { HighlightContext, HighlightStore, usePinnedNet, useTracing } from './canvas/highlight'
 import { buildEdges, buildNodes, type PartNodeType, type WireEdgeType } from './canvas/model'
 import { Inspector } from './inspector'
 import { LibraryPanel } from './library-panel'
@@ -170,6 +171,7 @@ function DesignEditor({ design }: { design: DesignDetail }) {
                 Read-only
               </span>
             )}
+            <TraceToggle />
             <Button
               variant="ghost"
               size="icon-sm"
@@ -499,6 +501,24 @@ function BottomSheet({
       </div>
       {children}
     </div>
+  )
+}
+
+/** Trace through (canvas/trace.ts): highlights carry on through series parts. */
+function TraceToggle() {
+  const [on, setOn] = useTracing()
+  return (
+    <Button
+      variant="ghost"
+      size="icon-sm"
+      aria-label="Trace through series parts"
+      title="Trace through series parts (resistors): highlight the nets beyond them too"
+      aria-pressed={on}
+      className={on ? 'bg-muted' : undefined}
+      onClick={() => setOn(!on)}
+    >
+      <Waypoints />
+    </Button>
   )
 }
 

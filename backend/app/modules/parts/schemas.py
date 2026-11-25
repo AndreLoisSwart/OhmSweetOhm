@@ -190,6 +190,7 @@ class PartSummary(BaseModel):
 
 class PartDetail(PartSummary):
     description: str
+    series: bool
     supply_min_v: float | None
     supply_max_v: float | None
     i2c_addresses: list[int]
@@ -229,6 +230,7 @@ class PartCreate(_PartFields):
     kind: PartKind
     logic_voltage: LogicVoltage = LogicVoltage.V3V3
     description: str = ""
+    series: bool = False
     supply_min_v: Volts | None = None
     supply_max_v: Volts | None = None
     i2c_addresses: list[I2CAddress] = []
@@ -257,6 +259,7 @@ class PartUpdate(_PartFields):
     kind: PartKind | None = None
     logic_voltage: LogicVoltage | None = None
     description: str | None = None
+    series: bool | None = None
     supply_min_v: Volts | None = None
     supply_max_v: Volts | None = None
     i2c_addresses: list[I2CAddress] | None = None

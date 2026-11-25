@@ -153,6 +153,27 @@ export function PartDetailPage() {
               ))}
             </NativeSelect>
           </Field>
+          {(part.kind === 'passive' || part.series) && (
+            <Field label="Series" htmlFor="part-series">
+              <label className="flex items-start gap-2 pt-1.5 text-sm">
+                <input
+                  id="part-series"
+                  type="checkbox"
+                  checked={part.series}
+                  onChange={(e) => save({ series: e.target.checked })}
+                  className="mt-0.5 size-4 accent-primary"
+                />
+                <span>
+                  A signal passes through it (resistor, inductor). With trace through on, the canvas
+                  follows a net on through it.
+                  <span className="block text-xs text-muted-foreground">
+                    Not for capacitors. A part that is just a wire (link, fuse, switch) ties its
+                    pins instead.
+                  </span>
+                </span>
+              </label>
+            </Field>
+          )}
           <Field label="Logic voltage" htmlFor="part-logic">
             <NativeSelect
               id="part-logic"

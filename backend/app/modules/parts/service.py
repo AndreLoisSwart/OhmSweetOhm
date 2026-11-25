@@ -275,6 +275,7 @@ def copy_part(session: Session, part_id: int) -> Part:
         kind=source.kind,
         description=source.description,
         logic_voltage=source.logic_voltage,
+        series=source.series,
         supply_min_v=source.supply_min_v,
         supply_max_v=source.supply_max_v,
         i2c_addresses=list(source.i2c_addresses),

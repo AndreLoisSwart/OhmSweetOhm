@@ -18,6 +18,7 @@ const canvasPart = (id: number, part: typeof BME280): CanvasPart => ({
   name: part.name,
   kind: 'board',
   logic_voltage: '3v3',
+  series: false,
   verified: true,
   pins: part.pins.map((p, i) => ({
     ...p,

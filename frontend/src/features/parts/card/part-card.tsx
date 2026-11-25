@@ -11,12 +11,17 @@ function PinLabel({
   x,
   y,
   lit,
+  traced,
+  end,
 }: {
   pin: ShownPin
   side: PinSide
   x: number
   y: number
   lit: boolean
+  traced: boolean
+  /** Where a trace stopped at this pin: the supply or ground net it reached. */
+  end: string | null
 }) {
   const marks = pin.flags.map((f) => FLAG_MARKS[f]).filter(Boolean)
   const vertical = side === 'top' || side === 'bottom'
@@ -37,10 +42,19 @@ function PinLabel({
         'absolute flex items-center gap-0.5 rounded-sm px-0.5 font-mono text-[11px] leading-4 whitespace-nowrap',
         vertical && '[writing-mode:vertical-rl]',
         side === 'right' && 'flex-row-reverse',
-        lit ? 'bg-primary text-primary-foreground' : 'text-foreground',
+        lit
+          ? 'bg-primary text-primary-foreground'
+          : traced
+            ? 'bg-primary/25 text-foreground'
+            : 'text-foreground',
       )}
     >
       {pin.name}
+      {end && (
+        <span className="rounded-[3px] bg-primary/15 px-[3px] text-[9px] leading-3 font-semibold text-primary">
+          → {end}
+        </span>
+      )}
       {marks.map((m) => (
         <span
           key={m}
@@ -90,8 +104,10 @@ type Props<P extends ShownPin> = Omit<ComponentProps<'div'>, 'title'> & {
   selected?: boolean
   /** Names of highlighted pins. */
   lit?: Set<string>
+  /** Pins lit faintly by trace through: name → the net the trace stops at there, or null. */
+  traced?: Map<string, string | null>
   /** The canvas draws React Flow handles here; elsewhere a plain dot. */
-  renderPin?: (slot: PinSlot<P>, lit: boolean) => ReactNode
+  renderPin?: (slot: PinSlot<P>, lit: boolean, traced: boolean) => ReactNode
 }
 
 /**
@@ -106,6 +122,7 @@ export function PartCard<P extends ShownPin>({
   rotation = 0,
   selected,
   lit,
+  traced,
   renderPin,
   badge,
   className,
@@ -138,11 +155,20 @@ export function PartCard<P extends ShownPin>({
       {badge && <div className="absolute top-1 right-1">{badge}</div>}
       {layout.slots.map((slot, i) => {
         const on = lit?.has(slot.pin.name) ?? false
+        const faint = !on && (traced?.has(slot.pin.name) ?? false)
         return (
           // By index: names can repeat or be empty while being typed in the pin editor.
           <div key={i}>
-            {renderPin ? renderPin(slot, on) : <PinDot slot={slot as PinSlot<ShownPin>} />}
-            <PinLabel pin={slot.pin} side={slot.side} x={slot.x} y={slot.y} lit={on} />
+            {renderPin ? renderPin(slot, on, faint) : <PinDot slot={slot as PinSlot<ShownPin>} />}
+            <PinLabel
+              pin={slot.pin}
+              side={slot.side}
+              x={slot.x}
+              y={slot.y}
+              lit={on}
+              traced={faint}
+              end={faint ? (traced?.get(slot.pin.name) ?? null) : null}
+            />
           </div>
         )
       })}

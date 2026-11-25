@@ -3,7 +3,7 @@ import { cn } from 'cn'
 import { memo, useContext } from 'react'
 import { RoutesContext } from './context'
 import { FocusContext, focusClass, wireLevel } from './focus'
-import { useIsLit } from './highlight'
+import { useWireLight } from './highlight'
 import type { WireEdgeType } from './model'
 import { midpoint, roundedPath, routeFor } from './routing'
 
@@ -16,7 +16,7 @@ function WireEdgeComponent(props: EdgeProps<WireEdgeType>) {
   const { routes, labels } = useContext(RoutesContext)
   const { sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition } = props
   const wire = props.data!.wire
-  const lit = useIsLit(wire.a)
+  const light = useWireLight(wire.a, wire.b)
   const level = wireLevel(useContext(FocusContext), props.source, props.target)
 
   const route = routeFor(
@@ -46,8 +46,11 @@ function WireEdgeComponent(props: EdgeProps<WireEdgeType>) {
 
   return (
     <g className={focusClass(level)}>
-      {(lit || props.selected) && (
+      {(light === 'lit' || props.selected) && (
         <path d={path} fill="none" className="wire-halo" strokeWidth={props.selected ? 10 : 9} />
+      )}
+      {light === 'traced' && !props.selected && (
+        <path d={path} fill="none" className="wire-halo-traced" strokeWidth={9} />
       )}
       <path d={path} fill="none" className="wire-outline" strokeWidth={5} />
       <BaseEdge

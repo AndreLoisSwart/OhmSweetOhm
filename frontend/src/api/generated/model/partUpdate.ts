@@ -18,6 +18,7 @@ export interface PartUpdate {
   kind?: PartKind | null;
   logic_voltage?: LogicVoltage | null;
   description?: string | null;
+  series?: boolean | null;
   supply_min_v?: number | null;
   supply_max_v?: number | null;
   i2c_addresses?: number[] | null;

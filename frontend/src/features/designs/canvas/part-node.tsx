@@ -8,7 +8,7 @@ import { PartCard } from '@/features/parts/card/part-card'
 import { pinTooltip, powerRole } from '@/features/parts/card/pin-style'
 import { BoardsContext, PinEventsContext } from './context'
 import { cardLevel, FocusContext, focusClass } from './focus'
-import { useHighlightedPins } from './highlight'
+import { useCardTrace, useHighlightedPins } from './highlight'
 import type { PartNodeType } from './model'
 
 const POSITION: Record<PinSide, Position> = {
@@ -21,6 +21,7 @@ const POSITION: Record<PinSide, Position> = {
 function PartNodeComponent({ id, data, selected }: NodeProps<PartNodeType>) {
   const { placement, part } = data
   const lit = useHighlightedPins(placement.ref)
+  const trace = useCardTrace(placement.ref)
   const events = useContext(PinEventsContext)
   const level = cardLevel(useContext(FocusContext), id)
   const updateNodeInternals = useUpdateNodeInternals()
@@ -45,6 +46,7 @@ function PartNodeComponent({ id, data, selected }: NodeProps<PartNodeType>) {
       rotation={placement.rotation as Rotation}
       selected={selected}
       lit={lit}
+      traced={trace.pins}
       badge={
         (boards.length > 0 || placement.build_step != null) && (
           <div className="flex items-center gap-1">
@@ -69,8 +71,13 @@ function PartNodeComponent({ id, data, selected }: NodeProps<PartNodeType>) {
         )
       }
       // Unverified parts get a dashed edge, a hint to check their pinout.
-      className={cn(!part.verified && 'outline-dashed', focusClass(level))}
-      renderPin={({ pin, side, x, y }, on) => (
+      // A series part the trace passes through gets a soft ring.
+      className={cn(
+        !part.verified && 'outline-dashed',
+        trace.through && 'ring-4 ring-primary/30',
+        focusClass(level),
+      )}
+      renderPin={({ pin, side, x, y }, on, faint) => (
         <Handle
           id={pin.name}
           type="source"
@@ -81,6 +88,7 @@ function PartNodeComponent({ id, data, selected }: NodeProps<PartNodeType>) {
             `pin-${pinColorGroup(pin.kind)}`,
             powerRole(pin.kind) && `pin-${powerRole(pin.kind)}`,
             on && 'pin-lit',
+            faint && 'pin-traced',
           )}
           style={{ left: x, top: y, right: 'auto', bottom: 'auto' }}
         />

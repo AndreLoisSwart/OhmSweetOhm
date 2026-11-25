@@ -17,5 +17,6 @@ export interface CanvasPart {
   kind: PartKind;
   logic_voltage: LogicVoltage;
   verified: boolean;
+  series: boolean;
   pins: PinOut[];
 }

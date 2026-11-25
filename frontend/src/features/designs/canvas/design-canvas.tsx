@@ -37,6 +37,7 @@ import { BuildOrderBar } from '../build-order-bar'
 import type { BuildOrder } from '../use-build-order'
 import { FocusContext, focusClass, focusOf, netLevels } from './focus'
 import { HighlightContext } from './highlight'
+import { makeTracer } from './trace'
 import { netsByPin, type PartNodeType, routeInput, turned, type WireEdgeType } from './model'
 import { PartNode } from './part-node'
 import { placeLabels } from './labels'
@@ -94,8 +95,9 @@ export function DesignCanvas({
   const netsRef = useRef(nets)
   useEffect(() => {
     netsRef.current = nets
+    store.setTracer(makeTracer(design))
     store.clear()
-  }, [nets, store])
+  }, [nets, design, store])
   const pinEvents = useMemo(
     () => ({
       hover: (key: string | null) =>
