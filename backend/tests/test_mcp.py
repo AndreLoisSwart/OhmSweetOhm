@@ -140,6 +140,9 @@ def test_pin_changes_unverify_and_cant_remove_pins(mcp, api):
     assert part["verified"] is True
     # A field change leaves it verified.
     assert mcp("update_part", part_id=part["id"], description="Pressure")["verified"] is True
+    # series is a display hint, not the pinout: it saves and keeps the part verified.
+    marked = mcp("update_part", part_id=part["id"], series=True)
+    assert marked["series"] is True and marked["verified"] is True
     pins = part["pins"]
     with pytest.raises(ToolError, match="can't be removed through MCP"):
         mcp("update_part", part_id=part["id"], pins=pins[:3])
