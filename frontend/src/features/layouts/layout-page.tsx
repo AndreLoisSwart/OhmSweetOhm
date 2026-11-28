@@ -7,7 +7,6 @@ import {
   Info,
   Library,
   ListOrdered,
-  Lock,
   MoreHorizontal,
   Printer,
   Redo2,
@@ -31,6 +30,7 @@ import { EmptyState } from '@/components/empty-state'
 import { usePageWidth } from '@/components/layout/page-width'
 import { DetailSkeleton } from '@/components/loading'
 import { NotFound } from '@/components/not-found'
+import { ReadOnlyBadge } from '@/components/read-only-badge'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -41,6 +41,7 @@ import {
 import { savedTracing, saveTracing } from '@/features/designs/canvas/highlight'
 import { quietly } from '@/features/designs/use-design-actions'
 import { PHONE_QUERY, useMediaQuery } from '@/lib/use-media-query'
+import { cn } from '@/lib/utils'
 import { BoardCanvas } from './board/board-canvas'
 import { type BoardHighlight, NO_HIGHLIGHT } from './board/highlight'
 import { type Cell, cellLabel, nextRotation, type Turn } from './board/geometry'
@@ -408,24 +409,34 @@ function LayoutEditor({ layout, design }: { layout: LayoutDetail; design: Design
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <header className="flex h-12 shrink-0 items-center gap-1 border-b px-2">
+      <header
+        className={cn(
+          'flex shrink-0 items-center gap-1 border-b px-2',
+          // On a phone, two rows: the name, then the views and tools, so nothing scrolls.
+          readOnly ? 'flex-wrap py-1' : 'h-12',
+        )}
+      >
         <Button asChild variant="ghost" size="icon-sm">
           <Link to={`/designs/${design.id}`} aria-label="Back to the schematic">
             <ArrowLeft />
           </Link>
         </Button>
-        <span className="hidden min-w-0 truncate font-semibold sm:inline">{design.name}</span>
+        <span
+          className={cn('min-w-0 truncate font-semibold', readOnly ? 'flex-1' : 'hidden sm:inline')}
+        >
+          {design.name}
+        </span>
+        {readOnly && (
+          <>
+            <ReadOnlyBadge what="Layouts" />
+            <div className="basis-full" />
+          </>
+        )}
         <ViewSwitcher designId={design.id} current={layout.id} readOnly={readOnly} />
         <div className="flex-1" />
-        {readOnly && (
-          <span className="flex items-center gap-1 text-xs text-muted-foreground">
-            <Lock className="size-3.5" />
-            Read-only
-          </span>
-        )}
         <Button
           variant={flipped ? 'secondary' : 'ghost'}
-          size="sm"
+          size={readOnly ? 'icon-sm' : 'sm'}
           aria-pressed={flipped}
           title="Turn the board over (F): the copper side, mirrored"
           onClick={() => setFlipped((f) => !f)}
@@ -435,7 +446,7 @@ function LayoutEditor({ layout, design }: { layout: LayoutDetail; design: Design
         </Button>
         <Button
           variant={throughSeries ? 'secondary' : 'ghost'}
-          size="sm"
+          size={readOnly ? 'icon-sm' : 'sm'}
           aria-label="Trace through series parts"
           aria-pressed={throughSeries}
           title="Trace through series parts: a traced path may cross a resistor"
@@ -448,7 +459,7 @@ function LayoutEditor({ layout, design }: { layout: LayoutDetail; design: Design
         </Button>
         <Button
           variant={build.open ? 'secondary' : 'ghost'}
-          size="sm"
+          size={readOnly ? 'icon-sm' : 'sm'}
           aria-pressed={build.open}
           title="Step through the design's build order on the board (B)"
           onClick={build.toggle}

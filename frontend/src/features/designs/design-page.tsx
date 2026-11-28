@@ -10,7 +10,6 @@ import {
   Info,
   Library,
   ListOrdered,
-  Lock,
   MoreHorizontal,
   PanelLeftClose,
   PanelLeftOpen,
@@ -33,6 +32,7 @@ import { EmptyState } from '@/components/empty-state'
 import { usePageWidth } from '@/components/layout/page-width'
 import { DetailSkeleton } from '@/components/loading'
 import { NotFound } from '@/components/not-found'
+import { ReadOnlyBadge } from '@/components/read-only-badge'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -41,6 +41,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { plural } from '@/lib/format'
+import { cn } from '@/lib/utils'
 import { PHONE_QUERY, useMediaQuery } from '@/lib/use-media-query'
 import { ViewSwitcher } from '@/features/layouts/view-switcher'
 import { useBuildOrder } from './use-build-order'
@@ -140,7 +141,13 @@ function DesignEditor({ design }: { design: DesignDetail }) {
     <HighlightContext.Provider value={store}>
       <BoardsContext.Provider value={boards}>
         <div className="flex min-h-0 flex-1 flex-col">
-          <header className="flex h-12 shrink-0 items-center gap-1 border-b px-2">
+          <header
+            className={cn(
+              'flex shrink-0 items-center gap-1 border-b px-2',
+              // On a phone, two rows: the name, then the views and tools, so nothing scrolls.
+              readOnly ? 'flex-wrap py-1' : 'h-12',
+            )}
+          >
             <Button asChild variant="ghost" size="icon-sm">
               <Link to="/" aria-label="All designs">
                 <ArrowLeft />
@@ -158,19 +165,17 @@ function DesignEditor({ design }: { design: DesignDetail }) {
                 />
               )}
             </div>
+            {readOnly && (
+              <>
+                <ReadOnlyBadge what="Designs" />
+                <div className="basis-full" />
+              </>
+            )}
             <ViewSwitcher designId={design.id} current={null} readOnly={readOnly} />
+            {readOnly && <div className="flex-1" />}
             <span className="hidden text-xs text-muted-foreground sm:inline">
               {plural(design.part_count, 'part')}
             </span>
-            {readOnly && (
-              <span
-                className="flex items-center gap-1 text-xs text-muted-foreground"
-                title="Designs are read-only on a phone"
-              >
-                <Lock className="size-3.5" />
-                Read-only
-              </span>
-            )}
             <TraceToggle />
             <Button
               variant="ghost"

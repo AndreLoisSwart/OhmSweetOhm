@@ -25,8 +25,9 @@ export function AppShell() {
             className={cn(
               'mx-auto w-full flex-1',
               full
-                ? // Edge to edge; on phones, clear of the bottom bar.
-                  'flex min-h-0 flex-col pb-[calc(3.75rem+env(safe-area-inset-bottom))] md:pb-0'
+                ? // Edge to edge; on phones, clear of the bottom bar. Clipped sideways, so nothing
+                  // too wide can make the whole page scroll and leave the canvas behind.
+                  'flex min-h-0 flex-col overflow-x-clip pb-[calc(3.75rem+env(safe-area-inset-bottom))] md:pb-0'
                 : 'px-4 pt-6 pb-24 md:px-8 md:pb-8',
               // Wide pages still stop short of very wide screens, where columns would sprawl.
               width === 'wide' && 'max-w-[100rem]',
